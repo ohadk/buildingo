@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../core/api_client.dart';
 import '../core/models.dart';
 import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/invite_sheet.dart';
 import '../widgets/ticket_timeline.dart';
 import 'maintenance_screen.dart';
 import 'meetings_screen.dart';
@@ -88,22 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
       .where((t) => ['open', 'approved', 'in_progress'].contains(t.status))
       .toList();
 
-  /// Vaad: share the building's join link on WhatsApp. Whoever taps it
-  /// submits their details and waits for the Vaad's approval.
-  void _shareJoinLink() {
-    final session = context.read<SessionController>();
-    final code = session.building?.joinCode;
-    if (code == null) return;
-    final link = '${ApiClient.baseUrl}/join/$code';
-    final text = context.l10n.shareJoinMessage(
-      session.building?.name ?? '',
-      link,
-    );
-    launchUrl(
-      Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}'),
-      mode: LaunchMode.externalApplication,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _QuickAction(
             icon: Icons.person_add_alt_1_rounded,
             label: l10n.inviteResident,
-            onTap: _shareJoinLink,
+            onTap: () => showInviteSheet(context),
           ),
         ],
       ),

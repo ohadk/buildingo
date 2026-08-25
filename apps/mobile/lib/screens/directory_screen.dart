@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../core/api_client.dart';
 import '../core/models.dart';
 import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/invite_sheet.dart';
 import '../widgets/phone_field.dart';
 
 class DirectoryScreen extends StatefulWidget {
@@ -21,6 +21,9 @@ class DirectoryScreen extends StatefulWidget {
 class _DirectoryScreenState extends State<DirectoryScreen> {
   List<DirectoryEntry> _entries = [];
   List<JoinRequest> _joinRequests = [];
+
+  /// apartment_id -> phone numbers with a pending (unaccepted) invite.
+  Map<String, List<String>> _pendingInvites = {};
   bool _loading = true;
   StreamSubscription<String>? _realtimeSub;
 
@@ -28,7 +31,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   void initState() {
     super.initState();
     _load();
-    _realtimeSub = realtime.listen({'users', 'join_requests'}, _load);
+    _realtimeSub = realtime.listen({
+      'users',
+      'join_requests',
+      'invitations',
+    }, _load);
   }
 
   @override
@@ -53,6 +60,14 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         _entries = ((data['directory'] ?? []) as List)
             .map((e) => DirectoryEntry.fromJson(e))
             .toList();
+        _pendingInvites = {};
+        for (final inv in (data['pendingInvitations'] ?? []) as List) {
+          final aptId = inv['apartment_id'] as String?;
+          final phone = inv['phone_number'] as String?;
+          if (aptId != null && phone != null) {
+            _pendingInvites.putIfAbsent(aptId, () => []).add(phone);
+          }
+        }
         _joinRequests = requests;
         _loading = false;
       });
@@ -74,21 +89,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
-  }
-
-  void _shareJoinLink() {
-    final session = context.read<SessionController>();
-    final code = session.building?.joinCode;
-    if (code == null) return;
-    final link = '${ApiClient.baseUrl}/join/$code';
-    final text = context.l10n.shareJoinMessage(
-      session.building?.name ?? '',
-      link,
-    );
-    launchUrl(
-      Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}'),
-      mode: LaunchMode.externalApplication,
-    );
   }
 
   Future<void> _invite(DirectoryEntry entry) async {
@@ -160,7 +160,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             IconButton(
               tooltip: l10n.inviteLinkShare,
               icon: const Icon(Icons.ios_share_rounded, color: DiraColors.brick),
-              onPressed: _shareJoinLink,
+              onPressed: () => showInviteSheet(context),
             ),
         ],
       ),
@@ -174,6 +174,19 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  if (isVaad) ...[
+                    FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: DiraColors.sageLight,
+                        foregroundColor: DiraColors.sageDark,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.link_rounded),
+                      label: Text(l10n.inviteViaLink),
+                      onPressed: () => showInviteSheet(context),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if (isVaad && _joinRequests.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -246,47 +259,79 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         ),
                       ),
                     ),
-                    ...floors[floor]!.map(
-                      (e) => Card(
+                    ...floors[floor]!.map((e) {
+                      final invited = _pendingInvites[e.apartmentId] ?? [];
+                      final hasResidents = e.residents.isNotEmpty;
+                      return Card(
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: DiraColors.sageLight,
+                            backgroundColor: hasResidents
+                                ? DiraColors.sageLight
+                                : invited.isNotEmpty
+                                ? DiraColors.goldLight
+                                : DiraColors.cream,
                             child: Text(
                               '${e.apartmentNumber}',
-                              style: const TextStyle(
-                                color: DiraColors.sageDark,
+                              style: TextStyle(
+                                color: hasResidents
+                                    ? DiraColors.sageDark
+                                    : invited.isNotEmpty
+                                    ? DiraColors.goldDark
+                                    : DiraColors.inkSoft,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                           title: Text(
-                            e.residents.isEmpty
-                                ? l10n.vacant
-                                : e.residents
+                            hasResidents
+                                ? e.residents
                                       .map(
                                         (r) =>
                                             r.name.isEmpty ? r.phone : r.name,
                                       )
-                                      .join(', '),
+                                      .join(', ')
+                                : invited.isNotEmpty
+                                ? invited.join(', ')
+                                : l10n.vacant,
+                            textDirection:
+                                !hasResidents && invited.isNotEmpty
+                                ? TextDirection.ltr
+                                : null,
+                            textAlign: !hasResidents && invited.isNotEmpty
+                                ? TextAlign.start
+                                : null,
                           ),
                           subtitle: Text(
-                            e.parkingSpot != null
-                                ? l10n.parkingSpot(e.parkingSpot!)
-                                : l10n.noParking,
+                            [
+                              if (isVaad && invited.isNotEmpty)
+                                l10n.invitePending,
+                              e.parkingSpot != null
+                                  ? l10n.parkingSpot(e.parkingSpot!)
+                                  : l10n.noParking,
+                            ].join(' · '),
+                            style: isVaad && invited.isNotEmpty
+                                ? const TextStyle(color: DiraColors.goldDark)
+                                : null,
                           ),
-                          trailing: isVaad && e.residents.isEmpty
-                              ? IconButton(
-                                  tooltip: l10n.inviteResident,
-                                  icon: const Icon(
-                                    Icons.person_add,
-                                    color: DiraColors.brick,
-                                  ),
-                                  onPressed: () => _invite(e),
-                                )
+                          trailing: isVaad && !hasResidents
+                              ? invited.isNotEmpty
+                                    ? const Icon(
+                                        Icons.hourglass_top_rounded,
+                                        color: DiraColors.goldDark,
+                                        size: 20,
+                                      )
+                                    : IconButton(
+                                        tooltip: l10n.inviteResident,
+                                        icon: const Icon(
+                                          Icons.person_add,
+                                          color: DiraColors.brick,
+                                        ),
+                                        onPressed: () => _invite(e),
+                                      )
                               : null,
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ],
                   const SizedBox(height: 40),
                 ],

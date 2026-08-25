@@ -716,4 +716,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vendorDeleted => 'Vendor agent deleted';
+
+  @override
+  String get inviteViaLink => 'Invite residents via link';
+
+  @override
+  String get inviteResidents => 'Invite residents';
+
+  @override
+  String get inviteLinkExplain =>
+      'Anyone who opens this link can ask to join the building — you approve them here.';
+
+  @override
+  String get copyLink => 'Copy link';
+
+  @override
+  String get invitePending => 'Invited · waiting to connect';
 }

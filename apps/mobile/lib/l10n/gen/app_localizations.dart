@@ -1387,6 +1387,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Vendor agent deleted'**
   String get vendorDeleted;
+
+  /// No description provided for @inviteViaLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite residents via link'**
+  String get inviteViaLink;
+
+  /// No description provided for @inviteResidents.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite residents'**
+  String get inviteResidents;
+
+  /// No description provided for @inviteLinkExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who opens this link can ask to join the building — you approve them here.'**
+  String get inviteLinkExplain;
+
+  /// No description provided for @copyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get copyLink;
+
+  /// No description provided for @invitePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited · waiting to connect'**
+  String get invitePending;
 }
 
 class _AppLocalizationsDelegate

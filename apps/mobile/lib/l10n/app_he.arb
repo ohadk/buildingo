@@ -214,5 +214,10 @@
   "editVendorAgent": "עריכת סוכן ספק",
   "deleteVendorTitle": "למחוק את סוכן הספק?",
   "deleteVendorConfirm": "הסוכן של {name} יוסר ולא ייצור עוד קשר עם הספק. קריאות קיימות יישמרו.",
-  "vendorDeleted": "סוכן הספק נמחק"
+  "vendorDeleted": "סוכן הספק נמחק",
+  "inviteViaLink": "הזמנת דיירים בקישור",
+  "inviteResidents": "הזמנת דיירים",
+  "inviteLinkExplain": "כל מי שפותח את הקישור יכול לבקש להצטרף לבניין — האישור אצלכם.",
+  "copyLink": "העתקת קישור",
+  "invitePending": "הוזמן · ממתין לחיבור"
 }

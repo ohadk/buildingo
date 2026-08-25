@@ -238,5 +238,10 @@
   "deleteVendorTitle": "Delete vendor agent?",
   "deleteVendorConfirm": "The agent for {name} will be removed and will no longer contact this vendor. Existing tickets are kept.",
   "@deleteVendorConfirm": {"placeholders": {"name": {"type": "String"}}},
-  "vendorDeleted": "Vendor agent deleted"
+  "vendorDeleted": "Vendor agent deleted",
+  "inviteViaLink": "Invite residents via link",
+  "inviteResidents": "Invite residents",
+  "inviteLinkExplain": "Anyone who opens this link can ask to join the building — you approve them here.",
+  "copyLink": "Copy link",
+  "invitePending": "Invited · waiting to connect"
 }

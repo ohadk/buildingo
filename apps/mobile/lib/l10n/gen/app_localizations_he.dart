@@ -711,4 +711,20 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get vendorDeleted => 'סוכן הספק נמחק';
+
+  @override
+  String get inviteViaLink => 'הזמנת דיירים בקישור';
+
+  @override
+  String get inviteResidents => 'הזמנת דיירים';
+
+  @override
+  String get inviteLinkExplain =>
+      'כל מי שפותח את הקישור יכול לבקש להצטרף לבניין — האישור אצלכם.';
+
+  @override
+  String get copyLink => 'העתקת קישור';
+
+  @override
+  String get invitePending => 'הוזמן · ממתין לחיבור';
 }
