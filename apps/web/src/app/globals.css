@@ -1,0 +1,116 @@
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=Suez+One&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* Buildingo "Organic" design system — linen ground, terracotta accent,
+     sage second accent, gold highlights (see /Buildingo design). */
+  --color-cream-50: #fffbf2; /* neutral-100 — cards */
+  --color-cream-100: #faf3e0; /* page ground */
+  --color-cream-200: #f2e8d6; /* neutral-200 */
+  --color-cream-300: #e0d3bd; /* neutral-300 — borders */
+
+  --color-terracotta-100: #fbede9;
+  --color-terracotta-200: #f3d9d1;
+  --color-terracotta-300: #e8b9ac;
+  --color-terracotta-500: #c9705c;
+  --color-terracotta-700: #a34a3a;
+
+  --color-brick-500: #a34a3a; /* accent-500 */
+  --color-brick-600: #8e3e30;
+  --color-brick-700: #7a3427;
+  --color-brick-900: #431c15;
+
+  --color-sage-100: #eef2ea;
+  --color-sage-200: #dce5d9;
+  --color-sage-300: #bfcebb;
+  --color-sage-400: #8fa98d;
+  --color-sage-500: #6b8a6b;
+  --color-sage-700: #4f6d4f;
+  --color-sage-900: #354a35;
+
+  --color-gold-300: #f2e2c6;
+  --color-gold-500: #d9b382;
+  --color-gold-700: #6e5433;
+
+  --color-ink-900: #241c18;
+  --color-ink-600: #7f7360;
+  --color-ink-400: #a1937c;
+  --color-ink-950: #2b261f; /* neutral-900 — dark chrome (sidebar, error log) */
+
+  --font-sans: "Heebo", system-ui, sans-serif;
+  --font-heading: "Suez One", "Heebo", system-ui, sans-serif;
+
+  --radius-xl2: 1.75rem;
+}
+
+:root {
+  --background: var(--color-cream-100);
+  --foreground: var(--color-ink-900);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brick-500);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-brick-500) 28%, transparent);
+}
+
+/* Success popup: circle draws itself, then the check strokes in, card pops */
+@keyframes success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(12px);
+  }
+  60% {
+    transform: scale(1.03) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes stroke-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.success-card {
+  animation: success-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.success-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: stroke-draw 0.5s ease-out 0.15s forwards;
+}
+
+.success-check {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: stroke-draw 0.35s ease-out 0.6s forwards;
+}
+
+/* Blush header wash from the design: accent-300 → accent-200 */
+.hero-wash {
+  background: linear-gradient(160deg, #e8b9ac, #f3d9d1 70%);
+}

@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/organic-51c6132f-91ef-4c0c-b7aa-0ea4eb9fa698/styles.css">
+<script src="_ds/organic-51c6132f-91ef-4c0c-b7aa-0ea4eb9fa698/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&family=Suez+One&display=swap" rel="stylesheet">
+<style>
+:root{--font-heading:"Suez One","Caprasimo",system-ui,sans-serif;--font-body:"Heebo","Figtree",system-ui,sans-serif;
+--color-bg:#faf3e0;--color-surface:#f2e6ce;--color-text:#241c18;
+--color-neutral-100:#fffbf2;--color-neutral-200:#f2e8d6;--color-neutral-300:#e0d3bd;--color-neutral-400:#c2b49b;--color-neutral-500:#a1937c;--color-neutral-600:#7f7360;--color-neutral-700:#605648;--color-neutral-800:#413a30;--color-neutral-900:#2b261f;
+--color-accent:#a34a3a;--color-accent-100:#fbede9;--color-accent-200:#f3d9d1;--color-accent-300:#e8b9ac;--color-accent-400:#c9705c;--color-accent-500:#a34a3a;--color-accent-600:#8e3e30;--color-accent-700:#7a3427;--color-accent-800:#5f281e;--color-accent-900:#431c15;
+--color-accent-2:#4f6d4f;--color-accent-2-100:#eef2ea;--color-accent-2-200:#dce5d9;--color-accent-2-300:#bfcebb;--color-accent-2-400:#8fa98d;--color-accent-2-500:#6b8a6b;--color-accent-2-600:#5a7a5a;--color-accent-2-700:#4f6d4f;--color-accent-2-800:#425742;--color-accent-2-900:#354a35;
+--color-gold-200:#f2e2c6;--color-gold-500:#d9b382;--color-gold-800:#6e5433;
+--color-divider:color-mix(in srgb, #241c18 14%, transparent);}
+body{margin:0;background:var(--color-bg);font-family:var(--font-body);direction:rtl;}
+a{color:var(--color-accent-700);text-decoration:none}
+a:hover{color:var(--color-accent-800);text-decoration:underline}
+h1,h2,h3,h4{font-family:var(--font-heading);font-weight:400;margin:0}
+*:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+@keyframes vp-pop{0%{transform:scale(.86);opacity:.4}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vp-rise{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes vp-toast{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes vp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(143,160,115,.55)}50%{box-shadow:0 0 0 7px rgba(143,160,115,0)}}
+</style>
+</helmet>
+
+<template id="__bundler_thumbnail" data-bg-color="#354a35">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#354a35"/>
+    <rect x="360" y="240" width="480" height="320" rx="56" fill="#faf3e0"/>
+    <rect x="420" y="300" width="360" height="90" rx="28" fill="#e8b9ac"/>
+    <rect x="420" y="416" width="220" height="34" rx="17" fill="#4f6d4f"/>
+    <rect x="420" y="466" width="300" height="34" rx="17" fill="#d9b382"/>
+    <circle cx="760" cy="483" r="28" fill="#a34a3a"/>
+  </svg>
+</template>
+<div style="min-height:100vh;background:var(--color-bg);color:var(--color-text);padding-bottom:40px">
+
+<div style="position:sticky;top:0;z-index:80;display:flex;align-items:center;gap:18px;padding:12px 26px;background:var(--color-neutral-900);color:var(--color-neutral-100)">
+  <div style="display:flex;align-items:center;gap:10px;padding-left:18px;border-left:1px solid rgba(255,255,255,.14)">
+    <div style="width:26px;height:26px;border-radius:999px;background:var(--color-accent-500);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-size:13px;color:#fff">ו</div>
+    <span style="font-family:var(--font-heading);font-size:17px">ועד<span style="color:var(--color-accent-400)">.</span></span>
+  </div>
+  <div style="display:flex;gap:6px;background:rgba(255,255,255,.07);padding:4px;border-radius:999px">
+    <sc-for list="{{ roles }}" as="r" hint-placeholder-count="3">
+      <button onClick="{{ r.pick }}" style="{{ r.style }}">{{ r.label }}</button>
+    </sc-for>
+  </div>
+  <span style="font-size:12.5px;color:rgba(255,255,255,.55);margin-right:auto">{{ roleHint }}</span>
+  <sc-if value="{{ isVaad }}" hint-placeholder-val="{{ true }}">
+    <span style="font-size:11.5px;color:rgba(255,255,255,.45)">תצוגה</span>
+    <div style="display:flex;gap:4px;background:rgba(255,255,255,.07);padding:3px;border-radius:999px">
+      <sc-for list="{{ deviceToggle }}" as="d" hint-placeholder-count="2">
+        <button onClick="{{ d.pick }}" style="{{ d.style }}">{{ d.label }}</button>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+
+<sc-if value="{{ isSuper }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:stretch;min-height:900px">
+  <aside style="width:236px;flex:none;background:var(--color-neutral-900);color:rgba(255,255,255,.72);padding:26px 18px;display:flex;flex-direction:column;gap:4px">
+    <div style="font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.4);padding:0 12px 10px">פלטפורמה</div>
+    <sc-for list="{{ superNav }}" as="n" hint-placeholder-count="6">
+      <div style="{{ n.style }}"><span style="font-size:15px;opacity:.8">{{ n.icon }}</span>{{ n.label }}</div>
+    </sc-for>
+    <div style="margin-top:auto;padding:14px;border-radius:var(--radius-md);background:rgba(255,255,255,.06);font-size:12.5px;line-height:1.6">
+      <div style="color:#fff;margin-bottom:4px">מנהל־על · רם דגן</div>
+      גישה מלאה לכל 42 הבניינים
+    </div>
+  </aside>
+
+  <main style="flex:1;padding:32px 36px;min-width:0">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:26px">
+      <div>
+        <h1 style="font-size:31px;line-height:1.2">סקירת פלטפורמה</h1>
+        <p style="margin:6px 0 0;color:var(--color-neutral-700);font-size:14px">נתונים לחודש אוגוסט 2026 · עודכן לפני 4 דקות</p>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" onClick="{{ openAssign }}">שיוך ועד בית</button>
+        <button class="btn btn-primary" onClick="{{ openNewBuilding }}">בניין חדש +</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:14px">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+        <div class="card" style="padding:20px 22px;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+          <div style="font-size:12.5px;color:var(--color-neutral-700);margin-bottom:8px">{{ k.label }}</div>
+          <div style="font-family:var(--font-heading);font-size:30px;line-height:1">{{ k.value }}</div>
+          <sc-if value="{{ k.showTrend }}" hint-placeholder-val="{{ true }}">
+            <div style="{{ k.trendStyle }}">{{ k.trend }}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.65fr 1fr;gap:20px;align-items:start">
+      <section class="card" style="padding:0;overflow:hidden;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px">
+          <h3 style="font-size:19px">בניינים</h3>
+          <input class="input" placeholder="חיפוש כתובת או ועד" style="width:220px;height:36px;font-size:13px">
+        </div>
+        <table class="table" style="width:100%;font-size:13.5px">
+          <thead><tr>
+            <th style="text-align:right">כתובת</th><th style="text-align:right">יח'</th><th style="text-align:right">ועד בית</th><th style="text-align:right">גבייה</th><th style="text-align:right">מנוי</th><th></th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{ buildings }}" as="b" hint-placeholder-count="5">
+              <tr>
+                <td style="text-align:right"><div style="font-weight:600">{{ b.addr }}</div><div style="font-size:11.5px;color:var(--color-neutral-600)">{{ b.city }}</div></td>
+                <td style="text-align:right">{{ b.units }}</td>
+                <td style="text-align:right">{{ b.vaad }}</td>
+                <td style="text-align:right"><span style="{{ b.collectStyle }}">{{ b.collect }}</span></td>
+                <td style="text-align:right"><span style="{{ b.planStyle }}">{{ b.plan }}</span></td>
+                <td style="text-align:left"><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:12.5px" onClick="{{ b.open }}">כניסה</button></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </section>
+
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <section style="padding:20px 22px;border-radius:var(--radius-md);background:var(--color-neutral-900);color:rgba(255,255,255,.8)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 style="font-size:17px;color:#fff">יומן שגיאות</h3>
+            <span class="tag" style="background:var(--color-accent-300);color:var(--color-accent-900);font-size:11px">3 פתוחות</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ errors }}" as="e" hint-placeholder-count="4">
+              <div style="display:flex;gap:10px;font-size:12.5px;line-height:1.5;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.1)">
+                <span style="{{ e.dotStyle }}"></span>
+                <div style="min-width:0">
+                  <div style="color:#fff">{{ e.msg }}</div>
+                  <div style="color:rgba(255,255,255,.45);font-size:11.5px">{{ e.meta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        <section class="card" style="padding:20px 22px;border-radius:var(--radius-md);background:var(--color-accent-2-100)">
+          <h3 style="font-size:17px;margin-bottom:10px">בניינים ללא ועד</h3>
+          <p style="margin:0 0 14px;font-size:13px;color:var(--color-accent-2-800);line-height:1.6">שני בניינים חדשים מחכים לשיוך ועד בית לפני שהתושבים יוזמנו.</p>
+          <button class="btn btn-secondary btn-block" onClick="{{ openAssign }}">שיוך עכשיו</button>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</sc-if>
+
+<sc-if value="{{ isVaad }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ vaadWeb }}" hint-placeholder-val="{{ true }}">
+<div style="max-width:1180px;margin:0 auto;padding:28px 26px 0">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:12.5px;color:var(--color-neutral-600);margin-bottom:4px">ועד הבית · הרצל 42, תל אביב</div>
+      <h1 style="font-size:29px">{{ vaadTitle }}</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="tag tag-accent-2" style="font-size:12px">24 דירות · 61 תושבים</span>
+      <div style="width:34px;height:34px;border-radius:999px;background:var(--color-accent-500);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">מב</div>
+    </div>
+  </div>
+  <nav style="display:flex;gap:6px;flex-wrap:wrap;margin:20px 0 24px;padding-bottom:2px;border-bottom:1px solid var(--color-divider)">
+    <sc-for list="{{ vaadTabs }}" as="t" hint-placeholder-count="6">
+      <button onClick="{{ t.pick }}" style="{{ t.style }}">{{ t.label }}</button>
+    </sc-for>
+  </nav>
+</div>
+
+<div style="max-width:1180px;margin:0 auto;padding:0 26px">
+
+<sc-if value="{{ tabDash }}" hint-placeholder-val="{{ true }}">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px">
+    <sc-for list="{{ vaadKpis }}" as="k" hint-placeholder-count="3">
+      <div class="card" style="padding:20px 22px;border-radius:var(--radius-md)">
+        <div style="font-size:12.5px;color:var(--color-neutral-700);margin-bottom:8px">{{ k.label }}</div>
+        <div style="font-family:var(--font-heading);font-size:28px;line-height:1">{{ k.value }}</div>
+        <div style="font-size:12px;color:var(--color-neutral-600);margin-top:6px">{{ k.sub }}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:start">
+    <section class="card" style="padding:22px;border-radius:var(--radius-md)">
+      <h3 style="font-size:19px;margin-bottom:14px">דורש טיפול</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ todos }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+            <span style="{{ t.dotStyle }}"></span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;font-weight:500">{{ t.title }}</div>
+              <div style="font-size:12px;color:var(--color-neutral-600)">{{ t.sub }}</div>
+            </div>
+            <button class="btn btn-ghost" style="height:32px;padding:0 14px;font-size:12.5px" onClick="{{ t.go }}">{{ t.cta }}</button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <section class="card" style="padding:22px;border-radius:var(--radius-md);background:var(--color-accent-100)">
+      <h3 style="font-size:19px;margin-bottom:8px">הסוכנים עבדו בשבילכם</h3>
+      <p style="margin:0 0 16px;font-size:13.5px;line-height:1.65;color:var(--color-accent-800)">שלושה סוכנים פעילים טיפלו ב־7 פניות לספקים החודש, בלי שאף אחד מהוועד הרים טלפון.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ agentSummary }}" as="a" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;background:rgba(255,255,255,.6);padding:11px 13px;border-radius:999px">
+            <span style="width:8px;height:8px;border-radius:999px;background:var(--color-accent-2-500);flex:none;animation:vp-pulse 2.4s infinite"></span>
+            <span style="flex:1">{{ a.name }}</span>
+            <span style="color:var(--color-neutral-600);font-size:12px">{{ a.stat }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+</sc-if>
+
+<sc-if value="{{ tabResidents }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start">
+    <section class="card" style="padding:0;overflow:hidden;border-radius:var(--radius-md)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 22px 14px">
+        <h3 style="font-size:19px">תושבים ודירות</h3>
+        <span style="font-size:12.5px;color:var(--color-neutral-600)">21 מתוך 24 דירות מאוכלסות במערכת</span>
+      </div>
+      <table class="table" style="width:100%;font-size:13.5px">
+        <thead><tr><th style="text-align:right">דירה</th><th style="text-align:right">קומה</th><th style="text-align:right">תושב</th><th style="text-align:right">נפשות</th><th style="text-align:right">חניה</th><th style="text-align:right">מצב</th></tr></thead>
+        <tbody>
+          <sc-for list="{{ residents }}" as="r" hint-placeholder-count="8">
+            <tr>
+              <td style="text-align:right;font-weight:600">{{ r.apt }}</td>
+              <td style="text-align:right">{{ r.floor }}</td>
+              <td style="text-align:right">{{ r.name }}</td>
+              <td style="text-align:right">{{ r.people }}</td>
+              <td style="text-align:right">{{ r.parking }}</td>
+              <td style="text-align:right"><span style="{{ r.stateStyle }}">{{ r.state }}</span></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" style="padding:22px;border-radius:var(--radius-md);background:var(--color-neutral-900);color:rgba(255,255,255,.78)">
+      <div style="font-size:11.5px;letter-spacing:.06em;color:var(--color-accent-300);margin-bottom:6px">צירוף תושב</div>
+      <h3 style="font-size:20px;color:#fff;margin-bottom:6px">הזמנה ב־SMS</h3>
+      <p style="margin:0 0 18px;font-size:13px;line-height:1.6">הקישור נצמד לדירה ולבניין. התושב מאמת טלפון ונכנס ישר לדירה שלו — בלי קודים ובלי טפסים.</p>
+
+      <label style="display:block;font-size:12.5px;margin-bottom:6px;color:rgba(255,255,255,.7)">דירה</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+        <sc-for list="{{ inviteApts }}" as="a" hint-placeholder-count="6">
+          <button onClick="{{ a.pick }}" style="{{ a.style }}">{{ a.label }}</button>
+        </sc-for>
+      </div>
+
+      <label style="display:block;font-size:12.5px;margin-bottom:6px;color:rgba(255,255,255,.7)">טלפון נייד</label>
+      <input class="input" value="{{ invitePhone }}" onChange="{{ setPhone }}" style="width:100%;height:42px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;margin-bottom:16px" placeholder="050-000-0000">
+
+      <div style="background:rgba(255,255,255,.07);border-radius:var(--radius-md);padding:14px;font-size:12.5px;line-height:1.7;margin-bottom:18px">
+        <div style="color:rgba(255,255,255,.5);margin-bottom:6px">תצוגה מקדימה של ההודעה</div>
+        <div style="color:#fff">{{ smsPreview }}</div>
+      </div>
+
+      <button class="btn btn-primary btn-block" onClick="{{ sendInvite }}">{{ inviteCta }}</button>
+
+      <sc-if value="{{ inviteSent }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:16px;animation:vp-rise .3s ease both">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--radius-md);background:var(--color-accent-2-700);color:#fff;font-size:13px">
+            <span style="width:20px;height:20px;border-radius:999px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:12px;animation:vp-pop .35s ease both">✓</span>
+            ההזמנה נשלחה · ממתין לאימות
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0;margin-top:14px">
+            <sc-for list="{{ inviteTrack }}" as="s" hint-placeholder-count="3">
+              <div style="display:flex;gap:12px;font-size:12.5px;padding:7px 0">
+                <span style="{{ s.dotStyle }}"></span><span style="{{ s.textStyle }}">{{ s.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+  </div>
+</sc-if>
+
+<sc-if value="{{ tabMoney }}" hint-placeholder-val="{{ false }}">
+  <section class="card" style="padding:22px;border-radius:var(--radius-md);margin-bottom:20px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+      <div>
+        <h3 style="font-size:19px">מטריצת תשלומים 2026</h3>
+        <p style="margin:6px 0 0;font-size:12.5px;color:var(--color-neutral-600)">לחיצה על תא מחליפה מצב: שולם → ממתין → בפיגור</p>
+      </div>
+      <div style="display:flex;gap:14px;font-size:12.5px">
+        <sc-for list="{{ legend }}" as="l" hint-placeholder-count="3">
+          <span style="display:flex;align-items:center;gap:7px"><span style="{{ l.swatch }}"></span>{{ l.label }}</span>
+        </sc-for>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="border-collapse:separate;border-spacing:5px;font-size:12.5px">
+        <thead><tr>
+          <th style="text-align:right;font-weight:500;color:var(--color-neutral-600);padding:0 6px">דירה</th>
+          <sc-for list="{{ months }}" as="m" hint-placeholder-count="8">
+            <th style="font-weight:500;color:var(--color-neutral-600);min-width:52px">{{ m }}</th>
+          </sc-for>
+          <th style="font-weight:500;color:var(--color-neutral-600);padding:0 8px">חוב</th>
+        </tr></thead>
+        <tbody>
+          <sc-for list="{{ matrix }}" as="row" hint-placeholder-count="10">
+            <tr>
+              <td style="text-align:right;font-weight:600;padding:0 6px;white-space:nowrap">{{ row.apt }}</td>
+              <sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="8">
+                <td style="padding:0"><button onClick="{{ c.toggle }}" style="{{ c.style }}">{{ c.glyph }}</button></td>
+              </sc-for>
+              <td style="{{ row.debtStyle }}">{{ row.debt }}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+    <section class="card" style="padding:22px;border-radius:var(--radius-md)">
+      <h3 style="font-size:19px;margin-bottom:14px">קלסר דיגיטלי</h3>
+      <p style="margin:0 0 16px;font-size:13px;color:var(--color-neutral-700);line-height:1.6">העלו חשבונית או קבלה ושייכו אותה לדירה — היא תופיע בכספת של התושב.</p>
+      <div style="border:2px dashed var(--color-neutral-400);border-radius:var(--radius-md);padding:26px;text-align:center;background:var(--color-neutral-100)">
+        <div style="font-family:var(--font-heading);font-size:16px;margin-bottom:6px">גררו קבצים לכאן</div>
+        <div style="font-size:12.5px;color:var(--color-neutral-600);margin-bottom:14px">PDF, JPG · עד 10MB</div>
+        <button class="btn btn-secondary" style="height:36px" onClick="{{ fakeUpload }}">בחירת קובץ</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+        <sc-for list="{{ binder }}" as="d" hint-placeholder-count="3">
+          <div style="{{ d.rowStyle }}">
+            <span style="width:30px;height:36px;border-radius:6px;background:var(--color-accent-200);flex:none"></span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13.5px;font-weight:500">{{ d.name }}</div>
+              <div style="font-size:11.5px;color:var(--color-neutral-600)">{{ d.meta }}</div>
+            </div>
+            <span class="tag tag-outline" style="font-size:11px">{{ d.apt }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <section class="card" style="padding:22px;border-radius:var(--radius-md);background:var(--color-accent-2-100)">
+      <h3 style="font-size:19px;margin-bottom:14px">הוצאות אוגוסט</h3>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <sc-for list="{{ expenses }}" as="e" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(32,30,29,.09)">
+            <div style="flex:1"><div style="font-size:13.5px">{{ e.name }}</div><div style="font-size:11.5px;color:var(--color-accent-2-800)">{{ e.vendor }}</div></div>
+            <div style="font-family:var(--font-heading);font-size:15px">{{ e.amount }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:16px">
+        <span style="font-size:13px;color:var(--color-accent-2-800)">סה"כ</span>
+        <span style="font-family:var(--font-heading);font-size:24px">₪14,180</span>
+      </div>
+    </section>
+  </div>
+</sc-if>
+
+<sc-if value="{{ tabMaint }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:1fr 400px;gap:20px;align-items:start">
+    <section class="card" style="padding:0;overflow:hidden;border-radius:var(--radius-md)">
+      <div style="padding:20px 22px 14px"><h3 style="font-size:19px">קריאות תחזוקה</h3></div>
+      <table class="table" style="width:100%;font-size:13.5px">
+        <thead><tr><th style="text-align:right">תקלה</th><th style="text-align:right">דירה</th><th style="text-align:right">מטפל</th><th style="text-align:right">מצב</th></tr></thead>
+        <tbody>
+          <sc-for list="{{ tickets }}" as="t" hint-placeholder-count="5">
+            <tr>
+              <td style="text-align:right"><div style="font-weight:500">{{ t.title }}</div><div style="font-size:11.5px;color:var(--color-neutral-600)">{{ t.when }}</div></td>
+              <td style="text-align:right">{{ t.apt }}</td>
+              <td style="text-align:right">{{ t.owner }}</td>
+              <td style="text-align:right"><span style="{{ t.stateStyle }}">{{ t.state }}</span></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" style="padding:22px;border-radius:var(--radius-md)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px">
+        <div>
+          <div style="font-size:11.5px;letter-spacing:.06em;color:var(--color-accent-700);margin-bottom:4px">סוכן AI</div>
+          <h3 style="font-size:20px">תחזוקת מעלית</h3>
+        </div>
+        <button onClick="{{ toggleAgent }}" style="{{ agentSwitch }}"><span style="{{ agentKnob }}"></span></button>
+      </div>
+      <p style="margin:6px 0 18px;font-size:13px;line-height:1.65;color:var(--color-neutral-700)">{{ agentStateText }}</p>
+
+      <div style="font-size:12.5px;color:var(--color-neutral-600);margin-bottom:8px">מופעל כאשר</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
+        <sc-for list="{{ agentRules }}" as="r" hint-placeholder-count="3">
+          <button onClick="{{ r.toggle }}" style="{{ r.style }}">
+            <span style="{{ r.boxStyle }}">{{ r.check }}</span>
+            <span style="flex:1;text-align:right">{{ r.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+
+      <div style="font-size:12.5px;color:var(--color-neutral-600);margin-bottom:8px">גבול אישור אוטומטי</div>
+      <div style="display:flex;gap:6px;margin-bottom:18px">
+        <sc-for list="{{ agentCaps }}" as="c" hint-placeholder-count="3">
+          <button onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="background:var(--color-neutral-100);border-radius:var(--radius-md);padding:16px">
+        <div style="font-size:12.5px;color:var(--color-neutral-600);margin-bottom:12px">כך זה ירוץ</div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ agentFlow }}" as="f" hint-placeholder-count="4">
+            <div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:14px">
+              <span style="{{ f.dotStyle }}">{{ f.n }}</span>
+              <div style="font-size:13px;line-height:1.5;padding-top:2px">{{ f.text }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:16px" onClick="{{ saveAgent }}">שמירת הסוכן</button>
+    </section>
+  </div>
+</sc-if>
+
+<sc-if value="{{ tabMeetings }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+    <section class="card" style="padding:22px;border-radius:var(--radius-md)">
+      <h3 style="font-size:19px;margin-bottom:4px">בונה אסיפה</h3>
+      <p style="margin:0 0 18px;font-size:13px;color:var(--color-neutral-700)">אסיפת דיירים · 14.9.2026, 20:00 · לובי</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <sc-for list="{{ agenda }}" as="a" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:var(--radius-md);background:var(--color-neutral-100);animation:vp-rise .25s ease both">
+            <span style="width:24px;height:24px;border-radius:999px;background:var(--color-accent-200);color:var(--color-accent-800);font-size:12px;display:flex;align-items:center;justify-content:center;flex:none">{{ a.n }}</span>
+            <span style="flex:1;font-size:13.5px">{{ a.text }}</span>
+            <sc-if value="{{ a.hasVote }}" hint-placeholder-val="{{ false }}">
+              <span class="tag tag-accent-2" style="font-size:11px">הצבעה</span>
+            </sc-if>
+            <button onClick="{{ a.remove }}" style="background:none;border:0;color:var(--color-neutral-600);cursor:pointer;font-size:15px;padding:2px 4px">×</button>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input class="input" value="{{ agendaDraft }}" onChange="{{ setAgendaDraft }}" onKeyDown="{{ agendaKey }}" placeholder="הוספת סעיף לסדר היום" style="flex:1;height:42px">
+        <button class="btn btn-secondary" onClick="{{ addAgenda }}" style="flex:none">הוספה</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;padding-top:18px;border-top:1px solid var(--color-divider)">
+        <button class="btn btn-primary" onClick="{{ publishMeeting }}">{{ meetingCta }}</button>
+        <button class="btn btn-ghost" onClick="{{ exportPdf }}">{{ exportCta }}</button>
+      </div>
+      <sc-if value="{{ pdfReady }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:14px;padding:13px 15px;border-radius:var(--radius-md);background:var(--color-accent-2-200);font-size:13px;animation:vp-rise .3s ease both">
+          פרוטוקול האסיפה נוצר · <a href="#">protocol-herzl42-sep26.pdf</a>
+        </div>
+      </sc-if>
+    </section>
+
+    <section class="card" style="padding:22px;border-radius:var(--radius-md);background:var(--color-neutral-900);color:rgba(255,255,255,.8)">
+      <div style="font-size:11.5px;letter-spacing:.06em;color:var(--color-accent-300);margin-bottom:6px">הצבעה דיגיטלית · פתוחה</div>
+      <h3 style="font-size:20px;color:#fff;margin-bottom:6px">החלפת דלת הלובי</h3>
+      <p style="margin:0 0 20px;font-size:13px;line-height:1.6">תקציב מבוקש: ₪9,400 · רוב נדרש: 51% · נסגרת ב־12.9</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px">
+        <sc-for list="{{ pollOptions }}" as="o" hint-placeholder-count="3">
+          <button onClick="{{ o.vote }}" style="{{ o.rowStyle }}">
+            <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:8px;width:100%">
+              <span>{{ o.label }}</span><span style="color:rgba(255,255,255,.6)">{{ o.pct }}</span>
+            </div>
+            <div style="height:8px;border-radius:999px;background:rgba(255,255,255,.12);width:100%;overflow:hidden">
+              <div style="{{ o.barStyle }}"></div>
+            </div>
+          </button>
+        </sc-for>
+      </div>
+      <div style="font-size:12.5px;color:rgba(255,255,255,.55)">{{ pollStatus }}</div>
+    </section>
+  </div>
+</sc-if>
+
+<sc-if value="{{ tabBoard }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+    <sc-for list="{{ board }}" as="b" hint-placeholder-count="5">
+      <article style="{{ b.cardStyle }}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span class="tag" style="{{ b.tagStyle }}">{{ b.kind }}</span>
+          <span style="font-size:11.5px;color:var(--color-neutral-600)">{{ b.when }}</span>
+        </div>
+        <h3 style="font-size:18px;margin-bottom:8px;line-height:1.25">{{ b.title }}</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.65;color:var(--color-neutral-700)">{{ b.body }}</p>
+      </article>
+    </sc-for>
+    <button onClick="{{ noop }}" style="border:2px dashed var(--color-neutral-400);background:none;border-radius:var(--radius-md);padding:28px;font-family:var(--font-heading);font-size:16px;color:var(--color-neutral-700);cursor:pointer;min-height:150px">הודעה חדשה +</button>
+  </div>
+</sc-if>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ vaadMobile }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:44px;justify-content:center;align-items:flex-start;padding:34px 26px;flex-wrap:wrap">
+  <div style="max-width:280px;padding-top:16px">
+    <h1 style="font-size:24px;margin-bottom:10px">ועד הבית במובייל</h1>
+    <p style="margin:0 0 16px;font-size:13.5px;line-height:1.7;color:var(--color-neutral-700)">אותן שש הלשוניות, בתפריט צד. הוועד מאשר קריאות, גובה ופותח אסיפות מהטלפון — המטריצה נשארת טבלה, רק צרה יותר.</p>
+    <div style="padding:15px;border-radius:var(--radius-md);background:var(--color-accent-100);font-size:12.5px;line-height:1.65;color:var(--color-accent-800)">לחצו על סמל התפריט בראש המסך כדי לפתוח את הניווט.</div>
+  </div>
+
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+    <div style="height:100%;display:flex;flex-direction:column;background:var(--color-bg);direction:rtl;font-family:var(--font-body);position:relative">
+      <header style="padding:62px 18px 14px;background:var(--color-neutral-900);color:#fff;flex:none;display:flex;align-items:center;gap:14px">
+        <button onClick="{{ openDrawer }}" style="width:38px;height:38px;border-radius:12px;border:0;background:rgba(255,255,255,.12);cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none">
+          <span style="width:16px;height:2px;background:#fff;border-radius:2px"></span>
+          <span style="width:16px;height:2px;background:#fff;border-radius:2px"></span>
+          <span style="width:16px;height:2px;background:#fff;border-radius:2px"></span>
+        </button>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:rgba(255,255,255,.55)">ועד הבית · הרצל 42</div>
+          <h2 style="font-size:19px;margin-top:2px">{{ vaadTitle }}</h2>
+        </div>
+        <div style="width:34px;height:34px;border-radius:999px;background:var(--color-accent-500);display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600;flex:none">מב</div>
+      </header>
+
+      <div style="flex:1;overflow-y:auto;padding:16px 16px 34px">
+        <sc-if value="{{ tabDash }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:10px;margin-bottom:14px">
+            <sc-for list="{{ vaadKpis }}" as="k" hint-placeholder-count="3">
+              <div style="flex:1;min-width:0;background:var(--color-neutral-100);border-radius:var(--radius-md);padding:13px 12px">
+                <div style="font-size:10.5px;color:var(--color-neutral-600);line-height:1.3;margin-bottom:6px">{{ k.label }}</div>
+                <div style="font-family:var(--font-heading);font-size:17px">{{ k.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-family:var(--font-heading);font-size:17px;margin-bottom:10px">דורש טיפול</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+            <sc-for list="{{ todosSm }}" as="t" hint-placeholder-count="3">
+              <button onClick="{{ t.go }}" style="display:flex;align-items:center;gap:11px;width:100%;border:0;cursor:pointer;text-align:right;font-family:var(--font-body);background:var(--color-neutral-100);border-radius:var(--radius-md);padding:13px 14px">
+                <span style="{{ t.dotStyle }}"></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font-size:13.5px">{{ t.title }}</span><span style="display:block;font-size:11.5px;color:var(--color-neutral-600)">{{ t.sub }}</span></span>
+                <span style="font-size:15px;color:var(--color-neutral-500)">‹</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="border-radius:var(--radius-md);background:var(--color-accent-100);padding:16px">
+            <div style="font-family:var(--font-heading);font-size:16px;margin-bottom:10px">הסוכנים עבדו בשבילכם</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ agentSummary }}" as="a" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;background:rgba(255,255,255,.6);padding:10px 12px;border-radius:999px">
+                  <span style="width:7px;height:7px;border-radius:999px;background:var(--color-accent-2-500);flex:none;animation:vp-pulse 2.4s infinite"></span>
+                  <span style="flex:1">{{ a.name }}</span><span style="color:var(--color-neutral-600);font-size:11.5px">{{ a.stat }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabResidents }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:var(--radius-md);background:var(--color-neutral-900);color:rgba(255,255,255,.8);padding:18px;margin-bottom:14px">
+            <div style="font-size:11px;letter-spacing:.06em;color:var(--color-accent-300);margin-bottom:4px">צירוף תושב</div>
+            <h3 style="font-size:18px;color:#fff;margin-bottom:12px">הזמנה ב־SMS</h3>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+              <sc-for list="{{ inviteApts }}" as="a" hint-placeholder-count="6">
+                <button onClick="{{ a.pick }}" style="{{ a.style }}">{{ a.label }}</button>
+              </sc-for>
+            </div>
+            <div style="background:rgba(255,255,255,.07);border-radius:var(--radius-md);padding:13px;font-size:12px;line-height:1.65;color:#fff;margin-bottom:14px">{{ smsPreview }}</div>
+            <button class="btn btn-primary btn-block" onClick="{{ sendInvite }}">{{ inviteCta }}</button>
+            <sc-if value="{{ inviteSent }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:12px;display:flex;flex-direction:column;animation:vp-rise .3s ease both">
+                <sc-for list="{{ inviteTrack }}" as="s" hint-placeholder-count="3">
+                  <div style="display:flex;gap:10px;font-size:12px;padding:5px 0">
+                    <span style="{{ s.dotStyle }}"></span><span style="{{ s.textStyle }}">{{ s.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{ residentsSm }}" as="r" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+                <span style="width:36px;height:36px;border-radius:999px;background:var(--color-neutral-200);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex:none">{{ r.apt }}</span>
+                <div style="flex:1;min-width:0"><div style="font-size:13.5px">{{ r.name }}</div><div style="font-size:11.5px;color:var(--color-neutral-600)">קומה {{ r.floor }} · {{ r.people }} נפשות · {{ r.parking }}</div></div>
+                <span style="{{ r.stateStyle }}">{{ r.state }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabMoney }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-family:var(--font-heading);font-size:17px">מטריצת תשלומים</div>
+            <div style="display:flex;gap:9px;font-size:10.5px">
+              <sc-for list="{{ legend }}" as="l" hint-placeholder-count="3">
+                <span style="display:flex;align-items:center;gap:5px"><span style="{{ l.swatch }}"></span>{{ l.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:var(--color-neutral-100);border-radius:var(--radius-md);padding:12px;overflow-x:auto;margin-bottom:14px">
+            <table style="border-collapse:separate;border-spacing:4px;font-size:11px">
+              <thead><tr><th></th>
+                <sc-for list="{{ months }}" as="m" hint-placeholder-count="6"><th style="font-weight:500;color:var(--color-neutral-600)">{{ m }}</th></sc-for>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ matrixSm }}" as="row" hint-placeholder-count="8">
+                  <tr>
+                    <td style="text-align:right;font-size:11px;font-weight:600;white-space:nowrap;padding-left:4px">{{ row.apt }}</td>
+                    <sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="6">
+                      <td style="padding:0"><button onClick="{{ c.toggle }}" style="{{ c.styleSm }}">{{ c.glyph }}</button></td>
+                    </sc-for>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div style="border-radius:var(--radius-md);background:var(--color-accent-2-100);padding:16px">
+            <div style="font-family:var(--font-heading);font-size:16px;margin-bottom:8px">הוצאות אוגוסט</div>
+            <sc-for list="{{ expensesSm }}" as="e" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(32,30,29,.09)">
+                <div style="flex:1"><div style="font-size:13px">{{ e.name }}</div><div style="font-size:11px;color:var(--color-accent-2-800)">{{ e.vendor }}</div></div>
+                <div style="font-family:var(--font-heading);font-size:14px">{{ e.amount }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabMaint }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:var(--radius-md);background:var(--color-neutral-100);padding:16px;margin-bottom:14px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px">
+              <div>
+                <div style="font-size:11px;letter-spacing:.06em;color:var(--color-accent-700)">סוכן AI</div>
+                <div style="font-family:var(--font-heading);font-size:18px">תחזוקת מעלית</div>
+              </div>
+              <button onClick="{{ toggleAgent }}" style="{{ agentSwitch }}"><span style="{{ agentKnob }}"></span></button>
+            </div>
+            <p style="margin:4px 0 14px;font-size:12.5px;line-height:1.6;color:var(--color-neutral-700)">{{ agentStateText }}</p>
+            <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+              <sc-for list="{{ agentRules }}" as="r" hint-placeholder-count="3">
+                <button onClick="{{ r.toggle }}" style="{{ r.style }}">
+                  <span style="{{ r.boxStyle }}">{{ r.check }}</span>
+                  <span style="flex:1;text-align:right">{{ r.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:6px">
+              <sc-for list="{{ agentCaps }}" as="c" hint-placeholder-count="3">
+                <button onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{ ticketsSm }}" as="t" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+                <div style="flex:1;min-width:0"><div style="font-size:13.5px">{{ t.title }}</div><div style="font-size:11.5px;color:var(--color-neutral-600)">דירה {{ t.apt }} · {{ t.owner }}</div></div>
+                <span style="{{ t.stateStyle }}">{{ t.state }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabMeetings }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:var(--radius-md);background:var(--color-neutral-100);padding:16px;margin-bottom:14px">
+            <div style="font-family:var(--font-heading);font-size:17px">בונה אסיפה</div>
+            <div style="font-size:12px;color:var(--color-neutral-600);margin-bottom:12px">14.9.2026, 20:00 · לובי</div>
+            <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+              <sc-for list="{{ agenda }}" as="a" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--radius-md);background:#fff;animation:vp-rise .25s ease both">
+                  <span style="width:22px;height:22px;border-radius:999px;background:var(--color-accent-200);color:var(--color-accent-800);font-size:11px;display:flex;align-items:center;justify-content:center;flex:none">{{ a.n }}</span>
+                  <span style="flex:1;font-size:13px">{{ a.text }}</span>
+                  <button onClick="{{ a.remove }}" style="background:none;border:0;color:var(--color-neutral-600);cursor:pointer;font-size:15px">×</button>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:7px;margin-bottom:12px">
+              <input class="input" value="{{ agendaDraft }}" onChange="{{ setAgendaDraft }}" onKeyDown="{{ agendaKey }}" placeholder="סעיף חדש" style="flex:1;height:40px;font-size:13px">
+              <button class="btn btn-secondary" style="height:40px;flex:none" onClick="{{ addAgenda }}">הוספה</button>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary" style="flex:1;height:40px;font-size:12.5px" onClick="{{ publishMeeting }}">{{ meetingCta }}</button>
+              <button class="btn btn-ghost" style="flex:1;height:40px;font-size:12.5px" onClick="{{ exportPdf }}">PDF</button>
+            </div>
+          </div>
+          <div style="border-radius:var(--radius-md);background:var(--color-neutral-900);color:rgba(255,255,255,.8);padding:18px">
+            <div style="font-size:11px;letter-spacing:.06em;color:var(--color-accent-300);margin-bottom:4px">הצבעה פתוחה</div>
+            <div style="font-family:var(--font-heading);font-size:18px;color:#fff;margin-bottom:14px">החלפת דלת הלובי</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+              <sc-for list="{{ pollOptions }}" as="o" hint-placeholder-count="3">
+                <button onClick="{{ o.vote }}" style="{{ o.rowStyle }}">
+                  <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px;width:100%">
+                    <span>{{ o.label }}</span><span style="color:rgba(255,255,255,.6)">{{ o.pct }}</span>
+                  </div>
+                  <div style="height:7px;border-radius:999px;background:rgba(255,255,255,.12);width:100%;overflow:hidden"><div style="{{ o.barStyle }}"></div></div>
+                </button>
+              </sc-for>
+            </div>
+            <div style="font-size:11.5px;color:rgba(255,255,255,.55)">{{ pollStatus }}</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabBoard }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ boardSm }}" as="b" hint-placeholder-count="3">
+              <article style="{{ b.cardStyle }}">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                  <span class="tag" style="{{ b.tagStyle }}">{{ b.kind }}</span>
+                  <span style="font-size:11px;color:var(--color-neutral-600)">{{ b.when }}</span>
+                </div>
+                <div style="font-family:var(--font-heading);font-size:16px;margin-bottom:6px;line-height:1.3">{{ b.title }}</div>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:var(--color-neutral-700)">{{ b.body }}</p>
+              </article>
+            </sc-for>
+            <button onClick="{{ noop }}" style="border:2px dashed var(--color-neutral-400);background:none;border-radius:var(--radius-md);padding:18px;font-family:var(--font-heading);font-size:15px;color:var(--color-neutral-700);cursor:pointer">הודעה חדשה +</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeDrawer }}" style="position:absolute;inset:0;background:rgba(32,30,29,.55);z-index:70;display:flex;justify-content:flex-end">
+          <div onClick="{{ stop }}" style="width:288px;height:100%;background:var(--color-neutral-900);padding:62px 14px 30px;display:flex;flex-direction:column;gap:5px;animation:vp-rise .22s ease both">
+            <div style="padding:0 12px 14px;color:#fff">
+              <div style="font-family:var(--font-heading);font-size:19px">הרצל 42</div>
+              <div style="font-size:12px;color:rgba(255,255,255,.55)">מיכל ברקת · ועד הבית</div>
+            </div>
+            <sc-for list="{{ drawerItems }}" as="d" hint-placeholder-count="6">
+              <button onClick="{{ d.pick }}" style="{{ d.style }}">{{ d.label }}</button>
+            </sc-for>
+            <button onClick="{{ closeDrawer }}" style="margin-top:auto;background:none;border:0;color:rgba(255,255,255,.5);font-size:13px;font-family:var(--font-body);cursor:pointer;padding:10px">סגירה</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </x-import>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ isTenant }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:44px;justify-content:center;align-items:flex-start;padding:34px 26px;flex-wrap:wrap">
+  <div style="max-width:290px;padding-top:16px">
+    <h1 style="font-size:26px;margin-bottom:10px">אפליקציית התושב</h1>
+    <p style="margin:0 0 18px;font-size:13.5px;line-height:1.7;color:var(--color-neutral-700)">{{ tenantBlurb }}</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-secondary" onClick="{{ startOnboard }}">הרצת הרשמה ראשונה</button>
+      <button class="btn btn-ghost" onClick="{{ advanceTicket }}">קידום סטטוס תקלה</button>
+    </div>
+    <div style="margin-top:22px;padding:16px;border-radius:var(--radius-md);background:var(--color-accent-2-100);font-size:12.5px;line-height:1.65;color:var(--color-accent-2-800)">
+      תושב רואה רק את הבניין שלו: הדירה, החיובים שלו, והמסמכים שהוועד שייך לו. אין גישה לכספים של אחרים.
+    </div>
+  </div>
+
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+    <div style="height:100%;display:flex;flex-direction:column;background:var(--color-bg);direction:rtl;font-family:var(--font-body)">
+
+      <sc-if value="{{ onboarding }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;display:flex;flex-direction:column;padding:70px 24px 40px;background:var(--color-accent-2-900);color:#fff">
+          <div style="display:flex;gap:5px;margin-bottom:28px">
+            <sc-for list="{{ onboardDots }}" as="d" hint-placeholder-count="3">
+              <span style="{{ d.style }}"></span>
+            </sc-for>
+          </div>
+          <h2 style="font-size:26px;line-height:1.25;margin-bottom:10px">{{ onboardTitle }}</h2>
+          <p style="margin:0 0 26px;font-size:14px;line-height:1.65;color:rgba(255,255,255,.7)">{{ onboardBody }}</p>
+
+          <sc-if value="{{ onboardStep1 }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:9px;direction:ltr;margin-bottom:20px">
+              <sc-for list="{{ otpBoxes }}" as="b" hint-placeholder-count="4">
+                <div style="{{ b.style }}">{{ b.v }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ onboardStep2 }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+              <input class="input" placeholder="שם מלא" value="יעל אזולאי" style="height:46px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff">
+              <div style="display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.08);border-radius:999px;padding:8px 16px">
+                <span style="flex:1;font-size:14px">מספר נפשות</span>
+                <button onClick="{{ occDown }}" style="width:32px;height:32px;border-radius:999px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:17px;cursor:pointer">−</button>
+                <span style="min-width:22px;text-align:center;font-family:var(--font-heading);font-size:17px">{{ occupants }}</span>
+                <button onClick="{{ occUp }}" style="width:32px;height:32px;border-radius:999px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:17px;cursor:pointer">+</button>
+              </div>
+              <button onClick="{{ noop }}" style="text-align:right;border:1px dashed rgba(255,255,255,.3);background:none;color:rgba(255,255,255,.75);border-radius:var(--radius-md);padding:15px;font-size:13.5px;cursor:pointer;font-family:var(--font-body)">העלאת חוזה שכירות · לא חובה</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ onboardStep3 }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:16px;margin:10px 0 26px">
+              <div style="width:88px;height:88px;border-radius:999px;background:var(--color-accent-2-600);display:flex;align-items:center;justify-content:center;font-size:38px;animation:vp-pop .45s ease both">✓</div>
+              <div style="text-align:center;font-size:14px;line-height:1.6;color:rgba(255,255,255,.8)">דירה 12 · קומה 3<br>הרצל 42, תל אביב</div>
+            </div>
+          </sc-if>
+
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-primary btn-block" onClick="{{ onboardNext }}">{{ onboardCta }}</button>
+            <button onClick="{{ skipOnboard }}" style="background:none;border:0;color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;font-family:var(--font-body);padding:6px">דילוג לאפליקציה</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ appVisible }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+        <sc-if value="{{ tHome }}" hint-placeholder-val="{{ true }}">
+          <header style="padding:60px 20px 20px;background:linear-gradient(160deg,var(--color-accent-300),var(--color-accent-200) 70%);flex:none">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <div>
+                <h2 style="font-size:26px;line-height:1.15;color:var(--color-accent-900)">{{ tenantGreeting }}</h2>
+                <div style="font-size:13px;color:var(--color-accent-800);margin-top:4px">דירה 12 · קומה 3 · הרצל 42</div>
+              </div>
+              <button onClick="{{ noop }}" style="position:relative;width:42px;height:42px;border-radius:999px;border:0;cursor:pointer;background:rgba(255,251,242,.55);display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"></path><path d="M10.5 20a2 2 0 0 0 3 0"></path></svg>
+                <span style="position:absolute;top:8px;left:9px;width:9px;height:9px;border-radius:999px;background:var(--color-accent-500);border:2px solid var(--color-accent-200)"></span>
+              </button>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px">
+              <button onClick="{{ goMaint }}" style="flex:1;min-width:0;border:0;cursor:pointer;text-align:right;font-family:var(--font-body);background:var(--color-neutral-100);border-radius:var(--radius-md);padding:13px 14px;box-shadow:var(--shadow-sm)">
+                <span style="display:block;font-size:11px;color:var(--color-neutral-600);margin-bottom:3px">קריאות פתוחות</span>
+                <span style="display:flex;align-items:baseline;gap:6px">
+                  <span style="font-family:var(--font-heading);font-size:21px;color:var(--color-accent-2-700)">2</span>
+                  <span style="font-size:11px;color:var(--color-neutral-600)">אחת בטיפול סוכן</span>
+                </span>
+              </button>
+              <button onClick="{{ goPay }}" style="flex:1;min-width:0;border:0;cursor:pointer;text-align:right;font-family:var(--font-body);background:var(--color-neutral-100);border-radius:var(--radius-md);padding:13px 14px;box-shadow:var(--shadow-sm)">
+                <span style="display:block;font-size:11px;color:var(--color-neutral-600);margin-bottom:3px">התשלום הבא</span>
+                <span style="display:flex;align-items:baseline;gap:6px">
+                  <span style="font-family:var(--font-heading);font-size:21px;color:var(--color-accent-700)">₪620</span>
+                  <span style="font-size:11px;color:var(--color-neutral-600)">1.9</span>
+                </span>
+              </button>
+            </div>
+            <button onClick="{{ noop }}" style="display:flex;align-items:center;gap:11px;width:100%;margin-top:10px;border:0;cursor:pointer;text-align:right;font-family:var(--font-body);background:var(--color-gold-200);color:var(--color-gold-800);border-radius:var(--radius-md);padding:13px 14px">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M3 11v4a1 1 0 0 0 1 1h3l7 4V6L7 10H4a1 1 0 0 0-1 1z"></path><path d="M17.5 9a4 4 0 0 1 0 6"></path></svg>
+              <span style="flex:1;min-width:0">
+                <span style="display:block;font-size:10.5px;opacity:.8">הודעה חדשה מהוועד</span>
+                <span style="display:block;font-size:13px;font-weight:600">ניקוי מיכל המים ביום שלישי, 08:00–12:00</span>
+              </span>
+            </button>
+          </header>
+        </sc-if>
+        <sc-if value="{{ tNotHome }}" hint-placeholder-val="{{ false }}">
+          <header style="padding:62px 20px 14px;background:var(--color-accent-2-900);color:#fff;flex:none">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:11.5px;color:rgba(255,255,255,.55)">הרצל 42 · דירה 12</div>
+                <h2 style="font-size:21px;margin-top:2px">{{ tenantTitle }}</h2>
+              </div>
+              <div style="width:36px;height:36px;border-radius:999px;background:var(--color-accent-500);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">יא</div>
+            </div>
+          </header>
+        </sc-if>
+
+        <div style="flex:1;overflow-y:auto;padding:18px 16px 90px">
+
+          <sc-if value="{{ tHome }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
+              <div style="font-family:var(--font-heading);font-size:17px">הקריאות שלי</div>
+              <button onClick="{{ openReport }}" style="background:none;border:0;font-family:var(--font-body);font-size:12px;color:var(--color-accent-700);cursor:pointer;padding:0">דיווח חדש +</button>
+            </div>
+            <div style="border-radius:var(--radius-md);background:var(--color-accent-2-700);color:#fff;padding:14px 15px;margin-bottom:9px">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
+                <span style="width:7px;height:7px;border-radius:999px;background:var(--color-accent-400);flex:none"></span>
+                <span style="flex:1;font-family:var(--font-heading);font-size:15px">המעלית נעצרת בקומה 3</span>
+                <span style="font-size:10.5px;color:rgba(255,255,255,.55)">#418</span>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:2px">
+                <sc-for list="{{ ticketMini }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:flex-start;flex:1;min-width:0">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:auto;flex:none">
+                      <span style="{{ s.dotStyle }}">{{ s.glyph }}</span>
+                      <span style="{{ s.labelStyle }}">{{ s.label }}</span>
+                    </div>
+                    <span style="{{ s.barStyle }}"></span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:10px;font-size:11.5px;color:rgba(255,255,255,.7)">{{ ticketMiniStatus }} · מעליות שחר</div>
+            </div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin:20px 0 9px">
+              <div style="font-family:var(--font-heading);font-size:17px">לוח הקהילה</div>
+              <button onClick="{{ noop }}" style="background:none;border:0;font-family:var(--font-body);font-size:12px;color:var(--color-accent-700);cursor:pointer;padding:0">הכל</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ feedSm }}" as="f" hint-placeholder-count="2">
+                <article style="{{ f.cardStyle }}">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span class="tag" style="{{ f.tagStyle }}">{{ f.kind }}</span>
+                    <span style="font-size:11px;color:var(--color-neutral-600)">{{ f.when }}</span>
+                  </div>
+                  <div style="font-family:var(--font-heading);font-size:15.5px;line-height:1.3">{{ f.title }}</div>
+                </article>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tPay }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:var(--radius-md);background:var(--color-accent-2-900);color:#fff;padding:18px;margin-bottom:14px">
+              <div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:8px">פרטי חשבון הבניין</div>
+              <div style="font-size:13.5px;line-height:1.8">בנק לאומי · סניף 800<br>חשבון 41-882-3390<br>ע"ש ועד בית הרצל 42</div>
+              <button class="btn btn-secondary btn-block" style="margin-top:14px;height:38px" onClick="{{ copyBank }}">{{ copyCta }}</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ tenantPayments }}" as="p" hint-placeholder-count="6">
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+                  <span style="{{ p.dotStyle }}"></span>
+                  <div style="flex:1"><div style="font-size:14px">{{ p.month }}</div><div style="font-size:11.5px;color:var(--color-neutral-600)">{{ p.meta }}</div></div>
+                  <div style="text-align:left"><div style="font-family:var(--font-heading);font-size:15px">{{ p.amount }}</div><div style="{{ p.stateStyle }}">{{ p.state }}</div></div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tMaint }}" hint-placeholder-val="{{ false }}">
+            <button class="btn btn-primary btn-block" style="margin-bottom:14px;height:46px" onClick="{{ advanceTicket }}">דיווח על תקלה חדשה</button>
+            <div style="display:flex;gap:7px;margin-bottom:14px">
+              <sc-for list="{{ maintFilters }}" as="f" hint-placeholder-count="3">
+                <button onClick="{{ f.pick }}" style="{{ f.style }}">{{ f.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ maintCards }}" as="c" hint-placeholder-count="4">
+                <article style="{{ c.cardStyle }}">
+                  <button onClick="{{ c.toggle }}" style="display:flex;align-items:flex-start;gap:11px;width:100%;border:0;background:none;cursor:pointer;text-align:right;font-family:var(--font-body);padding:15px">
+                    <span style="flex:1;min-width:0">
+                      <span style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+                        <sc-if value="{{ c.mine }}" hint-placeholder-val="{{ false }}">
+                          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--color-accent-500);color:#fff">שלי</span>
+                        </sc-if>
+                        <span style="font-family:var(--font-heading);font-size:15px;line-height:1.25">{{ c.title }}</span>
+                      </span>
+                      <span style="display:block;font-size:11.5px;color:var(--color-neutral-600)">{{ c.where }} · {{ c.when }} · {{ c.id }}</span>
+                    </span>
+                    <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none">
+                      <span style="{{ c.statePill }}">{{ c.state }}</span>
+                      <span style="font-size:12px;color:var(--color-neutral-500)">{{ c.chevron }}</span>
+                    </span>
+                  </button>
+                  <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:0 15px 16px;animation:vp-rise .22s ease both">
+                      <div style="height:1px;background:var(--color-divider);margin-bottom:13px"></div>
+                      <div style="display:flex;flex-direction:column">
+                        <sc-for list="{{ c.steps }}" as="s" hint-placeholder-count="3">
+                          <div style="display:flex;gap:11px;align-items:flex-start">
+                            <div style="display:flex;flex-direction:column;align-items:center;flex:none">
+                              <span style="{{ s.dotStyle }}">{{ s.glyph }}</span>
+                              <span style="{{ s.lineStyle }}"></span>
+                            </div>
+                            <div style="padding-bottom:11px">
+                              <div style="font-size:13px">{{ s.label }}</div>
+                              <div style="font-size:11px;color:var(--color-neutral-600)">{{ s.meta }}</div>
+                            </div>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--radius-md);background:var(--color-accent-2-100);font-size:12px;color:var(--color-accent-2-800)">
+                        <span style="width:7px;height:7px;border-radius:999px;background:var(--color-accent-2-600);flex:none"></span>{{ c.vendorLine }}
+                      </div>
+                    </div>
+                  </sc-if>
+                </article>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tDir }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:6px;margin-bottom:14px">
+              <sc-for list="{{ dirFloors }}" as="f" hint-placeholder-count="4">
+                <button onClick="{{ f.pick }}" style="{{ f.style }}">{{ f.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ directory }}" as="d" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+                  <span style="width:38px;height:38px;border-radius:999px;background:var(--color-accent-2-300);color:var(--color-accent-2-900);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none">{{ d.initials }}</span>
+                  <div style="flex:1"><div style="font-size:14px">{{ d.name }}</div><div style="font-size:11.5px;color:var(--color-neutral-600)">{{ d.meta }}</div></div>
+                  <span class="tag tag-outline" style="font-size:11px">{{ d.parking }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tDocs }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:16px;border-radius:var(--radius-md);background:var(--color-accent-100);font-size:12.5px;line-height:1.6;color:var(--color-accent-800);margin-bottom:12px">כספת אישית · רק מסמכים שהוועד שייך לדירה 12.</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ vault }}" as="v" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-radius:var(--radius-md);background:var(--color-neutral-100)">
+                  <span style="width:30px;height:36px;border-radius:6px;background:var(--color-gold-200);flex:none"></span>
+                  <div style="flex:1"><div style="font-size:13.5px">{{ v.name }}</div><div style="font-size:11.5px;color:var(--color-neutral-600)">{{ v.meta }}</div></div>
+                  <span style="font-size:12px;color:var(--color-accent-700)">הורדה</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <sc-if value="{{ tHome }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ openReport }}" aria-label="דיווח חדש" style="position:absolute;bottom:48px;left:50%;transform:translateX(-50%);z-index:50;width:58px;height:58px;border-radius:999px;border:4px solid var(--color-bg);background:var(--color-accent-500);color:#fff;cursor:pointer;box-shadow:var(--shadow-lg);display:flex;align-items:center;justify-content:center;padding:0">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          </button>
+        </sc-if>
+        <nav style="position:absolute;bottom:0;right:0;left:0;display:flex;background:var(--color-accent-2-900);border-top:1px solid rgba(255,255,255,.1);padding:9px 6px 26px;z-index:40">
+          <button onClick="{{ navHome.pick }}" style="{{ navHome.style }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V20h14V9.5"></path><path d="M10 20v-5h4v5"></path></svg>
+            <span style="font-size:10.5px">בית</span>
+          </button>
+          <button onClick="{{ navPay.pick }}" style="{{ navPay.style }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"></rect><path d="M2 10h20"></path></svg>
+            <span style="font-size:10.5px">תשלומים</span>
+          </button>
+          <button onClick="{{ navMaint.pick }}" style="{{ navMaint.style }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+            <span style="font-size:10.5px">תחזוקה</span>
+          </button>
+          <button onClick="{{ navDir.pick }}" style="{{ navDir.style }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20a5 5 0 0 0-10 0"></path><circle cx="12" cy="9" r="3.4"></circle><rect x="3" y="3" width="18" height="18" rx="4"></rect></svg>
+            <span style="font-size:10.5px">שכנים</span>
+          </button>
+          <button onClick="{{ navDocs.pick }}" style="{{ navDocs.style }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span style="font-size:10.5px">מסמכים</span>
+          </button>
+        </nav>
+      </div>
+      </sc-if>
+
+    </div>
+  </x-import>
+</div>
+</sc-if>
+
+<sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(32,30,29,.5);display:flex;align-items:center;justify-content:center;z-index:200;padding:24px">
+    <div onClick="{{ stop }}" style="width:460px;max-width:100%;background:var(--color-neutral-100);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow-lg);animation:vp-rise .25s ease both">
+      <h3 style="font-size:22px;margin-bottom:6px">{{ modalTitle }}</h3>
+      <p style="margin:0 0 20px;font-size:13.5px;color:var(--color-neutral-700);line-height:1.6">{{ modalBody }}</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:22px">
+        <sc-for list="{{ modalFields }}" as="f" hint-placeholder-count="3">
+          <div class="field">
+            <label style="display:block;font-size:12.5px;margin-bottom:5px;color:var(--color-neutral-700)">{{ f.label }}</label>
+            <input class="input" placeholder="{{ f.ph }}" style="width:100%;height:42px">
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-start">
+        <button class="btn btn-primary" onClick="{{ closeModal }}">{{ modalCta }}</button>
+        <button class="btn btn-ghost" onClick="{{ closeModal }}">ביטול</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;bottom:26px;right:26px;z-index:300;display:flex;align-items:center;gap:10px;background:var(--color-neutral-900);color:#fff;padding:14px 20px;border-radius:999px;box-shadow:var(--shadow-lg);font-size:13.5px;animation:vp-toast .28s ease both">
+    <span style="width:8px;height:8px;border-radius:999px;background:var(--color-accent-2-400)"></span>{{ toast }}
+  </div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;super&quot;,&quot;vaad&quot;,&quot;tenant&quot;],&quot;default&quot;:&quot;vaad&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;תצוגה&quot;},&quot;denseTables&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;תצוגה&quot;},&quot;showKpiTrends&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;תצוגה&quot;}}">
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    const m = {};
+    const apts = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+    const seed = [
+      'pppppp','pppppo','ppppdd','pppppp','ppppod','pppppp',
+      'ppppdd','pppppp','pppppo','ppppop','pppppp','ppppdo'
+    ];
+    apts.forEach((a, i) => seed[i].split('').forEach((c, j) => {
+      m[a + '-' + j] = c === 'p' ? 'paid' : c === 'o' ? 'pending' : 'overdue';
+    }));
+    this.state = {
+      role: p.startRole || 'vaad',
+      vaadTab: 'dash', tenantTab: 'home',
+      matrix: m,
+      inviteApt: '7', invitePhone: '052-441-8830', inviteSent: false,
+      agentOn: true, rules: { approved: true, quotes: true, sched: false }, cap: '₪2,500',
+      agenda: [
+        { text: 'אישור דוח כספי לשנת 2025', vote: false },
+        { text: 'החלפת דלת הלובי — הצעת מחיר', vote: true },
+        { text: 'שיפוץ חדר האופניים', vote: false }
+      ],
+      agendaDraft: '', published: false, pdfReady: false,
+      votes: { yes: 14, no: 5, abstain: 2 }, myVote: null,
+      onboardStep: 0, occupants: 3,
+      ticketStep: 2, dirFloor: 'הכל',
+      modal: null, toast: '', copied: false, saved: false,
+      vaadDevice: 'web', drawer: false, expandTicket: false,
+      maintFilter: 'הכל', openCard: '418'
+    };
+  }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 2600);
+  }
+
+  statusTone(s) {
+    if (s === 'paid') return { bg: 'var(--color-accent-2-200)', fg: 'var(--color-accent-2-800)', glyph: '✓', label: 'שולם' };
+    if (s === 'pending') return { bg: 'var(--color-gold-200)', fg: 'var(--color-gold-800)', glyph: '•', label: 'ממתין' };
+    return { bg: 'var(--color-accent-400)', fg: '#fff', glyph: '!', label: 'בפיגור' };
+  }
+
+  pill(bg, fg) {
+    return 'display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:500;background:' + bg + ';color:' + fg;
+  }
+
+  dot(color, size) {
+    const s = size || 9;
+    return 'width:' + s + 'px;height:' + s + 'px;border-radius:999px;flex:none;margin-top:5px;background:' + color;
+  }
+
+  renderVals() {
+    const st = this.state;
+    const dense = this.props.denseTables ?? false;
+    const trends = this.props.showKpiTrends ?? true;
+    const cellH = dense ? 26 : 32;
+
+    const roleDefs = [
+      ['super', 'מנהל־על', 'ניהול רב־בנייני · דסקטופ'],
+      ['vaad', 'ועד הבית', 'ניהול בניין · ווב ומובייל'],
+      ['tenant', 'תושב', 'מובייל תחילה · גישה לדירה בלבד']
+    ];
+    const roles = roleDefs.map(([id, label]) => ({
+      label,
+      pick: () => this.setState({ role: id }),
+      style: 'border:0;cursor:pointer;font-family:var(--font-body);font-size:13px;padding:7px 16px;border-radius:999px;transition:all .18s;' +
+        (st.role === id ? 'background:var(--color-accent-500);color:#fff' : 'background:transparent;color:rgba(255,255,255,.62)')
+    }));
+    const roleHint = (roleDefs.find(r => r[0] === st.role) || roleDefs[1])[2];
+
+    const superNav = [
+      ['בניינים', '▦', true], ['ועדי בית', '◍', false], ['מנויים והכנסות', '₪', false],
+      ['סוכני AI', '◈', false], ['יומן שגיאות', '⚠', false], ['הרשאות', '⚿', false]
+    ].map(([label, icon, on]) => ({
+      label, icon,
+      style: 'display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:var(--radius-md);font-size:13.5px;cursor:pointer;' +
+        (on ? 'background:rgba(255,255,255,.11);color:#fff' : 'color:rgba(255,255,255,.6)')
+    }));
+
+    const kpiData = [
+      ['בניינים פעילים', '42', '+3 החודש', true],
+      ['יחידות דיור', '968', '+72 החודש', true],
+      ['הכנסה חודשית', '₪184,300', '+4.1%', true],
+      ['שיעור גבייה', '96.4%', '−0.6%', false]
+    ];
+    const kpis = kpiData.map(([label, value, trend, up]) => ({
+      label, value, trend, showTrend: trends,
+      trendStyle: 'margin-top:8px;font-size:12px;color:' + (up ? 'var(--color-accent-2-700)' : 'var(--color-accent-700)')
+    }));
+
+    const bdata = [
+      ['הרצל 42', 'תל אביב', 24, 'מיכל ברקת', '98%', 'Pro'],
+      ['יצחק שדה 7', 'רמת גן', 18, 'דנה לוי', '94%', 'Pro'],
+      ['אבן גבירול 118', 'תל אביב', 36, 'לא הוקצה', '—', 'ניסיון'],
+      ['הפלמ"ח 3', 'חיפה', 12, 'יוסי אמסלם', '100%', 'בסיס'],
+      ['בן יהודה 91', 'ירושלים', 30, 'נועה שגב', '88%', 'Pro'],
+      ['רוטשילד 55', 'ראשון לציון', 20, 'לא הוקצה', '—', 'ניסיון']
+    ];
+    const buildings = bdata.map(([addr, city, units, vaad, collect, plan]) => {
+      const low = collect === '—' || parseInt(collect) < 92;
+      return {
+        addr, city, units, vaad, collect, plan,
+        collectStyle: this.pill(low ? 'var(--color-accent-200)' : 'var(--color-accent-2-200)', low ? 'var(--color-accent-800)' : 'var(--color-accent-2-800)'),
+        planStyle: this.pill(plan === 'Pro' ? 'var(--color-neutral-900)' : 'var(--color-neutral-300)', plan === 'Pro' ? '#fff' : 'var(--color-neutral-800)'),
+        open: () => { this.setState({ role: 'vaad', vaadTab: 'dash' }); this.flash('נכנסת לניהול ' + addr); }
+      };
+    });
+
+    const errors = [
+      ['שליחת SMS נכשלה · הרצל 42 דירה 19', 'ספק Twilio · 12:04', 'var(--color-accent-400)'],
+      ['סוכן מעלית — פסק זמן בתגובת ספק', 'בן יהודה 91 · 09:41', 'var(--color-accent-400)'],
+      ['סליקת מנוי נדחתה', 'רוטשילד 55 · אתמול', 'var(--color-accent-500)'],
+      ['ייצוא פרוטוקול הושלם באיחור', 'יצחק שדה 7 · אתמול', 'var(--color-neutral-500)']
+    ].map(([msg, meta, c]) => ({ msg, meta, dotStyle: this.dot(c, 8) }));
+
+    const vaadTabDefs = [
+      ['dash', 'לוח בקרה', 'לוח בקרה'],
+      ['residents', 'תושבים ודירות', 'תושבים ודירות'],
+      ['money', 'כספים והוצאות', 'כספים והוצאות'],
+      ['maint', 'תחזוקה וסוכני AI', 'תחזוקה וסוכני AI'],
+      ['meetings', 'אסיפות והצבעות', 'אסיפות והצבעות'],
+      ['board', 'לוח הבניין', 'לוח הבניין']
+    ];
+    const vaadTabs = vaadTabDefs.map(([id, label]) => ({
+      label,
+      pick: () => this.setState({ vaadTab: id }),
+      style: 'border:0;cursor:pointer;font-family:var(--font-body);font-size:13.5px;padding:10px 16px;border-radius:999px 999px 0 0;transition:all .18s;' +
+        (st.vaadTab === id
+          ? 'background:var(--color-neutral-900);color:#fff'
+          : 'background:transparent;color:var(--color-neutral-700)')
+    }));
+    const vaadTitle = (vaadTabDefs.find(t => t[0] === st.vaadTab) || vaadTabDefs[0])[2];
+
+    const vaadKpis = [
+      { label: 'נגבה באוגוסט', value: '₪13,640', sub: 'מתוך ₪14,880 · 22 מ־24 דירות' },
+      { label: 'קריאות פתוחות', value: '4', sub: '2 מטופלות בידי סוכן' },
+      { label: 'יתרת קופה', value: '₪38,210', sub: 'אחרי הוצאות אוגוסט' }
+    ];
+
+    const todos = [
+      ['3 דירות בפיגור מעל 30 יום', 'דירות 3, 7, 12 · סה"כ ₪1,860', 'למטריצה', 'money', 'var(--color-accent-400)'],
+      ['הצעת מחיר לדלת הלובי ממתינה לאישור', 'הסוכן אסף 3 הצעות', 'לסוכן', 'maint', 'var(--color-accent-500)'],
+      ['3 דירות עוד לא הוזמנו למערכת', 'דירות 15, 21, 23', 'לשליחת הזמנה', 'residents', 'var(--color-neutral-500)'],
+      ['אסיפת דיירים ב־14.9', 'סדר יום עם 3 סעיפים', 'לבונה האסיפה', 'meetings', 'var(--color-accent-2-500)']
+    ].map(([title, sub, cta, tab, c]) => ({
+      title, sub, cta, dotStyle: this.dot(c, 10),
+      go: () => this.setState({ vaadTab: tab })
+    }));
+
+    const agentSummary = [
+      { name: 'סוכן תחזוקת מעלית', stat: '4 פניות' },
+      { name: 'סוכן ניקיון וגינון', stat: '2 פניות' },
+      { name: 'סוכן חשמל ותאורה', stat: 'פנייה אחת' }
+    ];
+
+    const rdata = [
+      ['1', 1, 'אבי כהן', 2, 'ח-04', 'רשום'],
+      ['2', 1, 'רונית שפירא', 4, 'ח-11', 'רשום'],
+      ['3', 1, 'תומר גולן', 1, '—', 'בפיגור'],
+      ['7', 2, '—', '—', 'ח-07', 'לא הוזמן'],
+      ['8', 2, 'שירה מזרחי', 3, 'ח-09', 'רשום'],
+      ['11', 3, 'איתי בן־דוד', 2, 'ח-02', 'הוזמן'],
+      ['12', 3, 'יעל אזולאי', 3, 'ח-14', 'רשום'],
+      ['15', 4, '—', '—', 'ח-05', 'לא הוזמן'],
+      ['16', 4, 'נועם פרידמן', 5, 'ח-16', 'רשום'],
+      ['19', 5, 'אורי גבאי', 2, 'ח-03', 'הוזמן']
+    ];
+    const stateTone = {
+      'רשום': ['var(--color-accent-2-200)', 'var(--color-accent-2-800)'],
+      'הוזמן': ['var(--color-accent-200)', 'var(--color-accent-800)'],
+      'בפיגור': ['var(--color-accent-400)', '#fff'],
+      'לא הוזמן': ['var(--color-neutral-300)', 'var(--color-neutral-800)']
+    };
+    const residents = rdata.map(([apt, floor, name, people, parking, state]) => ({
+      apt, floor, name, people, parking, state,
+      stateStyle: this.pill(stateTone[state][0], stateTone[state][1])
+    }));
+
+    const inviteApts = ['7', '15', '21', '23', '19', '11'].map(a => ({
+      label: 'דירה ' + a,
+      pick: () => this.setState({ inviteApt: a, inviteSent: false }),
+      style: 'border:0;cursor:pointer;font-family:var(--font-body);font-size:12.5px;padding:8px 14px;border-radius:999px;transition:all .18s;' +
+        (st.inviteApt === a ? 'background:var(--color-accent-500);color:#fff' : 'background:rgba(255,255,255,.1);color:rgba(255,255,255,.75)')
+    }));
+
+    const smsPreview = 'שלום! ועד הבית של הרצל 42 מזמין אותך לנהל את דירה ' + st.inviteApt +
+      ' באפליקציה. הצטרפות: vaad.app/j/H42-' + st.inviteApt + 'K9';
+
+    const inviteTrack = [
+      ['ההזמנה נשלחה ל־' + st.invitePhone, true],
+      ['אימות טלפון', false],
+      ['הדירה שויכה לתושב', false]
+    ].map(([label, done]) => ({
+      label,
+      dotStyle: this.dot(done ? 'var(--color-accent-2-400)' : 'rgba(255,255,255,.25)', 8),
+      textStyle: 'color:' + (done ? '#fff' : 'rgba(255,255,255,.45)')
+    }));
+
+    const months = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ'];
+    const matrix = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(apt => {
+      let debt = 0;
+      const cells = months.map((mn, j) => {
+        const s = st.matrix[apt + '-' + j] || 'paid';
+        if (s !== 'paid') debt += 620;
+        const tone = this.statusTone(s);
+        return {
+          glyph: tone.glyph,
+          toggle: () => {
+            const next = s === 'paid' ? 'pending' : s === 'pending' ? 'overdue' : 'paid';
+            const nm = Object.assign({}, this.state.matrix);
+            nm[apt + '-' + j] = next;
+            this.setState({ matrix: nm });
+            this.flash('דירה ' + apt + ' · ' + mn + ' → ' + this.statusTone(next).label);
+          },
+          style: 'width:100%;height:' + cellH + 'px;min-width:52px;border:0;cursor:pointer;border-radius:9px;font-size:12px;font-weight:600;' +
+            'transition:transform .16s,background .2s;background:' + tone.bg + ';color:' + tone.fg,
+          styleSm: 'width:38px;height:28px;border:0;cursor:pointer;border-radius:8px;font-size:11px;font-weight:600;' +
+            'transition:background .2s;background:' + tone.bg + ';color:' + tone.fg
+        };
+      });
+      return {
+        apt: 'דירה ' + apt, cells,
+        debt: debt ? '₪' + debt.toLocaleString() : '—',
+        debtStyle: 'padding:0 8px;text-align:left;font-weight:600;color:' + (debt ? 'var(--color-accent-700)' : 'var(--color-neutral-500)')
+      };
+    });
+
+    const legend = ['paid', 'pending', 'overdue'].map(s => {
+      const t = this.statusTone(s);
+      return { label: t.label, swatch: 'width:13px;height:13px;border-radius:5px;display:inline-block;background:' + t.bg };
+    });
+
+    const binder = [
+      ['חשבונית חשמל 07/26', 'הועלה 2.8 · 240KB', 'שטח משותף'],
+      ['קבלה — דירה 12', 'הועלה 3.8 · 88KB', 'דירה 12'],
+      ['הצעת מחיר דלת לובי', 'הועלה 18.8 · 1.1MB', 'שטח משותף']
+    ].map(([name, meta, apt], i) => ({
+      name, meta, apt,
+      rowStyle: 'display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:var(--radius-md);background:var(--color-neutral-100)' +
+        (i === 0 && st.saved ? ';animation:vp-rise .3s ease both' : '')
+    }));
+
+    const expenses = [
+      ['תחזוקת מעלית', 'מעליות שחר', '₪1,450'],
+      ['ניקיון שוטף', 'ניקיון אמיר', '₪3,200'],
+      ['חשמל שטחים משותפים', 'חברת החשמל', '₪2,180'],
+      ['גינון', 'ירוק בעיר', '₪1,850'],
+      ['ביטוח מבנה', 'הפניקס', '₪5,500']
+    ].map(([name, vendor, amount]) => ({ name, vendor, amount }));
+
+    const tdata = [
+      ['המעלית נעצרת בקומה 3', 'לפני 4 ימים', '12', 'סוכן מעלית', 'ממתין לאישור'],
+      ['נורה שרופה בחניון', 'לפני 6 ימים', 'משותף', 'סוכן חשמל', 'בטיפול'],
+      ['נזילה בצינור מרפסת', 'לפני 9 ימים', '8', 'ועד', 'בטיפול'],
+      ['דלת לובי לא נסגרת', 'לפני שבועיים', 'משותף', 'סוכן מסגרות', 'הצעות התקבלו'],
+      ['אינטרקום דירה 16', 'החודש שעבר', '16', 'ועד', 'הושלם']
+    ];
+    const tTone = {
+      'ממתין לאישור': ['var(--color-gold-200)', 'var(--color-gold-800)'],
+      'בטיפול': ['var(--color-accent-2-200)', 'var(--color-accent-2-800)'],
+      'הצעות התקבלו': ['var(--color-neutral-900)', '#fff'],
+      'הושלם': ['var(--color-neutral-300)', 'var(--color-neutral-800)']
+    };
+    const tickets = tdata.map(([title, when, apt, owner, state]) => ({
+      title, when, apt, owner, state, stateStyle: this.pill(tTone[state][0], tTone[state][1])
+    }));
+
+    const agentSwitch = 'width:52px;height:30px;border-radius:999px;border:0;cursor:pointer;padding:3px;display:flex;transition:background .2s;' +
+      'justify-content:' + (st.agentOn ? 'flex-start' : 'flex-end') + ';background:' + (st.agentOn ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)');
+    const agentKnob = 'width:24px;height:24px;border-radius:999px;background:#fff;box-shadow:var(--shadow-sm);transition:all .2s';
+    const agentStateText = st.agentOn
+      ? 'הסוכן פעיל. הוא פונה לספקים מאושרים בשם הוועד, אוסף הצעות ומעדכן את הקריאה — ההחלטה נשארת אצלכם.'
+      : 'הסוכן מושהה. קריאות מעלית יחכו לטיפול ידני של הוועד.';
+
+    const ruleDefs = [
+      ['approved', 'הוועד אישר קריאת תחזוקה'],
+      ['quotes', 'נדרשות שלוש הצעות מחיר'],
+      ['sched', 'תיאום מועד ביקור מול התושב']
+    ];
+    const agentRules = ruleDefs.map(([k, label]) => {
+      const on = st.rules[k];
+      return {
+        label, check: on ? '✓' : '',
+        toggle: () => this.setState({ rules: Object.assign({}, st.rules, { [k]: !on }) }),
+        style: 'display:flex;align-items:center;gap:12px;width:100%;padding:13px 15px;border-radius:var(--radius-md);cursor:pointer;font-family:var(--font-body);font-size:13.5px;text-align:right;transition:all .18s;' +
+          (on ? 'background:var(--color-accent-2-100);border:1px solid var(--color-accent-2-300);color:var(--color-accent-2-900)'
+              : 'background:var(--color-neutral-100);border:1px solid var(--color-divider);color:var(--color-neutral-700)'),
+        boxStyle: 'width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex:none;color:#fff;background:' +
+          (on ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)')
+      };
+    });
+
+    const agentCaps = ['₪1,000', '₪2,500', '₪5,000'].map(c => ({
+      label: c,
+      pick: () => this.setState({ cap: c }),
+      style: 'flex:1;border:0;cursor:pointer;font-family:var(--font-body);font-size:13px;padding:11px 0;border-radius:999px;transition:all .18s;' +
+        (st.cap === c ? 'background:var(--color-neutral-900);color:#fff' : 'background:var(--color-neutral-200);color:var(--color-neutral-800)')
+    }));
+
+    const agentFlow = [
+      'תושב מדווח על תקלה במעלית',
+      'הוועד מאשר בלחיצה אחת',
+      'הסוכן שולח פנייה לשלושה ספקים מאושרים ואוסף הצעות',
+      'הצעה מתחת ל־' + st.cap + ' מאושרת אוטומטית · מעליה נדרש אישור הוועד',
+      'התושב מקבל עדכון סטטוס בכל שלב'
+    ].map((text, i) => ({
+      text, n: i + 1,
+      dotStyle: 'width:22px;height:22px;border-radius:999px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;background:var(--color-accent-2-600);color:#fff'
+    }));
+
+    const agenda = st.agenda.map((a, i) => ({
+      text: a.text, n: i + 1, hasVote: a.vote,
+      remove: () => this.setState({ agenda: st.agenda.filter((_, j) => j !== i) })
+    }));
+
+    const total = st.votes.yes + st.votes.no + st.votes.abstain;
+    const pollOptions = [
+      ['yes', 'בעד'], ['no', 'נגד'], ['abstain', 'נמנע']
+    ].map(([k, label]) => {
+      const n = st.votes[k];
+      const pct = Math.round((n / total) * 100);
+      const mine = st.myVote === k;
+      return {
+        label: label + ' · ' + n, pct: pct + '%',
+        vote: () => {
+          if (st.myVote === k) return;
+          const v = Object.assign({}, st.votes);
+          if (st.myVote) v[st.myVote] -= 1;
+          v[k] += 1;
+          this.setState({ votes: v, myVote: k });
+          this.flash('ההצבעה נרשמה · ' + label);
+        },
+        rowStyle: 'display:flex;flex-direction:column;width:100%;border:0;cursor:pointer;text-align:right;font-family:var(--font-body);color:#fff;padding:13px 15px;border-radius:var(--radius-md);transition:background .18s;background:' +
+          (mine ? 'rgba(143,160,115,.28)' : 'rgba(255,255,255,.07)'),
+        barStyle: 'height:100%;width:' + pct + '%;border-radius:999px;transition:width .45s cubic-bezier(.4,0,.2,1);background:' +
+          (k === 'yes' ? 'var(--color-accent-2-400)' : k === 'no' ? 'var(--color-accent-400)' : 'var(--color-neutral-400)')
+      };
+    });
+    const pollStatus = total + ' מתוך 24 דירות הצביעו · ' + (st.myVote ? 'הצבעתך נשמרה' : 'טרם הצבעת');
+
+    const board = [
+      ['הודעה', 'לפני יומיים', 'ניקוי מיכל המים', 'ביום שלישי בין 08:00 ל־12:00 תיתכן הפסקת מים קצרה. מומלץ למלא מים מראש.', 'var(--color-accent-200)', 'var(--color-accent-800)'],
+      ['כספים', 'לפני 5 ימים', 'סיכום כספי יולי', 'הכנסות ₪14,880 · הוצאות ₪12,340 · יתרת קופה ₪38,210. הדוח המלא בקלסר.', 'var(--color-accent-2-200)', 'var(--color-accent-2-800)'],
+      ['אסיפה', 'לפני שבוע', 'אסיפת דיירים 14.9', 'שלושה סעיפים בסדר היום, כולל הצבעה על החלפת דלת הלובי. השתתפות גם מרחוק.', 'var(--color-neutral-900)', '#fff'],
+      ['שכנים', 'לפני שבועיים', 'חדר האופניים מתפנה', 'אנא סמנו את האופניים שלכם עד סוף החודש. אופניים לא מסומנים יאוחסנו במחסן.', 'var(--color-accent-200)', 'var(--color-accent-800)'],
+      ['תחזוקה', 'החודש שעבר', 'המעלית עברה טיפול', 'הטיפול השנתי בוצע ע"י מעליות שחר. האישור הועלה לקלסר הדיגיטלי.', 'var(--color-neutral-300)', 'var(--color-neutral-800)']
+    ].map(([kind, when, title, body, bg, fg]) => ({
+      kind, when, title, body,
+      tagStyle: 'font-size:11px;background:' + bg + ';color:' + fg,
+      cardStyle: 'background:var(--color-neutral-100);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm)'
+    }));
+
+    // ---- tenant ----
+    const tenantTabDefs = [
+      ['home', 'בית', 'הבניין שלי'],
+      ['pay', 'תשלומים', 'תשלומים והוצאות'],
+      ['maint', 'תחזוקה', 'דלפק תחזוקה'],
+      ['dir', 'שכנים', 'ספר הדיירים'],
+      ['docs', 'מסמכים', 'המסמכים שלי']
+    ];
+    const tenantTabs = tenantTabDefs.map(([id, label]) => {
+      const on = st.tenantTab === id;
+      return {
+        label,
+        pick: () => this.setState({ tenantTab: id }),
+        style: 'flex:1;min-height:48px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:var(--font-body);padding:4px 0;color:' +
+          (on ? 'var(--color-gold-500)' : 'rgba(255,255,255,.55)'),
+        iconStyle: 'width:20px;height:20px;border-radius:7px;transition:all .2s;background:' +
+          (on ? 'var(--color-accent-400)' : 'rgba(255,255,255,.4)')
+      };
+    });
+    const tenantTitle = (tenantTabDefs.find(t => t[0] === st.tenantTab) || tenantTabDefs[0])[2];
+
+    const feed = [
+      ['הודעה', 'אתמול', 'ניקוי מיכל המים ביום שלישי', 'בין 08:00 ל־12:00 תיתכן הפסקת מים קצרה. מומלץ למלא מים מראש.', 'var(--color-accent-200)', 'var(--color-accent-800)'],
+      ['כספים', 'לפני 5 ימים', 'סיכום כספי יולי', 'הכנסות ₪14,880 · הוצאות ₪12,340 · יתרת קופה ₪38,210.', 'var(--color-accent-2-200)', 'var(--color-accent-2-800)'],
+      ['אסיפה', 'לפני שבוע', 'הצבעה פתוחה: דלת הלובי', 'הוועד מבקש את דעתכם עד 12.9. ההצבעה באפליקציה.', 'var(--color-neutral-900)', '#fff'],
+      ['שכנים', 'לפני שבועיים', 'חדר האופניים מתפנה', 'אנא סמנו את האופניים שלכם עד סוף החודש.', 'var(--color-accent-200)', 'var(--color-accent-800)']
+    ].map(([kind, when, title, body, bg, fg]) => ({
+      kind, when, title, body,
+      tagStyle: 'font-size:10.5px;background:' + bg + ';color:' + fg,
+      cardStyle: 'background:var(--color-neutral-100);border-radius:var(--radius-md);padding:16px'
+    }));
+
+    const tenantPayments = [
+      ['אוגוסט 2026', 'שולם 3.8 · העברה בנקאית', '₪620', 'paid'],
+      ['יולי 2026', 'שולם 2.7 · העברה בנקאית', '₪620', 'paid'],
+      ['יוני 2026', 'ממתין להסדרה', '₪620', 'pending'],
+      ['מאי 2026', 'שולם 4.5 · מזומן', '₪620', 'paid'],
+      ['אפריל 2026', 'שולם 1.4 · העברה בנקאית', '₪620', 'paid'],
+      ['מרץ 2026', 'שולם 3.3 · העברה בנקאית', '₪620', 'paid']
+    ].map(([month, meta, amount, s]) => {
+      const t = this.statusTone(s);
+      return {
+        month, meta, amount, state: t.label,
+        dotStyle: 'width:10px;height:10px;border-radius:999px;flex:none;background:' + (s === 'paid' ? 'var(--color-accent-2-500)' : 'var(--color-accent-400)'),
+        stateStyle: 'font-size:11px;color:' + (s === 'paid' ? 'var(--color-accent-2-700)' : 'var(--color-accent-700)')
+      };
+    });
+
+    const stepDefs = [
+      ['דווח על תקלה', 'יעל · 21.8, 09:12'],
+      ['אושר ע"י הוועד', 'מיכל ברקת · 21.8, 10:40'],
+      ['Claude AI פנה לספק המעליות', 'מעליות שחר · 21.8, 10:41'],
+      ['תואם מועד ביקור', '26.8, 08:00–10:00'],
+      ['התקלה טופלה', 'ממתין לאישור התושב']
+    ];
+    const ticketSteps = stepDefs.map(([label, meta], i) => {
+      const done = i < st.ticketStep;
+      const cur = i === st.ticketStep;
+      return {
+        label, meta: done || cur ? meta : '—',
+        glyph: done ? '✓' : '',
+        dotStyle: 'width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex:none;transition:background .3s;background:' +
+          (done ? 'var(--color-accent-2-600)' : cur ? 'var(--color-accent-500)' : 'var(--color-neutral-300)') +
+          (cur ? ';animation:vp-pulse 2s infinite' : ''),
+        lineStyle: 'width:2px;flex:1;min-height:' + (i === stepDefs.length - 1 ? 0 : 20) + 'px;background:' +
+          (done ? 'var(--color-accent-2-400)' : 'var(--color-neutral-300)'),
+        labelStyle: 'font-size:13.5px;font-weight:' + (cur ? '600' : '400') + ';color:' +
+          (done || cur ? 'var(--color-text)' : 'var(--color-neutral-600)')
+      };
+    });
+
+    // ---- tenant maintenance board ----
+    const cardDefs = [
+      { id: '418', title: 'המעלית נעצרת בקומה 3', where: 'מעלית · שטח משותף', when: '21.8', mine: true, state: 'בטיפול סוכן', tone: 'gold', vendor: 'מעליות שחר',
+        steps: [['דווח', 'יעל · 21.8, 09:12'], ['אושר ע"י הוועד', 'מיכל ברקת · 21.8, 10:40'], ['Claude AI פנה לספק', 'מעליות שחר · 21.8, 10:41'], ['תואם מועד ביקור', '26.8, 08:00–10:00'], ['נפתר', '—']] },
+      { id: '417', title: 'נזילה בצינור מרפסת', where: 'דירה 12', when: '12.8', mine: true, state: 'מתוזמן', tone: 'sage', vendor: 'אינסטלציה כרמון',
+        steps: [['דווח', 'יעל · 12.8'], ['אושר ע"י הוועד', '13.8'], ['ספק שובץ', 'אינסטלציה כרמון'], ['ביקור נקבע', '28.8, 09:00–11:00']] },
+      { id: '415', title: 'נורה שרופה בחניון', where: 'חניון · שטח משותף', when: '9.8', mine: false, state: 'בטיפול', tone: 'sage', vendor: 'חשמל בן־עמי',
+        steps: [['דווח', 'אבי כהן · 9.8'], ['אושר ע"י הוועד', '10.8'], ['Claude AI פנה לספק', 'חשמל בן־עמי']] },
+      { id: '412', title: 'דלת הלובי לא נסגרת', where: 'לובי · שטח משותף', when: '5.8', mine: false, state: 'ממתין להצבעה', tone: 'terra', vendor: null,
+        steps: [['דווח', 'רונית שפירא · 5.8'], ['הצעות מחיר נאספו', '3 הצעות · Claude AI'], ['ממתין להחלטת אסיפה', '14.9']] },
+      { id: '404', title: 'אינטרקום דירה 16', where: 'דירה 16', when: '18.7', mine: false, state: 'הושלם', tone: 'done', vendor: 'אינטרקום פלוס',
+        steps: [['דווח', 'נועם פרידמן · 18.7'], ['אושר ע"י הוועד', '18.7'], ['תוקן', '22.7 · אינטרקום פלוס']] }
+    ];
+    const cardTone = {
+      gold: ['var(--color-gold-200)', 'var(--color-gold-800)'],
+      sage: ['var(--color-accent-2-200)', 'var(--color-accent-2-800)'],
+      terra: ['var(--color-accent-200)', 'var(--color-accent-800)'],
+      done: ['var(--color-neutral-200)', 'var(--color-neutral-700)']
+    };
+    const maintFilters = ['הכל', 'שלי', 'פתוחות'].map(f => ({
+      label: f,
+      pick: () => this.setState({ maintFilter: f }),
+      style: 'border:0;cursor:pointer;font-family:var(--font-body);font-size:12px;padding:8px 14px;border-radius:999px;transition:all .18s;' +
+        (st.maintFilter === f ? 'background:var(--color-accent-2-900);color:var(--color-gold-500)' : 'background:var(--color-neutral-200);color:var(--color-neutral-800)')
+    }));
+    const maintCards = cardDefs
+      .filter(c => st.maintFilter === 'הכל' || (st.maintFilter === 'שלי' ? c.mine : c.state !== 'הושלם'))
+      .map(c => {
+        const open = st.openCard === c.id;
+        const tone = cardTone[c.tone];
+        return {
+          title: c.title, where: c.where, when: c.when, id: '#' + c.id, mine: c.mine, state: c.state,
+          vendorLine: c.vendor ? 'ספק: ' + c.vendor : 'טרם שובץ ספק',
+          open,
+          toggle: () => this.setState({ openCard: open ? null : c.id }),
+          cardStyle: 'border-radius:var(--radius-md);background:var(--color-neutral-100);overflow:hidden;transition:box-shadow .2s;' +
+            (open ? 'box-shadow:var(--shadow-md)' : 'box-shadow:var(--shadow-sm)'),
+          statePill: this.pill(tone[0], tone[1]),
+          chevron: open ? '⌃' : '⌄',
+          steps: c.steps.map(([label, meta], i) => ({
+            label, meta,
+            dotStyle: 'width:18px;height:18px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex:none;background:' +
+              (i < c.steps.length - 1 ? 'var(--color-accent-2-600)' : 'var(--color-accent-500)'),
+            glyph: i < c.steps.length - 1 ? '✓' : '',
+            lineStyle: 'width:2px;flex:1;min-height:' + (i === c.steps.length - 1 ? 0 : 14) + 'px;background:var(--color-accent-2-300)'
+          }))
+        };
+      });
+
+    const floors = ['הכל', 'קומה 1', 'קומה 2', 'קומה 3'];
+    const dirFloors = floors.map(f => ({
+      label: f,
+      pick: () => this.setState({ dirFloor: f }),
+      style: 'border:0;cursor:pointer;font-family:var(--font-body);font-size:12px;padding:8px 13px;border-radius:999px;white-space:nowrap;transition:all .18s;' +
+        (st.dirFloor === f ? 'background:var(--color-neutral-900);color:#fff' : 'background:var(--color-neutral-200);color:var(--color-neutral-800)')
+    }));
+    const dirAll = [
+      ['אכ', 'אבי כהן', 'דירה 1 · קומה 1', 'ח-04', 'קומה 1'],
+      ['רש', 'רונית שפירא', 'דירה 2 · קומה 1', 'ח-11', 'קומה 1'],
+      ['שמ', 'שירה מזרחי', 'דירה 8 · קומה 2', 'ח-09', 'קומה 2'],
+      ['אב', 'איתי בן־דוד', 'דירה 11 · קומה 3', 'ח-02', 'קומה 3'],
+      ['יא', 'יעל אזולאי', 'דירה 12 · קומה 3 · את/ה', 'ח-14', 'קומה 3'],
+      ['מב', 'מיכל ברקת · ועד', 'דירה 4 · קומה 1', 'ח-01', 'קומה 1']
+    ];
+    const directory = dirAll
+      .filter(d => st.dirFloor === 'הכל' || d[4] === st.dirFloor)
+      .map(([initials, name, meta, parking]) => ({ initials, name, meta, parking }));
+
+    const vault = [
+      ['קבלה — אוגוסט 2026', 'שויך ע"י הוועד · 3.8', ''],
+      ['חשבונית ועד — יולי', 'שויך ע"י הוועד · 2.7', ''],
+      ['פרוטוקול אסיפה 3/2026', 'ציבורי · 12.5', '']
+    ].map(([name, meta]) => ({ name, meta }));
+
+    const onboardCopy = [
+      ['אימות מספר טלפון', 'שלחנו קוד בת 4 ספרות ל־052-441-8830. הקישור שקיבלת מהוועד כבר מחבר אותך לדירה 12.', 'אימות והמשך'],
+      ['נעים להכיר', 'הפרטים האלה גלויים לוועד ולשכנים בספר הדיירים. אפשר לשנות בכל רגע.', 'שמירה והמשך'],
+      ['הכל מוכן', 'הדירה שלך מחוברת. תראי את החיובים, התקלות והמסמכים ששויכו לך בלבד.', 'כניסה לאפליקציה']
+    ];
+    const step = st.onboardStep;
+    const oc = onboardCopy[Math.max(0, step - 1)] || onboardCopy[0];
+    const otpBoxes = ['4', '9', '2', ''].map(v => ({
+      v,
+      style: 'flex:1;height:58px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-size:24px;color:#fff;background:rgba(255,255,255,.1);border:1px solid ' +
+        (v ? 'var(--color-accent-400)' : 'rgba(255,255,255,.2)')
+    }));
+    const onboardDots = [1, 2, 3].map(i => ({
+      style: 'height:4px;border-radius:999px;flex:1;transition:background .25s;background:' +
+        (i <= step ? 'var(--color-accent-500)' : 'rgba(255,255,255,.2)')
+    }));
+
+    // ---- tenant home (rebuilt) ----
+    const quickActions = [
+      ['דיווח תקלה', () => this.setState({ tenantTab: 'maint' })],
+      ['תשלום ועד', () => this.setState({ tenantTab: 'pay' })],
+      ['מסמכים', () => this.setState({ tenantTab: 'dir' })]
+    ].map(([label, go]) => ({
+      label, sub: '', go,
+      tileStyle: 'flex:1;min-width:0;border:0;cursor:pointer;text-align:center;font-family:var(--font-body);padding:14px 8px;border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;gap:9px;transition:transform .16s;background:var(--color-neutral-100);color:var(--color-accent-2-900)',
+      glyphStyle: 'width:26px;height:26px;border-radius:9px;background:var(--color-accent-500)'
+    }));
+
+    const miniDefs = [['דווח', 0], ['אושר', 1], ['Claude AI', 2], ['נפתר', 4]];
+    const ticketMini = miniDefs.map(([label, idx], i) => {
+      const done = idx < st.ticketStep;
+      const cur = idx === st.ticketStep || (idx === 4 && st.ticketStep === 3);
+      return {
+        label,
+        dotStyle: 'width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:10px;flex:none;transition:all .3s;color:#fff;background:' +
+          (done ? 'var(--color-accent-2-600)' : cur ? 'var(--color-accent-500)' : 'rgba(255,255,255,.25)') +
+          (cur ? ';animation:vp-pulse 2s infinite' : ''),
+        glyph: done ? '✓' : '',
+        labelStyle: 'font-size:10px;text-align:center;line-height:1.2;white-space:nowrap;color:' + (done || cur ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.5)'),
+        barStyle: 'flex:1;height:2px;margin-top:9px;border-radius:999px;background:' + (done ? 'var(--color-accent-2-400)' : 'rgba(255,255,255,.2)') + (i === 3 ? ';display:none' : '')
+      };
+    });
+    const ticketMiniStatus = stepDefs[Math.min(4, st.ticketStep)][0];
+
+    const homePayments = tenantPayments.slice(0, 3);
+    const feedSm = feed.slice(0, 2);
+
+    // ---- vaad mobile ----
+    const drawerItems = vaadTabDefs.map(([id, label]) => ({
+      label,
+      pick: () => this.setState({ vaadTab: id, drawer: false }),
+      style: 'display:flex;align-items:center;gap:12px;width:100%;border:0;cursor:pointer;font-family:var(--font-body);font-size:15px;text-align:right;padding:15px 18px;border-radius:var(--radius-md);transition:all .18s;' +
+        (st.vaadTab === id ? 'background:var(--color-accent-500);color:#fff' : 'background:transparent;color:rgba(255,255,255,.7)')
+    }));
+    const deviceToggle = [['web', 'ווב'], ['mobile', 'מובייל']].map(([id, label]) => ({
+      label,
+      pick: () => this.setState({ vaadDevice: id }),
+      style: 'border:0;cursor:pointer;font-family:var(--font-body);font-size:12px;padding:7px 14px;border-radius:999px;transition:all .18s;' +
+        (st.vaadDevice === id ? 'background:var(--color-accent-500);color:#fff' : 'background:transparent;color:rgba(255,255,255,.6)')
+    }));
+
+    const modalCopy = {
+      newBuilding: ['בניין חדש', 'יצירת מופע בניין חדש בפלטפורמה. אחרי היצירה אפשר לשייך ועד בית ולהזמין תושבים.',
+        [['כתובת', 'הרצל 42'], ['עיר', 'תל אביב'], ['מספר יחידות', '24']], 'יצירת בניין'],
+      assignVaad: ['שיוך ועד בית', 'לוועד תהיה גישה מלאה לניהול הבניין הזה בלבד — כספים, תושבים, אסיפות וסוכנים.',
+        [['בניין', 'אבן גבירול 118'], ['שם מלא', 'שם ועד הבית'], ['טלפון נייד', '050-000-0000']], 'שליחת הזמנת ועד']
+    };
+    const mc = modalCopy[st.modal] || ['', '', [], ''];
+
+    return {
+      roles, roleHint,
+      isSuper: st.role === 'super', isVaad: st.role === 'vaad', isTenant: st.role === 'tenant',
+      superNav, kpis, buildings, errors,
+      openNewBuilding: () => this.setState({ modal: 'newBuilding' }),
+      openAssign: () => this.setState({ modal: 'assignVaad' }),
+      vaadTabs, vaadTitle, vaadKpis, todos, agentSummary,
+      tabDash: st.vaadTab === 'dash', tabResidents: st.vaadTab === 'residents',
+      tabMoney: st.vaadTab === 'money', tabMaint: st.vaadTab === 'maint',
+      tabMeetings: st.vaadTab === 'meetings', tabBoard: st.vaadTab === 'board',
+      residents, inviteApts, invitePhone: st.invitePhone,
+      setPhone: e => this.setState({ invitePhone: e.target.value }),
+      smsPreview, inviteSent: st.inviteSent, inviteTrack,
+      inviteCta: st.inviteSent ? 'שליחה חוזרת' : 'שליחת הזמנה ב־SMS',
+      sendInvite: () => { this.setState({ inviteSent: true }); this.flash('הזמנה נשלחה לדירה ' + st.inviteApt); },
+      months, matrix, legend, binder, expenses,
+      fakeUpload: () => { this.setState({ saved: true }); this.flash('הקובץ הועלה ושויך לדירה 12'); },
+      tickets, agentSwitch, agentKnob, agentStateText, agentRules, agentCaps, agentFlow,
+      toggleAgent: () => this.setState({ agentOn: !st.agentOn }),
+      saveAgent: () => this.flash(st.agentOn ? 'סוכן המעלית נשמר ופעיל' : 'הסוכן נשמר במצב מושהה'),
+      agenda, agendaDraft: st.agendaDraft,
+      setAgendaDraft: e => this.setState({ agendaDraft: e.target.value }),
+      addAgenda: () => {
+        const t = st.agendaDraft.trim();
+        if (!t) return;
+        this.setState({ agenda: st.agenda.concat([{ text: t, vote: false }]), agendaDraft: '' });
+      },
+      agendaKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.renderVals().addAgenda(); } },
+      publishMeeting: () => { this.setState({ published: true }); this.flash('סדר היום פורסם ל־24 דירות'); },
+      meetingCta: st.published ? 'פורסם לדיירים ✓' : 'פרסום סדר היום',
+      exportCta: 'ייצוא פרוטוקול PDF',
+      exportPdf: () => { this.setState({ pdfReady: true }); this.flash('הפרוטוקול נוצר'); },
+      pdfReady: st.pdfReady, pollOptions, pollStatus, board,
+      noop: () => {},
+      tenantTabs, tenantTitle, tenantBlurb: 'מובייל תחילה, ארבע לשוניות בלבד. כל מה שתושב צריך: מה קורה בבניין, מה הוא משלם, מה נשבר, ומי השכנים.',
+      tHome: st.tenantTab === 'home', tNotHome: st.tenantTab !== 'home',
+      tPay: st.tenantTab === 'pay',
+      tMaint: st.tenantTab === 'maint', tDir: st.tenantTab === 'dir',
+      feed, tenantPayments, ticketSteps, dirFloors, directory, vault,
+      maintFilters, maintCards,
+      copyCta: st.copied ? 'הפרטים הועתקו ✓' : 'העתקת פרטי חשבון',
+      copyBank: () => { this.setState({ copied: true }); this.flash('פרטי החשבון הועתקו'); },
+      advanceTicket: () => {
+        const n = Math.min(5, st.ticketStep + 1);
+        this.setState({ ticketStep: n, tenantTab: 'maint' });
+        this.flash('עדכון קריאה #418 · ' + stepDefs[Math.min(4, n - 1)][0]);
+      },
+      onboarding: step > 0, appVisible: step === 0,
+      onboardStep1: step === 1, onboardStep2: step === 2, onboardStep3: step === 3,
+      onboardTitle: oc[0], onboardBody: oc[1], onboardCta: oc[2],
+      onboardDots, otpBoxes, occupants: st.occupants,
+      occUp: () => this.setState({ occupants: st.occupants + 1 }),
+      occDown: () => this.setState({ occupants: Math.max(1, st.occupants - 1) }),
+      startOnboard: () => this.setState({ onboardStep: 1 }),
+      skipOnboard: () => this.setState({ onboardStep: 0 }),
+      onboardNext: () => {
+        if (step >= 3) { this.setState({ onboardStep: 0, tenantTab: 'home' }); this.flash('ברוכה הבאה, יעל · דירה 12'); }
+        else this.setState({ onboardStep: step + 1 });
+      },
+      quickActions, ticketMini, ticketMiniStatus, homePayments, feedSm,
+      navHome: tenantTabs[0], navPay: tenantTabs[1], navMaint: tenantTabs[2], navDir: tenantTabs[3], navDocs: tenantTabs[4],
+      tDocs: st.tenantTab === 'docs',
+      goDocs: () => this.setState({ tenantTab: 'docs' }),
+      goMaint: () => this.setState({ tenantTab: 'maint' }),
+      tenantGreeting: 'שלום, יעל!',
+      openReport: () => { this.setState({ tenantTab: 'maint' }); this.flash('טופס דיווח חדש נפתח'); },
+      goPay: () => this.setState({ tenantTab: 'pay' }),
+      expandTicket: st.expandTicket,
+      toggleExpand: () => this.setState({ expandTicket: !st.expandTicket }),
+      vaadWeb: st.vaadDevice === 'web', vaadMobile: st.vaadDevice === 'mobile',
+      deviceToggle, drawerItems, drawerOpen: st.drawer,
+      openDrawer: () => this.setState({ drawer: true }),
+      closeDrawer: () => this.setState({ drawer: false }),
+      matrixSm: matrix.slice(0, 8),
+      todosSm: todos.slice(0, 3),
+      residentsSm: residents.slice(0, 6),
+      ticketsSm: tickets.slice(0, 4),
+      boardSm: board.slice(0, 3),
+      expensesSm: expenses.slice(0, 4),
+      modalOpen: !!st.modal, modalTitle: mc[0], modalBody: mc[1], modalCta: mc[3],
+      modalFields: mc[2].map(([label, ph]) => ({ label, ph })),
+      closeModal: () => this.setState({ modal: null }),
+      stop: e => e.stopPropagation(),
+      toast: st.toast
+    };
+  }
+}
+</script>
+</body>
+</html>
