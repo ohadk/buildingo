@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, getCurrentUser, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const createSchema = z.object({
@@ -39,5 +40,15 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .select("*")
     .single();
   if (error) throw new ApiError(500, error.message);
+
+  await logAudit({
+    buildingId: user.building_id,
+    actorId: user.id,
+    action: "announcement_published",
+    entityType: "announcement",
+    entityId: data.id,
+    details: { title: body.title },
+  });
+
   return NextResponse.json({ announcement: data }, { status: 201 });
 });

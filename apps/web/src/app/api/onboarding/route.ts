@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 const bodySchema = z.object({
   fullName: z.string().min(2).max(255),
   numOccupants: z.number().int().min(1).max(50),
+  email: z.string().email().optional(),
 });
 
 /**
@@ -19,13 +20,14 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     throw new ApiError(409, "No apartment mapped yet — ask your Vaad for an invitation");
   }
 
-  const { fullName, numOccupants } = bodySchema.parse(await req.json());
+  const { fullName, numOccupants, email } = bodySchema.parse(await req.json());
 
   const { data, error } = await supabaseAdmin()
     .from("users")
     .update({
       full_name: fullName,
       num_occupants: numOccupants,
+      ...(email ? { email } : {}),
       onboarded_at: new Date().toISOString(),
     })
     .eq("id", user.id)

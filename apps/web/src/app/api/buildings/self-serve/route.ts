@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, getCurrentUser, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const createSchema = z
@@ -17,6 +18,7 @@ const createSchema = z
     // The Vaad's own unit, so they show up in the directory right away.
     myApartmentNumber: z.number().int().min(1).optional(),
     fullName: z.string().max(255).optional(),
+    email: z.string().email().optional(),
   })
   .refine((b) => (b.feeMethod === "fixed" ? b.fixedMonthlyFee != null : true), {
     message: "fixedMonthlyFee is required when feeMethod is 'fixed'",
@@ -67,6 +69,10 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       fixed_monthly_fee: body.feeMethod === "fixed" ? body.fixedMonthlyFee : null,
       price_per_sqm: body.feeMethod === "per_sqm" ? body.pricePerSqm : null,
       created_by: user.id,
+      // Self-created buildings start a 14-day free trial; the super
+      // admin activates them (paid) or blocks them from the console.
+      plan_status: "trial",
+      trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select("*")
     .single();
@@ -95,6 +101,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       building_id: building.id,
       apartment_id: myApartment?.id ?? null,
       ...(body.fullName ? { full_name: body.fullName } : {}),
+      ...(body.email ? { email: body.email } : {}),
     })
     .eq("id", user.id)
     .select("*")
@@ -102,6 +109,15 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   if (userError) throw new ApiError(500, userError.message);
 
   const joinLink = `${req.nextUrl.origin}/join/${building.join_code}`;
+  await logAudit({
+    buildingId: building.id,
+    actorId: user.id,
+    action: "building_created",
+    entityType: "building",
+    entityId: building.id,
+    details: { name: building.name, apartments: body.apartmentCount },
+  });
+
   return NextResponse.json(
     { building, user: updatedUser, joinLink },
     { status: 201 },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, getCurrentUser, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const createSchema = z.object({
@@ -12,7 +13,8 @@ const createSchema = z.object({
     .array(
       z.object({
         title: z.string().min(2).max(255),
-        options: z.array(z.string().min(1)).min(2),
+        options: z.array(z.string().min(1).max(100)).min(2).max(12),
+        allowMultiple: z.boolean().default(false),
       }),
     )
     .optional(),
@@ -59,10 +61,24 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         building_id: user.building_id,
         title: v.title,
         options: v.options,
+        allow_multiple: v.allowMultiple,
       })),
     );
     if (voteError) throw new ApiError(500, voteError.message);
   }
+
+  await logAudit({
+    buildingId: user.building_id,
+    actorId: user.id,
+    action: "meeting_created",
+    entityType: "meeting",
+    entityId: meeting.id,
+    details: {
+      title: body.title,
+      date: body.meetingDate,
+      votes: body.votes?.length ?? 0,
+    },
+  });
 
   return NextResponse.json({ meeting }, { status: 201 });
 });

@@ -179,6 +179,7 @@ CREATE TABLE tickets (
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     image_path TEXT,
+    location VARCHAR(100),
     status ticket_status NOT NULL DEFAULT 'open',
     assigned_vendor_agent_id UUID REFERENCES vendor_agents(id),
     agent_status agent_execution_status NOT NULL DEFAULT 'idle',
@@ -741,3 +742,188 @@ BEGIN
         );
     END LOOP;
 END $$;
+-- ====================================================================
+-- 0008_login_trial.sql
+-- Login/onboarding revamp + monetization:
+--  * users.email (optional but recommended)
+--  * join_requests carry the tenant's full profile so the Vaad can
+--    review everything (occupants, floor, parking, email, document)
+--    before approving.
+--  * buildings get a subscription: self-created buildings start on a
+--    14-day trial; the super admin activates (paid), blocks, or
+--    extends. Expired trials lose data access.
+-- ====================================================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+
+ALTER TABLE join_requests
+    ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS num_occupants INT,
+    ADD COLUMN IF NOT EXISTS floor INT,
+    ADD COLUMN IF NOT EXISTS parking_spot VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS doc_path TEXT;
+
+DO $$ BEGIN
+    CREATE TYPE plan_status AS ENUM ('trial', 'active', 'blocked');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+ALTER TABLE buildings
+    ADD COLUMN IF NOT EXISTS plan_status plan_status NOT NULL DEFAULT 'trial',
+    ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ
+        NOT NULL DEFAULT (NOW() + INTERVAL '14 days');
+
+-- Buildings that already exist were provisioned by the super admin —
+-- treat them as paid so nothing breaks for current users.
+UPDATE buildings SET plan_status = 'active' WHERE plan_status = 'trial';
+-- ====================================================================
+-- 0009_contact_requests.sql
+-- "Contact us" requests (e.g. a Vaad wanting to subscribe after the
+-- 14-day trial). Stored in the DB so nothing is lost even when the
+-- outgoing email provider isn't configured.
+-- ====================================================================
+
+CREATE TABLE IF NOT EXISTS contact_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    building_id UUID REFERENCES buildings(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(30) NOT NULL,
+    email VARCHAR(255),
+    message TEXT NOT NULL,
+    topic VARCHAR(50) NOT NULL DEFAULT 'subscription',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE contact_requests ENABLE ROW LEVEL SECURITY;
+-- Only the service role (API) touches this table; no user policies.
+-- ====================================================================
+-- 0010_join_docs.sql
+-- Join-request documents, round two:
+--  * Tenants are asked for an Arnona bill (shows the apartment's sqm,
+--    which drives per-sqm Vaad fees) and a proof of residence
+--    (rent/purchase agreement). Stored separately so the Vaad knows
+--    which is which.
+--  * The Vaad can make these uploads mandatory for their building.
+-- ====================================================================
+
+ALTER TABLE buildings
+    ADD COLUMN IF NOT EXISTS require_join_docs BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE join_requests
+    ADD COLUMN IF NOT EXISTS arnona_doc_path TEXT;
+-- ====================================================================
+-- 0011_expense_details.sql
+-- Richer expense records: free-text description and the provider
+-- (vendor) the expense was paid to.
+-- ====================================================================
+
+ALTER TABLE expenses
+    ADD COLUMN IF NOT EXISTS description TEXT,
+    ADD COLUMN IF NOT EXISTS provider VARCHAR(255);
+-- ====================================================================
+-- 0013_audit_log.sql — building activity trail
+--
+-- One row per meaningful action (tenant joined, vote cast, meeting
+-- created, payment marked, ...). Written server-side by the API with
+-- the service key; read via GET /api/audit-logs (Vaad sees their
+-- building, super admin sees everything).
+-- action  = stable machine key, localized by the clients
+-- details = small JSON blob with action-specific context
+-- ====================================================================
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    building_id UUID REFERENCES buildings(id) ON DELETE CASCADE,
+    actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(60) NOT NULL,
+    entity_type VARCHAR(40),
+    entity_id UUID,
+    details JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_building
+    ON audit_logs (building_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created
+    ON audit_logs (created_at DESC);
+
+-- Server-only table: no client RLS policies; the API uses the service
+-- key and scopes reads itself.
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Live updates on the building topic, same as other scoped tables.
+DROP TRIGGER IF EXISTS trg_audit_logs_notify ON audit_logs;
+CREATE TRIGGER trg_audit_logs_notify
+    AFTER INSERT ON audit_logs
+    FOR EACH ROW EXECUTE FUNCTION notify_building_change();
+-- ====================================================================
+-- 0014_tenancies.sql — apartment occupancy history (rentals)
+--
+-- Buildings have rental units whose holders change over time. Each
+-- tenancy row is one holding period: who held the apartment, as owner
+-- or renter, from when to when. Ending a tenancy records what was
+-- decided about open debts. History survives the user leaving.
+-- status: active  — current holder
+--         pending — incoming holder who hasn't completed details yet
+--         ended   — past holder (ended_at set)
+-- ====================================================================
+
+CREATE TABLE IF NOT EXISTS tenancies (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    apartment_id UUID NOT NULL REFERENCES apartments(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    full_name VARCHAR(255),
+    phone_number VARCHAR(20),
+    holder_type VARCHAR(10) NOT NULL DEFAULT 'renter', -- owner | renter
+    num_occupants INT,
+    started_at DATE NOT NULL DEFAULT CURRENT_DATE,
+    ended_at DATE,
+    -- keep_with_outgoing | transfer_to_owner | closed
+    end_debt_policy VARCHAR(30),
+    status VARCHAR(12) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tenancies_apartment
+    ON tenancies (apartment_id, started_at DESC);
+
+ALTER TABLE tenancies ENABLE ROW LEVEL SECURITY;
+-- Server-only table: the API uses the service key and scopes access.
+
+-- Live updates on the building topic.
+DROP TRIGGER IF EXISTS trg_tenancies_notify ON tenancies;
+CREATE TRIGGER trg_tenancies_notify
+    AFTER INSERT OR UPDATE OR DELETE ON tenancies
+    FOR EACH ROW EXECUTE FUNCTION notify_building_change();
+
+-- Backfill: every resident currently attached to an apartment becomes
+-- an open tenancy that started when their profile was created.
+INSERT INTO tenancies (building_id, apartment_id, user_id, full_name, phone_number, num_occupants, started_at, status)
+SELECT u.building_id, u.apartment_id, u.id, u.full_name, u.phone_number,
+       u.num_occupants, u.created_at::date, 'active'
+FROM users u
+WHERE u.apartment_id IS NOT NULL
+  AND u.building_id IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM tenancies t
+      WHERE t.user_id = u.id AND t.apartment_id = u.apartment_id
+  );
+-- ====================================================================
+-- 0015_vote_multi.sql — WhatsApp-style polls
+--
+-- Votes get custom answer options (already JSONB) plus an
+-- allow_multiple flag. Ballots become one row per selected option so a
+-- multi-answer poll stores each pick; single-answer polls are enforced
+-- by the API. The apartment-level "already voted" check now spans all
+-- of the unit's ballot rows.
+-- ====================================================================
+
+ALTER TABLE votes ADD COLUMN IF NOT EXISTS allow_multiple BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE vote_ballots DROP CONSTRAINT IF EXISTS vote_ballots_vote_id_apartment_id_key;
+ALTER TABLE vote_ballots DROP CONSTRAINT IF EXISTS vote_ballots_vote_apartment_option_key;
+ALTER TABLE vote_ballots
+    ADD CONSTRAINT vote_ballots_vote_apartment_option_key
+    UNIQUE (vote_id, apartment_id, selected_option);

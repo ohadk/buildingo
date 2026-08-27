@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, withErrorHandling } from "@/lib/auth/session";
+import { getCurrentUserWithAccess, withErrorHandling } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-/** GET /api/auth/me — current profile + building/apartment context. */
+/**
+ * GET /api/auth/me — current profile + building/apartment context.
+ * Never fails for a blocked/expired building: returns `blockedReason`
+ * so the app can show a "trial ended / access suspended" screen.
+ */
 export const GET = withErrorHandling(async (req: NextRequest) => {
-  const user = await getCurrentUser(req);
+  const { user, blockedReason } = await getCurrentUserWithAccess(req);
   const db = supabaseAdmin();
 
   const [building, apartment, joinRequest] = await Promise.all([
@@ -20,7 +24,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       ? Promise.resolve({ data: null })
       : db
           .from("join_requests")
-          .select("id, status, apartment_number, created_at, buildings(name, address, city)")
+          .select(
+            "id, status, apartment_number, created_at, buildings(name, address, city)",
+          )
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -32,5 +38,6 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     building: building.data,
     apartment: apartment.data,
     joinRequest: joinRequest.data,
+    blockedReason,
   });
 });

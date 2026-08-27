@@ -394,6 +394,153 @@ class AppLocalizationsHe extends AppLocalizations {
   String get newAssembly => 'אסיפה חדשה';
 
   @override
+  String get activityLog => 'יומן פעילות';
+
+  @override
+  String get activityEmptyTitle => 'אין פעילות עדיין';
+
+  @override
+  String get activityEmptyBody =>
+      'כל פעולה בבניין — הצטרפות דיירים, קריאות, אסיפות, הצבעות ותשלומים — תתועד כאן.';
+
+  @override
+  String get auditTenantJoined => 'דייר הצטרף';
+
+  @override
+  String get auditJoinRequested => 'בקשת הצטרפות';
+
+  @override
+  String get auditJoinRejected => 'בקשה נדחתה';
+
+  @override
+  String get auditTicketCreated => 'נפתחה קריאה';
+
+  @override
+  String get auditTicketDispatched => 'קריאה שוגרה לספק';
+
+  @override
+  String get auditTicketStatus => 'עדכון סטטוס קריאה';
+
+  @override
+  String get auditMeetingCreated => 'נקבעה אסיפה';
+
+  @override
+  String get auditMeetingClosed => 'אסיפה נסגרה';
+
+  @override
+  String get auditVoteCast => 'הצבעה';
+
+  @override
+  String get auditPaymentMarked => 'סימון תשלום';
+
+  @override
+  String get auditPaymentsBulk => 'סימון תשלומים מרוכז';
+
+  @override
+  String get auditExpenseAdded => 'נרשמה הוצאה';
+
+  @override
+  String get auditAnnouncement => 'פורסמה הודעה';
+
+  @override
+  String get auditVendorAdded => 'נוסף סוכן ספק';
+
+  @override
+  String get auditVendorUpdated => 'עודכן סוכן ספק';
+
+  @override
+  String get auditVendorDeleted => 'נמחק סוכן ספק';
+
+  @override
+  String get auditBuildingCreated => 'הבניין נוצר';
+
+  @override
+  String get auditVaadInvited => 'נשלחה הזמנה';
+
+  @override
+  String get meetingsEmptyTitle => 'אין אסיפות עדיין';
+
+  @override
+  String get meetingsEmptyBody =>
+      'כאן מתכננים אסיפות דיירים, מצביעים על החלטות ומפרסמים סיכומים לכל הבניין.';
+
+  @override
+  String get residentsAssembly => 'אסיפת דיירים';
+
+  @override
+  String get meetingLocationLabel => 'מיקום';
+
+  @override
+  String get agendaItems => 'סעיפים לדיון';
+
+  @override
+  String get agendaItemsHint =>
+      'הוסיפו סעיפים לסדר היום — כל סעיף יכול להיות דיון או הצבעה.';
+
+  @override
+  String get newAgendaItem => 'סעיף חדש';
+
+  @override
+  String get withVote => 'עם הצבעה';
+
+  @override
+  String get addItem => 'הוספה';
+
+  @override
+  String get voteChip => 'הצבעה';
+
+  @override
+  String get discussionChip => 'דיון';
+
+  @override
+  String get createMeetingCta => 'יצירת אסיפה';
+
+  @override
+  String get whatToCreate => 'מה תרצו ליצור?';
+
+  @override
+  String get ticketLocationLabel => 'מיקום התקלה';
+
+  @override
+  String get locLobby => 'לובי';
+
+  @override
+  String get locStairwell => 'חדר מדרגות';
+
+  @override
+  String get locElevator => 'מעלית';
+
+  @override
+  String get locParking => 'חניה';
+
+  @override
+  String get locRoof => 'גג';
+
+  @override
+  String get locYard => 'חצר';
+
+  @override
+  String get addPhoto => 'צירוף תמונה';
+
+  @override
+  String get removePhoto => 'הסרת תמונה';
+
+  @override
+  String get messageToBuilding => 'הודעה לבניין';
+
+  @override
+  String get announcementBody => 'תוכן ההודעה';
+
+  @override
+  String get announcementSubtitle => 'תישלח לכל דיירי הבניין';
+
+  @override
+  String get publishAnnouncement => 'פרסום ההודעה';
+
+  @override
+  String get announcementPublished => 'ההודעה פורסמה לדיירים';
+
+  @override
   String get agenda => 'סדר יום';
 
   @override
@@ -727,4 +874,444 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get invitePending => 'הוזמן · ממתין לחיבור';
+
+  @override
+  String get findBuildingHint =>
+      'חפשו לפי עיר וכתובת — בחרו מההשלמות כדי שנמצא התאמה מדויקת.';
+
+  @override
+  String get pickCityFirst => 'בחרו קודם עיר';
+
+  @override
+  String get askVaadInviteHint =>
+      'לא מוצאים את הבניין? בקשו מוועד הבית לשלוח לכם הזמנה אישית או את קישור ההצטרפות של הבניין.';
+
+  @override
+  String get tenantProfileTitle => 'הפרטים שלך';
+
+  @override
+  String get tenantProfileHint =>
+      'הפרטים נשלחים לוועד הבית, שמאשר את הבקשה שלך.';
+
+  @override
+  String get floorLabel => 'קומה';
+
+  @override
+  String get numOccupantsLabel => 'מס׳ דיירים';
+
+  @override
+  String get parkingOptional => 'חניה (לא חובה)';
+
+  @override
+  String get attachDocOptional => 'צירוף מסמך (לא חובה)';
+
+  @override
+  String get sendJoinRequest => 'שליחת בקשת הצטרפות';
+
+  @override
+  String occupantsN(String n) {
+    return '$n דיירים בדירה';
+  }
+
+  @override
+  String get viewAttachedDoc => 'צפייה במסמך המצורף';
+
+  @override
+  String get docsSection => 'מסמכים מומלצים';
+
+  @override
+  String get docsSectionRequired => 'מסמכים חובה';
+
+  @override
+  String get docsExplain =>
+      'חשבון הארנונה מציג את גודל הדירה (מ\"ר) — הוא משפיע על גובה דמי הוועד. ההסכם מאשר שאתם גרים בדירה.';
+
+  @override
+  String get attachArnona => 'חשבון ארנונה';
+
+  @override
+  String get arnonaHint => 'מציג את גודל הדירה במ\"ר';
+
+  @override
+  String get attachResidence => 'אישור מגורים';
+
+  @override
+  String get residenceHint => 'חוזה שכירות או הסכם רכישה';
+
+  @override
+  String get optional => 'אופציונלי';
+
+  @override
+  String get requireDocsTitle => 'לדרוש מסמכים בהצטרפות';
+
+  @override
+  String get requireDocsSubtitle =>
+      'דיירים חדשים יחויבו לצרף חשבון ארנונה ואישור מגורים';
+
+  @override
+  String get joinRequestPending => 'בקשת הצטרפות ממתינה לאישור';
+
+  @override
+  String get financesTitle => 'כספים';
+
+  @override
+  String get expensesTab => 'הוצאות';
+
+  @override
+  String collectionSummary(String count, String pct, String amount) {
+    return '$count דירות · $pct% נגבו · חוב $amount';
+  }
+
+  @override
+  String get allApartments => 'כל הדירות';
+
+  @override
+  String get onlyWithDebt => 'רק עם חוב';
+
+  @override
+  String get collapseAll => 'כיווץ הכל';
+
+  @override
+  String get apartmentColumn => 'דירה';
+
+  @override
+  String get debtColumn => 'חוב';
+
+  @override
+  String aptTiny(String n) {
+    return 'ד׳ $n';
+  }
+
+  @override
+  String debtAmount(String amount) {
+    return 'חוב $amount';
+  }
+
+  @override
+  String get noDebt => 'ללא חוב';
+
+  @override
+  String get markFloorPaid => 'סימון הקומה כשולמה';
+
+  @override
+  String get residentsSection => 'דיירים';
+
+  @override
+  String occupiedOfTotal(String occupied, String total) {
+    return '$occupied/$total מאוכלסות';
+  }
+
+  @override
+  String get searchResidents => 'חיפוש לפי שם, טלפון או דירה';
+
+  @override
+  String get pendingInvitesSection => 'הזמנות ממתינות';
+
+  @override
+  String get noDocsForApartment => 'לא צורפו מסמכים';
+
+  @override
+  String sqmShort(String n) {
+    return '$n מ״ר';
+  }
+
+  @override
+  String get currentPeriod => 'תקופה נוכחית';
+
+  @override
+  String get statusPaid => 'שולם';
+
+  @override
+  String get statusUnpaid => 'לא שולם';
+
+  @override
+  String get statusPending => 'ממתין';
+
+  @override
+  String get statusOverdue => 'בפיגור';
+
+  @override
+  String get noApartmentsYet => 'עוד לא הוגדרו דירות';
+
+  @override
+  String get noExpensesYet => 'עוד לא נרשמו הוצאות';
+
+  @override
+  String get providerOptional => 'ספק (אופציונלי)';
+
+  @override
+  String get descriptionOptional => 'תיאור (אופציונלי)';
+
+  @override
+  String get attachReceipt => 'צירוף קבלה (אופציונלי)';
+
+  @override
+  String get viewReceipt => 'צפייה בקבלה';
+
+  @override
+  String get expenseSaved => 'ההוצאה נשמרה';
+
+  @override
+  String joinApprovedSnack(String name) {
+    return '$name אושר/ה והצטרף/ה לבניין';
+  }
+
+  @override
+  String joinRejectedSnack(String name) {
+    return 'הבקשה של $name נדחתה';
+  }
+
+  @override
+  String get viewArnonaDoc => 'צפייה בחשבון הארנונה';
+
+  @override
+  String get viewResidenceDoc => 'צפייה באישור המגורים';
+
+  @override
+  String get myBuilding => 'הבניין שלי';
+
+  @override
+  String get trialNotice =>
+      '14 ימי ניסיון חינם: גישה מלאה לכל הבניין. לאחר מכן רק ₪4.90 לדירה לחודש — צרו קשר להפעלת מנוי.';
+
+  @override
+  String get trialEndedTitle => 'תקופת הניסיון הסתיימה';
+
+  @override
+  String get trialEndedBody =>
+      '14 ימי הניסיון של הבניין הסתיימו. כל המידע שלכם שמור ומחכה לכם.';
+
+  @override
+  String get accessBlockedTitle => 'הגישה מושהית';
+
+  @override
+  String get accessBlockedBody =>
+      'הגישה של הבניין הושהתה. צרו קשר כדי לשחזר אותה — כל המידע נשמר.';
+
+  @override
+  String get pricingLine => '₪4.90 לדירה / לחודש';
+
+  @override
+  String get likeItContactUs =>
+      'אהבתם את Buildingo? צרו איתנו קשר ונפעיל את המנוי לבניין — בלי תשלום בתוך האפליקציה.';
+
+  @override
+  String get contactUs => 'צרו קשר';
+
+  @override
+  String get contactFormHint => 'השאירו פרטים ונחזור אליכם בהקדם.';
+
+  @override
+  String get contactMessage => 'הודעה';
+
+  @override
+  String get contactSend => 'שליחה';
+
+  @override
+  String get invalidPhone => 'מספר טלפון לא תקין';
+
+  @override
+  String get contactSentTitle => 'ההודעה נשלחה!';
+
+  @override
+  String get contactSentBody => 'תודה! קיבלנו את ההודעה ונחזור אליכם בקרוב.';
+
+  @override
+  String get transferHolder => 'החלפת מחזיק';
+
+  @override
+  String get holdersHistory => 'היסטוריית מחזיקים';
+
+  @override
+  String get currentHolder => 'מחזיק נוכחי';
+
+  @override
+  String get pendingHolder => 'ממתין להשלמת פרטים';
+
+  @override
+  String get holderOwner => 'בעלים';
+
+  @override
+  String get holderRenter => 'שוכר/ת';
+
+  @override
+  String get noPreviousHolders => 'ללא מחזיקים קודמים';
+
+  @override
+  String previousHoldersN(String n) {
+    return '$n מחזיקים קודמים';
+  }
+
+  @override
+  String periodSince(String date) {
+    return 'מאז $date';
+  }
+
+  @override
+  String get newHolderFallback => 'מחזיק חדש';
+
+  @override
+  String get noPhone => 'ללא טלפון';
+
+  @override
+  String apartmentCardTitle(String n) {
+    return 'כרטיס דירה $n';
+  }
+
+  @override
+  String get stepEndTenancy => 'סיום החזקה';
+
+  @override
+  String get stepIncomingHolder => 'המחזיק הנכנס';
+
+  @override
+  String get stepConfirmTransfer => 'אישור והעברה';
+
+  @override
+  String endTenancyTitle(String name) {
+    return 'סיום החזקה — $name';
+  }
+
+  @override
+  String get endTenancyBody =>
+      'הכרטיס של הדירה נשמר במלואו. המחזיק היוצא עובר לארכיון עם התקופה שלו, וההיסטוריה נשארת מקושרת לדירה.';
+
+  @override
+  String get endDateLabel => 'תאריך קובע לסיום';
+
+  @override
+  String get debtQuestion => 'מה קורה לחיובים הפתוחים';
+
+  @override
+  String get debtKeepTitle => 'החוב נשאר על השוכר היוצא';
+
+  @override
+  String get debtKeepBody =>
+      'החיובים הפתוחים נרשמים על שמו וממשיכים במעקב הגבייה';
+
+  @override
+  String get debtOwnerTitle => 'החוב מועבר לבעל הדירה';
+
+  @override
+  String get debtOwnerBody => 'הוועד יגבה מהבעלים לפי סעיף החוזה';
+
+  @override
+  String get debtCloseTitle => 'סגירת החוב';
+
+  @override
+  String get debtCloseBody => 'החוב נמחק בהחלטת ועד — יירשם ביומן הבניין';
+
+  @override
+  String incomingDetailsBody(String n, String date) {
+    return 'הפרטים ישויכו לדירה $n מהתאריך $date.';
+  }
+
+  @override
+  String get modeSelfTitle => 'המחזיק ימלא בעצמו';
+
+  @override
+  String get modeSelfBody =>
+      'שולחים קישור ב-SMS. הוא מאמת טלפון וממלא שם, נפשות וחוזה — הדירה מסומנת \"ממתין להשלמת פרטים\" עד אז.';
+
+  @override
+  String get modeVaadTitle => 'מילוי ידני ע\"י הוועד';
+
+  @override
+  String get modeVaadBody =>
+      'ממלאים את הפרטים כאן ועכשיו. אפשר לשלוח קישור בהמשך.';
+
+  @override
+  String get optionalField => 'לא חובה';
+
+  @override
+  String get mobilePhoneLabel => 'טלפון נייד';
+
+  @override
+  String get holderTypeLabel => 'סוג החזקה';
+
+  @override
+  String get startDateLabel => 'תאריך תחילת החזקה';
+
+  @override
+  String get sendSmsOnTransfer => 'שליחת הקישור ב-SMS מיד עם אישור ההעברה';
+
+  @override
+  String get linkExplainTitle => 'מה המחזיק ימלא';
+
+  @override
+  String get linkStepOtp => 'אימות מספר טלפון בקוד SMS';
+
+  @override
+  String get linkStepProfile => 'שם מלא ומספר נפשות';
+
+  @override
+  String get linkStepContract => 'העלאת חוזה שכירות · לא חובה';
+
+  @override
+  String get linkStepConfirm => 'אישור פרטי חניה ותקשורת';
+
+  @override
+  String get selfCompleteNote => 'המחזיק ימלא את פרטיו דרך הקישור';
+
+  @override
+  String get keptOnCardTitle => 'נשמר בכרטיס הדירה';
+
+  @override
+  String get keptOnCardBody =>
+      'היסטוריית תשלומים, קריאות תחזוקה, קבלות הדירה ופרוטוקולי אסיפות';
+
+  @override
+  String get movesToNewTitle => 'עובר למחזיק החדש';
+
+  @override
+  String get movesToNewBody =>
+      'החיובים מהתאריך הקובע, גישה ללוח הבניין, ספר הדיירים והצבעות';
+
+  @override
+  String get staysWithOutgoingTitle => 'נשאר אצל המחזיק היוצא';
+
+  @override
+  String get staysWithOutgoingBody =>
+      'חוזה השכירות והמסמכים האישיים שלו · הגישה לאפליקציה נחסמת בתאריך הקובע';
+
+  @override
+  String get transferLogNote =>
+      'ההעברה תירשם ביומן הבניין עם שם המאשר והתאריך. ניתן לצפות בכל המחזיקים הקודמים בכרטיס הדירה.';
+
+  @override
+  String get confirmAndTransfer => 'אישור והעברת הדירה';
+
+  @override
+  String get backBtn => 'חזרה';
+
+  @override
+  String get transferDone => 'המחזיק הוחלף בהצלחה';
+
+  @override
+  String get auditTenantTransferred => 'החלפת מחזיק';
+
+  @override
+  String get pollOptionsLabel => 'אפשרויות תשובה';
+
+  @override
+  String optionHint(String n) {
+    return 'אפשרות $n';
+  }
+
+  @override
+  String get addOption => 'הוספת אפשרות';
+
+  @override
+  String get allowMultipleAnswers => 'אפשר לבחור כמה תשובות';
+
+  @override
+  String get multiChoiceChip => 'בחירה מרובה';
+
+  @override
+  String optionsCount(String n) {
+    return '$n אפשרויות';
+  }
+
+  @override
+  String get submitVote => 'שליחת הצבעה';
 }

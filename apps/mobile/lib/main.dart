@@ -9,6 +9,7 @@ import 'core/session.dart';
 import 'core/theme.dart';
 import 'firebase_options.dart';
 import 'l10n/l10n.dart';
+import 'screens/blocked_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
@@ -117,6 +118,11 @@ class _SessionGateState extends State<_SessionGate> {
           ),
         ),
       );
+    }
+    // Subscription lapsed (trial over / blocked by the super admin):
+    // freeze the app behind a friendly paywall screen.
+    if (session.blockedReason != null) {
+      return BlockedScreen(reason: session.blockedReason!);
     }
     if (session.user!.needsOnboarding) {
       // Not attached to any building yet → self-service entry point

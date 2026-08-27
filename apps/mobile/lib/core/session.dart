@@ -13,6 +13,9 @@ class SessionController extends ChangeNotifier {
   Building? building;
   Apartment? apartment;
   JoinRequest? joinRequest;
+
+  /// Non-null when the building lost access: 'trial_expired' | 'blocked'.
+  String? blockedReason;
   bool loading = false;
   String? error;
 
@@ -52,7 +55,8 @@ class SessionController extends ChangeNotifier {
     joinRequest = data['joinRequest'] != null
         ? JoinRequest.fromJson(data['joinRequest'])
         : null;
-    realtime.setBuilding(building?.id);
+    blockedReason = data['blockedReason'];
+    realtime.setBuilding(blockedReason == null ? building?.id : null);
     notifyListeners();
   }
 
@@ -65,30 +69,58 @@ class SessionController extends ChangeNotifier {
   }
 
   /// Join by code — either a personal invite code or a building
-  /// join link code shared by the Vaad.
+  /// join link code shared by the Vaad. Building codes take the full
+  /// tenant profile so the Vaad can review it.
   Future<void> joinWithCode(
     String code, {
     int? apartmentNumber,
     String? fullName,
+    String? email,
+    int? numOccupants,
+    int? floor,
+    String? parkingSpot,
+    String? docPath,
+    String? arnonaDocPath,
   }) async {
     await api.post('/api/join', {
       'code': code,
       'apartmentNumber': ?apartmentNumber,
       if (fullName != null && fullName.isNotEmpty) 'fullName': fullName,
+      if (email != null && email.isNotEmpty) 'email': email,
+      'numOccupants': ?numOccupants,
+      'floor': ?floor,
+      if (parkingSpot != null && parkingSpot.isNotEmpty)
+        'parkingSpot': parkingSpot,
+      'docPath': ?docPath,
+      'arnonaDocPath': ?arnonaDocPath,
     });
     await refreshMe();
   }
 
-  /// Tenant asks to join a building found by address; Vaad approves.
+  /// Tenant asks to join a building found by address; Vaad approves
+  /// after reviewing the full profile.
   Future<void> requestJoin({
     required String buildingId,
     required int apartmentNumber,
     required String fullName,
+    String? email,
+    int? numOccupants,
+    int? floor,
+    String? parkingSpot,
+    String? docPath,
+    String? arnonaDocPath,
   }) async {
     await api.post('/api/join-requests', {
       'buildingId': buildingId,
       'apartmentNumber': apartmentNumber,
       'fullName': fullName,
+      if (email != null && email.isNotEmpty) 'email': email,
+      'numOccupants': ?numOccupants,
+      'floor': ?floor,
+      if (parkingSpot != null && parkingSpot.isNotEmpty)
+        'parkingSpot': parkingSpot,
+      'docPath': ?docPath,
+      'arnonaDocPath': ?arnonaDocPath,
     });
     await refreshMe();
   }
@@ -96,10 +128,12 @@ class SessionController extends ChangeNotifier {
   Future<void> completeOnboarding({
     required String fullName,
     required int numOccupants,
+    String? email,
   }) async {
     await api.post('/api/onboarding', {
       'fullName': fullName,
       'numOccupants': numOccupants,
+      if (email != null && email.isNotEmpty) 'email': email,
     });
     await refreshMe();
   }
@@ -111,6 +145,7 @@ class SessionController extends ChangeNotifier {
     building = null;
     apartment = null;
     joinRequest = null;
+    blockedReason = null;
     notifyListeners();
   }
 }

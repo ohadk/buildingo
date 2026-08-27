@@ -19,6 +19,10 @@ export const env = {
   get firebaseServiceAccountPath() {
     return required("FIREBASE_SERVICE_ACCOUNT_PATH");
   },
+  /** Where "contact us" (subscription) requests are emailed. */
+  get contactEmail() {
+    return process.env.CONTACT_EMAIL || null;
+  },
   sendgrid: {
     get apiKey() {
       return process.env.SENDGRID_API_KEY || null;

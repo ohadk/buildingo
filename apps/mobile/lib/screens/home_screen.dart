@@ -10,6 +10,7 @@ import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import '../widgets/invite_sheet.dart';
 import '../widgets/ticket_timeline.dart';
+import 'activity_log_screen.dart';
 import 'maintenance_screen.dart';
 import 'meetings_screen.dart';
 
@@ -30,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Ticket> _tickets = [];
   List<Announcement> _announcements = [];
   List<Payment> _payments = [];
-  int _pendingJoinRequests = 0;
+  List<JoinRequest> _joinRequests = [];
   bool _loading = true;
   StreamSubscription<String>? _realtimeSub;
 
@@ -74,9 +75,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _payments = ((results[2]['payments'] ?? []) as List)
             .map((p) => Payment.fromJson(p))
             .toList();
-        _pendingJoinRequests = isVaad
-            ? ((results[3]['joinRequests'] ?? []) as List).length
-            : 0;
+        _joinRequests = isVaad
+            ? ((results[3]['joinRequests'] ?? []) as List)
+                  .map((e) => JoinRequest.fromJson(e))
+                  .toList()
+            : [];
         _loading = false;
       });
     } on ApiException {
@@ -87,6 +90,32 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Ticket> get _openTickets => _tickets
       .where((t) => ['open', 'approved', 'in_progress'].contains(t.status))
       .toList();
+
+  Future<void> _decideJoin(JoinRequest request, bool approve) async {
+    try {
+      await api.patch('/api/join-requests/${request.id}', {
+        'action': approve ? 'approve' : 'reject',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              approve
+                  ? context.l10n.joinApprovedSnack(request.fullName ?? '')
+                  : context.l10n.joinRejectedSnack(request.fullName ?? ''),
+            ),
+          ),
+        );
+      }
+      await _load();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
 
 
   @override
@@ -163,6 +192,19 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (isVaad)
+                    IconButton(
+                      tooltip: l10n.activityLog,
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ActivityLogScreen(),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.history_rounded,
+                        color: DiraColors.brickDark,
+                      ),
+                    ),
                   IconButton(
                     tooltip: l10n.assemblies,
                     onPressed: () => Navigator.of(context).push(
@@ -264,15 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          if (isVaad && _pendingJoinRequests > 0) ...[
+          if (isVaad && _joinRequests.isNotEmpty) ...[
             const SizedBox(height: 10),
-            InkWell(
-              onTap: () => widget.onNavigate(3),
-              borderRadius: BorderRadius.circular(16),
-              child: _GoldBanner(
-                kicker: l10n.newResidents,
-                title: l10n.pendingJoinBanner('$_pendingJoinRequests'),
-              ),
+            _JoinRequestsBanner(
+              requests: _joinRequests,
+              onDecide: _decideJoin,
+              onSeeAll: () => widget.onNavigate(3),
             ),
           ] else if (_announcements.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -801,6 +840,127 @@ class _QuickAction extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Gold hero strip for pending join requests: each row shows the
+/// requester's name + apartment with instant approve/reject buttons.
+/// Tapping a row opens the residents tab for the full details.
+class _JoinRequestsBanner extends StatelessWidget {
+  final List<JoinRequest> requests;
+  final void Function(JoinRequest request, bool approve) onDecide;
+  final VoidCallback onSeeAll;
+
+  const _JoinRequestsBanner({
+    required this.requests,
+    required this.onDecide,
+    required this.onSeeAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+      decoration: BoxDecoration(
+        color: DiraColors.goldLight,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.person_add_alt_1_rounded,
+                color: DiraColors.goldDark,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                l10n.newResidents,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: DiraColors.goldDark.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+          ...requests.take(3).map(
+            (r) => InkWell(
+              onTap: onSeeAll,
+              borderRadius: BorderRadius.circular(10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          r.fullName ?? r.phoneNumber ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: DiraColors.goldDark,
+                          ),
+                        ),
+                        if (r.apartmentNumber != null)
+                          Text(
+                            l10n.apartmentShort('${r.apartmentNumber}'),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: DiraColors.goldDark.withValues(alpha: 0.75),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: l10n.approve,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.check_circle_rounded,
+                      color: DiraColors.sageDark,
+                      size: 28,
+                    ),
+                    onPressed: () => onDecide(r, true),
+                  ),
+                  IconButton(
+                    tooltip: l10n.reject,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.cancel_rounded,
+                      color: DiraColors.brick,
+                      size: 28,
+                    ),
+                    onPressed: () => onDecide(r, false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (requests.length > 3)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: onSeeAll,
+                child: Text(
+                  '+${requests.length - 3}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: DiraColors.goldDark,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

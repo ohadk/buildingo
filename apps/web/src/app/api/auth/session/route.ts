@@ -8,6 +8,7 @@ import {
   SESSION_DURATION_MS,
   withErrorHandling,
 } from "@/lib/auth/session";
+import { activateTenancy } from "@/lib/tenancy";
 import type { AppUser } from "@/lib/types";
 
 const bodySchema = z.object({
@@ -43,6 +44,31 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .maybeSingle();
   if (existing.error) throw new ApiError(500, `User lookup failed: ${existing.error.message}`);
   let user = existing.data;
+
+  if (!user) {
+    // The Firebase account may have been recreated (new UID) for a phone
+    // we already know — e.g. reinstall or a recreated test user. The OTP
+    // proves ownership of the number, so re-link the profile to the new UID
+    // instead of inserting a duplicate.
+    const byPhone = await db
+      .from("users")
+      .select("*")
+      .eq("phone_number", phone)
+      .maybeSingle();
+    if (byPhone.error) {
+      throw new ApiError(500, `User lookup failed: ${byPhone.error.message}`);
+    }
+    if (byPhone.data) {
+      const { data: relinked, error } = await db
+        .from("users")
+        .update({ firebase_uid: decoded.uid })
+        .eq("id", byPhone.data.id)
+        .select("*")
+        .single();
+      if (error) throw new ApiError(500, error.message);
+      user = relinked;
+    }
+  }
 
   if (!user) {
     // Role resolution for first-time sign-ins
@@ -90,6 +116,16 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         .from("invitations")
         .update({ status: "accepted", accepted_by: created.id })
         .eq("id", invite.id);
+      if (invite.apartment_id) {
+        await activateTenancy({
+          id: created.id,
+          building_id: invite.building_id,
+          apartment_id: invite.apartment_id,
+          full_name: created.full_name,
+          phone_number: created.phone_number,
+          num_occupants: created.num_occupants,
+        });
+      }
     }
   } else if (!user.building_id && user.role !== "super_admin") {
     // Returning user who signed up before being invited: claim any pending
@@ -118,6 +154,16 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         .from("invitations")
         .update({ status: "accepted", accepted_by: user.id })
         .eq("id", invite.id);
+      if (invite.apartment_id) {
+        await activateTenancy({
+          id: user.id,
+          building_id: invite.building_id,
+          apartment_id: invite.apartment_id,
+          full_name: user.full_name,
+          phone_number: user.phone_number,
+          num_occupants: user.num_occupants,
+        });
+      }
     }
   }
 

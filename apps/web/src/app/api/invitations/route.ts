@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendSms } from "@/lib/notify";
+import { activateTenancy } from "@/lib/tenancy";
 
 const createSchema = z.object({
   apartmentId: z.string().uuid(),
@@ -85,6 +87,12 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       .update({ role, building_id: targetBuilding, apartment_id: apartmentId })
       .eq("id", existingUser.id);
     if (assignError) throw new ApiError(500, assignError.message);
+    await activateTenancy({
+      id: existingUser.id,
+      building_id: targetBuilding,
+      apartment_id: apartmentId,
+      phone_number: phoneNumber,
+    });
   }
 
   const sms = await sendSms(
@@ -95,6 +103,19 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       : `You've been invited to join your building on Dira (apartment ${apartment.apartment_number}). ` +
           `Sign in with this phone number to accept: https://dira.app — code ${invite.invite_code}`,
   );
+
+  await logAudit({
+    buildingId: targetBuilding,
+    actorId: user.id,
+    action: "vaad_invited",
+    entityType: "invitation",
+    entityId: invite.id,
+    details: {
+      role,
+      apartment: apartment.apartment_number,
+      immediate: Boolean(existingUser),
+    },
+  });
 
   return NextResponse.json(
     { invitation: invite, smsDelivery: sms, assignedImmediately: Boolean(existingUser) },

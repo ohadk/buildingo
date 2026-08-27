@@ -80,6 +80,90 @@ export function ToggleBuildingAccessButton({
   );
 }
 
+/**
+ * Subscription controls: activate (paid), block, or extend the trial by
+ * 14 days. Self-created buildings start on a 14-day trial and lose data
+ * access when it expires.
+ */
+export function SubscriptionControls({
+  buildingId,
+  planStatus,
+  trialEndsAt,
+}: {
+  buildingId: string;
+  planStatus: "trial" | "active" | "blocked";
+  trialEndsAt: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function update(body: Record<string, unknown>, key: string) {
+    setBusy(key);
+    setError(null);
+    const res = await fetch(`/api/buildings/${buildingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setBusy(null);
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "הפעולה נכשלה");
+      return;
+    }
+    router.refresh();
+  }
+
+  const daysLeft = Math.ceil(
+    (new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000,
+  );
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {planStatus !== "active" && (
+        <Button
+          size="sm"
+          disabled={busy != null}
+          onClick={() => update({ planStatus: "active" }, "activate")}
+        >
+          {busy === "activate" ? "מבצע…" : "הפעלת מנוי (שולם)"}
+        </Button>
+      )}
+      {planStatus !== "blocked" && (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="border-brick-600 text-brick-600"
+          disabled={busy != null}
+          onClick={() => {
+            if (window.confirm("לחסום את הבניין? כל המשתמשים יאבדו גישה מיידית.")) {
+              update({ planStatus: "blocked" }, "block");
+            }
+          }}
+        >
+          {busy === "block" ? "מבצע…" : "חסימת גישה"}
+        </Button>
+      )}
+      {planStatus !== "active" && (
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={busy != null}
+          onClick={() => update({ extendTrialDays: 14 }, "extend")}
+        >
+          {busy === "extend"
+            ? "מבצע…"
+            : daysLeft > 0
+              ? "הארכת ניסיון ב־14 יום"
+              : "חידוש ניסיון ל־14 יום"}
+        </Button>
+      )}
+      {error && <p className="w-full text-sm text-brick-600">{error}</p>}
+    </div>
+  );
+}
+
 export function ToggleUserAccessButton({
   userId,
   userName,

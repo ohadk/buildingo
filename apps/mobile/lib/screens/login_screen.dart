@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
@@ -129,6 +130,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.number,
                               textDirection: TextDirection.ltr,
                               maxLength: 6,
+                              autofocus: true,
+                              autofillHints: const [
+                                AutofillHints.oneTimeCode,
+                              ],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              // Verification continues automatically once
+                              // all 6 digits are in — no extra tap needed.
+                              onChanged: (v) {
+                                if (v.length == 6 && !_busy) _verifyCode();
+                              },
                               decoration: InputDecoration(
                                 labelText: l10n.smsCode,
                                 counterText: '',
@@ -139,7 +152,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           ElevatedButton(
                             onPressed:
                                 _busy ||
-                                    (!awaitingCode && _phoneE164.length < 8)
+                                    (!awaitingCode &&
+                                        !PhoneField.isValid(_phoneE164))
                                 ? null
                                 : (awaitingCode ? _verifyCode : _sendCode),
                             child: Text(

@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/api_client.dart';
 import '../core/models.dart';
 import '../core/realtime.dart';
@@ -10,6 +12,8 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
 
+/// Finances tab: two sub-tabs — the payment matrix (or the tenant's own
+/// dues) and the building expense ledger.
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
 
@@ -20,7 +24,18 @@ class PaymentsScreen extends StatefulWidget {
 class _PaymentsScreenState extends State<PaymentsScreen> {
   List<Payment> _payments = [];
   List<Expense> _expenses = [];
+  List<DirectoryEntry> _apartments = [];
   bool _loading = true;
+
+  /// Matrix filters: year (default current), half-year window so all
+  /// six month columns fit on screen, and an apartment filter.
+  int _year = DateTime.now().year;
+  int _half = DateTime.now().month <= 6 ? 0 : 1;
+  bool _onlyWithDebt = false;
+
+  /// Floor collapse state; unset floors default to "expanded when the
+  /// floor has debt".
+  final Map<int, bool> _expandedOverride = {};
   StreamSubscription<String>? _realtimeSub;
 
   @override
@@ -37,11 +52,14 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   Future<void> _load() async {
+    final isVaad = context.read<SessionController>().user?.isVaad ?? false;
     try {
-      final results = await Future.wait([
+      final futures = <Future<Map<String, dynamic>>>[
         api.get('/api/payments'),
         api.get('/api/expenses'),
-      ]);
+        if (isVaad) api.get('/api/directory'),
+      ];
+      final results = await Future.wait(futures);
       if (!mounted) return;
       setState(() {
         _payments = ((results[0]['payments'] ?? []) as List)
@@ -50,10 +68,153 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         _expenses = ((results[1]['expenses'] ?? []) as List)
             .map((e) => Expense.fromJson(e))
             .toList();
+        if (isVaad) {
+          _apartments = ((results[2]['directory'] ?? []) as List)
+              .map((e) => DirectoryEntry.fromJson(e))
+              .toList()
+            ..sort((a, b) => a.apartmentNumber.compareTo(b.apartmentNumber));
+        }
         _loading = false;
       });
     } on ApiException {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Matrix data helpers
+  // ------------------------------------------------------------------
+
+  List<DateTime> get _months =>
+      List.generate(6, (i) => DateTime(_year, _half * 6 + i + 1));
+
+  List<int> get _years {
+    final now = DateTime.now();
+    final years = <int>{now.year, now.year + 1, ..._payments.map((p) => p.year)};
+    return years.toList()..sort();
+  }
+
+  /// Whether an unpaid row already counts as debt (due date reached).
+  bool _isDue(Payment p) {
+    final now = DateTime.now();
+    return p.year < now.year || (p.year == now.year && p.month <= now.month);
+  }
+
+  /// All-time open debt for one apartment.
+  double _debtOf(String apartmentId) => _payments
+      .where(
+        (p) => p.apartmentId == apartmentId && p.status != 'paid' && _isDue(p),
+      )
+      .fold(0.0, (s, p) => s + p.amount);
+
+  String _cellKey(String apartmentId, int year, int month) =>
+      '$apartmentId|$year-$month';
+
+  Map<String, Payment> get _cellIndex => {
+    for (final p in _payments)
+      if (p.apartmentId != null) _cellKey(p.apartmentId!, p.year, p.month): p,
+  };
+
+  void _replaceCell(String apartmentId, DateTime month, Payment? replacement) {
+    _payments.removeWhere(
+      (p) =>
+          p.apartmentId == apartmentId &&
+          p.year == month.year &&
+          p.month == month.month,
+    );
+    if (replacement != null) _payments.add(replacement);
+  }
+
+  /// Optimistic toggle: flip the cell instantly, sync with the server in
+  /// the background and roll back (with an error message) on failure.
+  Future<void> _toggleCell(DirectoryEntry apt, DateTime month) async {
+    final previous = _cellIndex[_cellKey(apt.apartmentId, month.year, month.month)];
+    final newStatus = previous?.status == 'paid' ? 'pending' : 'paid';
+
+    setState(() {
+      _replaceCell(
+        apt.apartmentId,
+        month,
+        Payment(
+          id: previous?.id ?? 'optimistic',
+          apartmentId: apt.apartmentId,
+          month: month.month,
+          year: month.year,
+          amount: previous?.amount ?? 0,
+          status: newStatus,
+          apartmentNumber: apt.apartmentNumber,
+        ),
+      );
+    });
+
+    try {
+      final res = await api.patch('/api/payments', {
+        'apartmentId': apt.apartmentId,
+        'month': month.month,
+        'year': month.year,
+        'status': newStatus,
+      });
+      if (!mounted) return;
+      setState(
+        () => _replaceCell(apt.apartmentId, month, Payment.fromJson(res['payment'])),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _replaceCell(apt.apartmentId, month, previous));
+      _snack(e.message);
+    }
+  }
+
+  /// Quick actions ("whole floor paid" / "whole month paid"): flip all
+  /// unpaid cells optimistically, then sync in one bulk call.
+  Future<void> _bulkMark(
+    List<DirectoryEntry> apts,
+    List<DateTime> months,
+  ) async {
+    final index = _cellIndex;
+    final targets = <({DirectoryEntry apt, DateTime month})>[];
+    for (final apt in apts) {
+      for (final m in months) {
+        final p = index[_cellKey(apt.apartmentId, m.year, m.month)];
+        if (p?.status != 'paid') targets.add((apt: apt, month: m));
+      }
+    }
+    if (targets.isEmpty) return;
+
+    final snapshot = List<Payment>.from(_payments);
+    setState(() {
+      for (final t in targets) {
+        final prev =
+            index[_cellKey(t.apt.apartmentId, t.month.year, t.month.month)];
+        _replaceCell(
+          t.apt.apartmentId,
+          t.month,
+          Payment(
+            id: prev?.id ?? 'optimistic',
+            apartmentId: t.apt.apartmentId,
+            month: t.month.month,
+            year: t.month.year,
+            amount: prev?.amount ?? 0,
+            status: 'paid',
+            apartmentNumber: t.apt.apartmentNumber,
+          ),
+        );
+      }
+    });
+
+    try {
+      await api.post('/api/payments/bulk', {
+        'apartmentIds': apts.map((a) => a.apartmentId).toSet().toList(),
+        'months': months
+            .map((m) => {'month': m.month, 'year': m.year})
+            .toList(),
+        'status': 'paid',
+      });
+      await _load();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _payments = snapshot);
+      _snack(e.message);
     }
   }
 
@@ -78,67 +239,20 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
-  Future<void> _markPaid(Payment p) async {
-    try {
-      await api.patch('/api/payments', {'paymentId': p.id, 'status': 'paid'});
-      await _load();
-    } on ApiException catch (e) {
-      _snack(e.message);
-    }
-  }
-
   Future<void> _addExpense() async {
-    final title = TextEditingController();
-    final category = TextEditingController();
-    final amount = TextEditingController();
-    final saved = await showDialog<bool>(
+    final categories = _expenses.map((e) => e.category).toSet().toList();
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.l10n.recordExpense),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: title,
-              decoration: InputDecoration(labelText: ctx.l10n.titleLabel),
-            ),
-            TextField(
-              controller: category,
-              decoration: InputDecoration(
-                labelText: ctx.l10n.category,
-                hintText: ctx.l10n.categoryHint,
-              ),
-            ),
-            TextField(
-              controller: amount,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: ctx.l10n.amount),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.l10n.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.l10n.save),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (_) => _ExpenseSheet(existingCategories: categories),
     );
-    if (saved != true) return;
-    try {
-      await api.post('/api/expenses', {
-        'title': title.text.trim(),
-        'category': category.text.trim(),
-        'amount': double.tryParse(amount.text) ?? 0,
-        'expenseDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      });
+    if (saved == true && mounted) {
+      _snack(context.l10n.expenseSaved);
       await _load();
-    } on ApiException catch (e) {
-      _snack(e.message);
     }
   }
 
@@ -151,132 +265,1027 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Widget build(BuildContext context) {
     final isVaad = context.watch<SessionController>().user?.isVaad ?? false;
     final l10n = context.l10n;
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            l10n.financesTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            if (isVaad)
+              IconButton(
+                tooltip: l10n.generateMonthDues,
+                icon: const Icon(Icons.playlist_add),
+                onPressed: _generateMonth,
+              ),
+          ],
+          bottom: TabBar(
+            labelColor: DiraColors.brickDark,
+            unselectedLabelColor: DiraColors.inkSoft,
+            indicatorColor: DiraColors.brick,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+            tabs: [
+              Tab(text: l10n.payments),
+              Tab(text: l10n.expensesTab),
+            ],
+          ),
+        ),
+        body: _loading
+            ? const Center(
+                child: CircularProgressIndicator(color: DiraColors.brick),
+              )
+            : TabBarView(
+                children: [
+                  isVaad ? _matrixTab(context) : _tenantTab(context),
+                  _expensesTab(context),
+                ],
+              ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Tab 1 (Vaad): summary line + filters + collapsible floor matrix
+  // ------------------------------------------------------------------
+  Widget _matrixTab(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    final months = _months;
+    final index = _cellIndex;
+
+    // Header line: apartments · % collected (of dues that came due) · debt.
+    final dueRows = _payments.where(_isDue).toList();
+    final paidDue = dueRows.where((p) => p.status == 'paid').length;
+    final pct = dueRows.isEmpty ? 100 : (paidDue * 100 / dueRows.length).round();
+    final totalDebt = dueRows
+        .where((p) => p.status != 'paid')
+        .fold(0.0, (s, p) => s + p.amount);
+
+    final debts = {
+      for (final a in _apartments) a.apartmentId: _debtOf(a.apartmentId),
+    };
+    final visible = _onlyWithDebt
+        ? _apartments.where((a) => (debts[a.apartmentId] ?? 0) > 0).toList()
+        : _apartments;
+
+    // Group by floor, ascending.
+    final floors = <int, List<DirectoryEntry>>{};
+    for (final a in visible) {
+      floors.putIfAbsent(a.floor, () => []).add(a);
+    }
+    final sortedFloors = floors.keys.toList()..sort();
+
+    String halfLabel(int half) {
+      final from = DateFormat('MMM', locale).format(DateTime(_year, half * 6 + 1));
+      final to = DateFormat('MMM', locale).format(DateTime(_year, half * 6 + 6));
+      return '$from–$to';
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: DiraColors.brick,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            l10n.collectionSummary(
+              '${_apartments.length}',
+              '$pct',
+              currency.format(totalDebt),
+            ),
+            style: const TextStyle(fontSize: 12.5, color: DiraColors.inkSoft),
+          ),
+          const SizedBox(height: 10),
+          // Filters: period dropdowns (year, half) + apartment filter chips.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _DropdownChip<int>(
+                  label: '$_year',
+                  value: _year,
+                  items: [
+                    for (final y in _years) (value: y, label: '$y'),
+                  ],
+                  onSelected: (y) => setState(() => _year = y),
+                ),
+                const SizedBox(width: 8),
+                _DropdownChip<int>(
+                  label: halfLabel(_half),
+                  value: _half,
+                  items: [
+                    for (final h in [0, 1]) (value: h, label: halfLabel(h)),
+                  ],
+                  onSelected: (h) => setState(() => _half = h),
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: Text(l10n.onlyWithDebt),
+                  selected: _onlyWithDebt,
+                  onSelected: (v) => setState(() => _onlyWithDebt = v),
+                ),
+                const SizedBox(width: 8),
+                ActionChip(
+                  label: Text(l10n.collapseAll),
+                  onPressed: () => setState(() {
+                    for (final f in _apartments.map((a) => a.floor).toSet()) {
+                      _expandedOverride[f] = false;
+                    }
+                  }),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_apartments.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  l10n.noApartmentsYet,
+                  style: const TextStyle(color: DiraColors.inkSoft),
+                ),
+              ),
+            )
+          else
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  children: [
+                    _matrixHeader(context, months),
+                    const SizedBox(height: 6),
+                    ...sortedFloors.map((floor) {
+                      final apts = floors[floor]!;
+                      final floorDebt = apts.fold(
+                        0.0,
+                        (s, a) => s + (debts[a.apartmentId] ?? 0),
+                      );
+                      final expanded = _expandedOverride[floor] ?? false;
+                      return _FloorSection(
+                        floor: floor,
+                        apartments: apts,
+                        months: months,
+                        debts: debts,
+                        floorDebt: floorDebt,
+                        expanded: expanded,
+                        cellIndex: index,
+                        cellKey: _cellKey,
+                        onToggleExpand: () => setState(
+                          () => _expandedOverride[floor] = !expanded,
+                        ),
+                        onCellTap: _toggleCell,
+                        onMarkFloorPaid: () => _bulkMark(apts, months),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 4),
+          const Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: _Legend(),
+          ),
+          const SizedBox(height: 90),
+        ],
+      ),
+    );
+  }
+
+  /// Header row: "דירה" | month labels with a mark-all button | "חוב".
+  Widget _matrixHeader(BuildContext context, List<DateTime> months) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final visible = _onlyWithDebt
+        ? _apartments
+              .where((a) => _debtOf(a.apartmentId) > 0)
+              .toList()
+        : _apartments;
+    return Row(
+      children: [
+        SizedBox(
+          width: _MatrixDims.labelWidth,
+          child: Text(
+            l10n.apartmentColumn,
+            style: const TextStyle(fontSize: 11, color: DiraColors.inkSoft),
+          ),
+        ),
+        ...months.map(
+          (m) => Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat('MMM', locale).format(m),
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: DiraColors.inkSoft,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                // Quick action: whole month paid for the visible list.
+                InkWell(
+                  onTap: () => _bulkMark(visible, [m]),
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: const BoxDecoration(
+                      color: DiraColors.sageLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      size: 12,
+                      color: DiraColors.sageDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(
+          width: _MatrixDims.debtWidth,
+          child: Text(
+            l10n.debtColumn,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: DiraColors.inkSoft),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Tab 1 (tenant): own dues
+  // ------------------------------------------------------------------
+  Widget _tenantTab(BuildContext context) {
+    final l10n = context.l10n;
     final locale = Localizations.localeOf(context).languageCode;
     final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
     final totalDue = _payments
         .where((p) => p.status != 'paid')
         .fold(0.0, (sum, p) => sum + p.amount);
-    final totalExpenses = _expenses.fold(0.0, (sum, e) => sum + e.amount);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          l10n.payments,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          if (isVaad)
-            IconButton(
-              tooltip: l10n.generateMonthDues,
-              icon: const Icon(Icons.playlist_add),
-              onPressed: _generateMonth,
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: DiraColors.brick,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _SummaryCard(
+            label: l10n.youOwe,
+            value: currency.format(totalDue),
+            color: DiraColors.brick,
+          ),
+          const SizedBox(height: 16),
+          ..._payments.map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Card(
+                child: ListTile(
+                  title: Text(
+                    DateFormat(
+                      'MMMM yyyy',
+                      locale,
+                    ).format(DateTime(p.year, p.month)),
+                  ),
+                  subtitle: Text(currency.format(p.amount)),
+                  trailing: p.status == 'paid'
+                      ? const Icon(
+                          Icons.check_circle,
+                          color: DiraColors.sageDark,
+                        )
+                      : Text(
+                          l10n.statusUnpaid,
+                          style: const TextStyle(
+                            color: DiraColors.brick,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                ),
+              ),
             ),
-          if (isVaad)
-            IconButton(
-              tooltip: l10n.recordExpense,
-              icon: const Icon(Icons.receipt_long),
-              onPressed: _addExpense,
-            ),
+          ),
+          const SizedBox(height: 90),
         ],
       ),
-      body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: DiraColors.brick),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: DiraColors.brick,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SummaryCard(
-                          label: isVaad ? l10n.outstandingDues : l10n.youOwe,
-                          value: currency.format(totalDue),
-                          color: DiraColors.brick,
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Tab 2: expense ledger
+  // ------------------------------------------------------------------
+  Widget _expensesTab(BuildContext context) {
+    final l10n = context.l10n;
+    final isVaad = context.read<SessionController>().user?.isVaad ?? false;
+    final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    final totalExpenses = _expenses.fold(0.0, (sum, e) => sum + e.amount);
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: DiraColors.brick,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _SummaryCard(
+                  label: l10n.buildingExpenses,
+                  value: currency.format(totalExpenses),
+                  color: DiraColors.sageDark,
+                ),
+              ),
+              if (isVaad) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Card(
+                    child: InkWell(
+                      onTap: _addExpense,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.add_circle_outline,
+                              color: DiraColors.brick,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              l10n.recordExpense,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: DiraColors.brickDark,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _SummaryCard(
-                          label: l10n.buildingExpenses,
-                          value: currency.format(totalExpenses),
-                          color: DiraColors.sageDark,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_expenses.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  l10n.noExpensesYet,
+                  style: const TextStyle(color: DiraColors.inkSoft),
+                ),
+              ),
+            )
+          else
+            ..._groupedExpenses(context),
+          const SizedBox(height: 90),
+        ],
+      ),
+    );
+  }
+
+  /// Expenses grouped by month with a small month header, like the design.
+  List<Widget> _groupedExpenses(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
+    final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    final groups = <String, List<Expense>>{};
+    for (final e in _expenses) {
+      groups.putIfAbsent(e.expenseDate.substring(0, 7), () => []).add(e);
+    }
+    final keys = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return [
+      for (final key in keys) ...[
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                DateFormat(
+                  'MMMM yyyy',
+                  locale,
+                ).format(DateTime.parse('$key-01')),
+                style: heading(fontSize: 16),
+              ),
+              Text(
+                currency.format(
+                  groups[key]!.fold(0.0, (s, e) => s + e.amount),
+                ),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: DiraColors.inkSoft,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...groups[key]!.map((e) => _ExpenseCard(expense: e)),
+      ],
+    ];
+  }
+}
+
+// ====================================================================
+// Floor-grouped matrix: collapsible floor rows, flexible month cells
+// that fit the screen width (no horizontal scrolling), debt column.
+// ====================================================================
+class _MatrixDims {
+  static const double labelWidth = 44;
+  static const double debtWidth = 52;
+  static const double cellHeight = 38;
+}
+
+class _FloorSection extends StatelessWidget {
+  final int floor;
+  final List<DirectoryEntry> apartments;
+  final List<DateTime> months;
+  final Map<String, double> debts;
+  final double floorDebt;
+  final bool expanded;
+  final Map<String, Payment> cellIndex;
+  final String Function(String apartmentId, int year, int month) cellKey;
+  final VoidCallback onToggleExpand;
+  final void Function(DirectoryEntry apt, DateTime month) onCellTap;
+  final VoidCallback onMarkFloorPaid;
+
+  const _FloorSection({
+    required this.floor,
+    required this.apartments,
+    required this.months,
+    required this.debts,
+    required this.floorDebt,
+    required this.expanded,
+    required this.cellIndex,
+    required this.cellKey,
+    required this.onToggleExpand,
+    required this.onCellTap,
+    required this.onMarkFloorPaid,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    final hasDebt = floorDebt > 0;
+
+    return Column(
+      children: [
+        // Floor header: chevron, floor name, debt summary.
+        InkWell(
+          onTap: onToggleExpand,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: hasDebt ? DiraColors.goldLight : DiraColors.creamDeep,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  l10n.floorN('$floor'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  hasDebt
+                      ? l10n.debtAmount(currency.format(floorDebt))
+                      : l10n.noDebt,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: hasDebt ? DiraColors.brickDark : DiraColors.inkSoft,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: DiraColors.inkSoft,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (expanded) ...[
+          const SizedBox(height: 6),
+          ...apartments.map((a) {
+            final debt = debts[a.apartmentId] ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: _MatrixDims.labelWidth,
+                    child: Text(
+                      l10n.aptTiny('${a.apartmentNumber}'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ...months.map((m) {
+                    final p =
+                        cellIndex[cellKey(a.apartmentId, m.year, m.month)];
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: _MatrixCell(
+                          payment: p,
+                          month: m,
+                          onTap: () => onCellTap(a, m),
+                        ),
+                      ),
+                    );
+                  }),
+                  SizedBox(
+                    width: _MatrixDims.debtWidth,
+                    child: Text(
+                      debt > 0 ? currency.format(debt) : '—',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: debt > 0
+                            ? DiraColors.brickDark
+                            : DiraColors.inkSoft,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          // Quick action: mark every shown month for the whole floor.
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: onMarkFloorPaid,
+                style: TextButton.styleFrom(
+                  backgroundColor: DiraColors.sageLight,
+                  foregroundColor: DiraColors.sageDark,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  l10n.markFloorPaid,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MatrixCell extends StatelessWidget {
+  final Payment? payment;
+  final DateTime month;
+  final VoidCallback onTap;
+
+  const _MatrixCell({
+    required this.payment,
+    required this.month,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Two visual states only: paid (green check) or empty.
+    final paid = payment?.status == 'paid';
+    final bg = paid ? DiraColors.sageLight : DiraColors.creamDeep;
+    final child = paid
+        ? const Icon(Icons.check, size: 15, color: DiraColors.sageDark)
+        : const SizedBox.shrink();
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(11),
+      child: Container(
+        height: _MatrixDims.cellHeight,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Center(child: child),
+      ),
+    );
+  }
+}
+
+/// A chip-styled dropdown: shows the current selection with a caret and
+/// opens a menu of options (scales to any number of years).
+class _DropdownChip<T> extends StatelessWidget {
+  final String label;
+  final T value;
+  final List<({T value, String label})> items;
+  final ValueChanged<T> onSelected;
+
+  const _DropdownChip({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<T>(
+      initialValue: value,
+      onSelected: onSelected,
+      color: DiraColors.creamCard,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      itemBuilder: (_) => [
+        for (final item in items)
+          PopupMenuItem<T>(
+            value: item.value,
+            child: Row(
+              children: [
+                Expanded(child: Text(item.label)),
+                if (item.value == value)
+                  const Icon(Icons.check, size: 16, color: DiraColors.brick),
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsetsDirectional.only(
+          start: 12,
+          end: 6,
+          top: 7,
+          bottom: 7,
+        ),
+        decoration: BoxDecoration(
+          color: DiraColors.goldLight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: DiraColors.gold),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: DiraColors.goldDark,
+              ),
+            ),
+            const Icon(
+              Icons.arrow_drop_down,
+              size: 20,
+              color: DiraColors.goldDark,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// שולם / לא שולם color legend.
+class _Legend extends StatelessWidget {
+  const _Legend();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    Widget dot(Color c, String label) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: DiraColors.inkSoft),
+        ),
+      ],
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        dot(DiraColors.sageLight, l10n.statusPaid),
+        const SizedBox(width: 8),
+        dot(DiraColors.creamDeep, l10n.statusUnpaid),
+      ],
+    );
+  }
+}
+
+class _ExpenseCard extends StatelessWidget {
+  final Expense expense;
+  const _ExpenseCard({required this.expense});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    final e = expense;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      e.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if ((e.provider ?? '').isNotEmpty) e.provider!,
+                        e.category,
+                      ].join(' · '),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DiraColors.inkSoft,
+                      ),
+                    ),
+                    if ((e.description ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        e.description!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: DiraColors.inkSoft,
+                          height: 1.35,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    isVaad ? l10n.paymentMatrix : l10n.myDues,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._payments.map(
-                    (p) => Card(
-                      child: ListTile(
-                        title: Text(
-                          '${DateFormat('MMMM yyyy', locale).format(DateTime(p.year, p.month))}'
-                          '${isVaad && p.apartmentNumber != null ? ' — ${l10n.apartmentShort('${p.apartmentNumber}')}' : ''}',
+                    if (e.receiptUrl != null) ...[
+                      const SizedBox(height: 4),
+                      InkWell(
+                        onTap: () => launchUrl(
+                          Uri.parse(e.receiptUrl!),
+                          mode: LaunchMode.externalApplication,
                         ),
-                        subtitle: Text(currency.format(p.amount)),
-                        trailing: p.status == 'paid'
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: DiraColors.sageDark,
-                              )
-                            : isVaad
-                            ? TextButton(
-                                onPressed: () => _markPaid(p),
-                                child: Text(l10n.markPaid),
-                              )
-                            : Text(
-                                p.status == 'overdue'
-                                    ? l10n.overdue
-                                    : l10n.pendingPayment,
-                                style: const TextStyle(
-                                  color: DiraColors.brick,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.receipt_outlined,
+                              size: 14,
+                              color: DiraColors.brick,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              l10n.viewReceipt,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: DiraColors.brick,
+                                decoration: TextDecoration.underline,
                               ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    l10n.expenseLedger,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._expenses.map(
-                    (e) => Card(
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.receipt,
-                          color: DiraColors.gold,
-                        ),
-                        title: Text(e.title),
-                        subtitle: Text('${e.category} · ${e.expenseDate}'),
-                        trailing: Text(
-                          currency.format(e.amount),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                ],
+                    ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
+              Text(
+                currency.format(e.amount),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ====================================================================
+// Add-expense bottom sheet
+// ====================================================================
+class _ExpenseSheet extends StatefulWidget {
+  final List<String> existingCategories;
+  const _ExpenseSheet({required this.existingCategories});
+
+  @override
+  State<_ExpenseSheet> createState() => _ExpenseSheetState();
+}
+
+class _ExpenseSheetState extends State<_ExpenseSheet> {
+  final _title = TextEditingController();
+  final _description = TextEditingController();
+  final _category = TextEditingController();
+  final _provider = TextEditingController();
+  final _amount = TextEditingController();
+  PlatformFile? _receipt;
+  bool _busy = false;
+  String? _error;
+
+  bool get _valid =>
+      _title.text.trim().length >= 2 &&
+      _category.text.trim().length >= 2 &&
+      (double.tryParse(_amount.text.trim()) ?? 0) > 0;
+
+  Future<void> _pickReceipt() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+    final file = result.firstOrNull;
+    if (file != null) setState(() => _receipt = file);
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      String? receiptPath;
+      final receipt = _receipt;
+      if (receipt != null) {
+        final res = await api.uploadFile(
+          '/api/expenses/upload',
+          bytes: await receipt.readAsBytes(),
+          filename: receipt.name,
+        );
+        receiptPath = res['receiptPath'] as String?;
+      }
+      await api.post('/api/expenses', {
+        'title': _title.text.trim(),
+        'category': _category.text.trim(),
+        'amount': double.parse(_amount.text.trim()),
+        'expenseDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        if (_description.text.trim().isNotEmpty)
+          'description': _description.text.trim(),
+        if (_provider.text.trim().isNotEmpty) 'provider': _provider.text.trim(),
+        'receiptPath': ?receiptPath,
+      });
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.recordExpense, style: heading(fontSize: 20)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _title,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(labelText: l10n.titleLabel),
             ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: _category,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: l10n.category,
+                      hintText: l10n.categoryHint,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _amount,
+                    keyboardType: TextInputType.number,
+                    textDirection: TextDirection.ltr,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(labelText: l10n.amount),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.existingCategories.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: widget.existingCategories
+                    .map(
+                      (c) => ActionChip(
+                        label: Text(c, style: const TextStyle(fontSize: 12)),
+                        onPressed: () => setState(() => _category.text = c),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _provider,
+              decoration: InputDecoration(labelText: l10n.providerOptional),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _description,
+              maxLines: 2,
+              decoration: InputDecoration(labelText: l10n.descriptionOptional),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _pickReceipt,
+              icon: Icon(
+                _receipt == null
+                    ? Icons.attach_file_rounded
+                    : Icons.check_circle,
+                size: 18,
+                color: _receipt == null ? DiraColors.brick : DiraColors.sageDark,
+              ),
+              label: Text(_receipt?.name ?? l10n.attachReceipt),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _busy || !_valid ? null : _save,
+              child: Text(_busy ? l10n.pleaseWait : l10n.save),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: DiraColors.brick),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -16,6 +16,8 @@ export interface AdminBuilding {
   fixed_monthly_fee: number | null;
   price_per_sqm: number | null;
   is_active: boolean;
+  plan_status: "trial" | "active" | "blocked";
+  trial_ends_at: string;
   created_at: string;
   apartments: { id: string; apartment_number: number; floor: number }[];
   users: { id: string; role: string; full_name: string; phone_number: string }[];
@@ -26,7 +28,7 @@ export default async function AdminPage() {
   const { data } = await supabaseAdmin()
     .from("buildings")
     .select(
-      "id, name, address, city, country, fee_method, fixed_monthly_fee, price_per_sqm, is_active, created_at, apartments(id, apartment_number, floor), users!users_building_id_fkey(id, role, full_name, phone_number), invitations(id, status, role, phone_number)",
+      "id, name, address, city, country, fee_method, fixed_monthly_fee, price_per_sqm, is_active, plan_status, trial_ends_at, created_at, apartments(id, apartment_number, floor), users!users_building_id_fkey(id, role, full_name, phone_number), invitations(id, status, role, phone_number)",
     )
     .order("created_at", { ascending: false });
   const buildings = (data ?? []) as unknown as AdminBuilding[];
@@ -35,6 +37,21 @@ export default async function AdminPage() {
     b.users.some((u) => u.role === "vaad") ||
     b.invitations.some((i) => i.status === "pending" && i.role === "vaad");
   const withoutVaad = buildings.filter((b) => !hasVaad(b));
+
+  const planBadge = (b: AdminBuilding) => {
+    if (b.plan_status === "blocked" || !b.is_active) {
+      return { label: "חסום", cls: "bg-terracotta-100 text-brick-600" };
+    }
+    if (b.plan_status === "active") {
+      return { label: "מנוי פעיל", cls: "bg-sage-100 text-sage-700" };
+    }
+    const daysLeft = Math.ceil(
+      (new Date(b.trial_ends_at).getTime() - Date.now()) / 86_400_000,
+    );
+    return daysLeft > 0
+      ? { label: `ניסיון · ${daysLeft} ימים`, cls: "bg-gold-300 text-gold-700" }
+      : { label: "ניסיון הסתיים", cls: "bg-terracotta-100 text-brick-600" };
+  };
 
   const stats = [
     { label: "בניינים", value: buildings.length },
@@ -83,6 +100,7 @@ export default async function AdminPage() {
                   <th className="px-3 py-2.5 font-medium">יח&apos;</th>
                   <th className="px-3 py-2.5 font-medium">ועד בית</th>
                   <th className="px-3 py-2.5 font-medium">דמי ועד</th>
+                  <th className="px-3 py-2.5 font-medium">מנוי</th>
                   <th className="px-3 py-2.5 font-medium"></th>
                 </tr>
               </thead>
@@ -144,6 +162,18 @@ export default async function AdminPage() {
                           ? `₪${b.fixed_monthly_fee ?? 0} לדירה`
                           : `₪${b.price_per_sqm ?? 0} למ״ר`}
                       </td>
+                      <td className="whitespace-nowrap px-3 py-3">
+                        {(() => {
+                          const badge = planBadge(b);
+                          return (
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.cls}`}
+                            >
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-3 text-left">
                         <div className="flex items-center justify-end gap-1.5">
                           <AssignVaadButton
@@ -162,7 +192,7 @@ export default async function AdminPage() {
                 })}
                 {buildings.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-ink-400">
+                    <td colSpan={6} className="px-6 py-10 text-center text-ink-400">
                       אין בניינים עדיין — הוסיפו את הבניין הראשון בכפתור למעלה.
                     </td>
                   </tr>

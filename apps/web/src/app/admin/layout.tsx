@@ -35,6 +35,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           >
             סקירת פלטפורמה
           </Link>
+          <Link
+            href="/admin/audit"
+            className="rounded-2xl px-4 py-2.5 text-sm font-medium hover:bg-white/5 hover:text-white"
+          >
+            לוג פעולות
+          </Link>
           <div className="mt-auto rounded-2xl bg-white/5 p-4 text-xs leading-relaxed">
             <div className="mb-1 text-white">מנהל־על · {user.full_name || "מנהל"}</div>
             גישה מלאה לכל הבניינים במערכת

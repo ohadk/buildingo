@@ -11,6 +11,8 @@ import { firebaseClientAuth } from "@/lib/firebase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { PhoneInput, isValidPhone } from "@/components/ui/phone-input";
+import { formatPhoneDisplay } from "@/lib/format";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,11 +43,11 @@ export default function LoginPage() {
     }
   }
 
-  async function verifyCode() {
+  async function verifyCode(otp: string = code) {
     setBusy(true);
     setError(null);
     try {
-      const credential = await confirmationRef.current!.confirm(code);
+      const credential = await confirmationRef.current!.confirm(otp);
       const idToken = await credential.user.getIdToken();
 
       // Token exchange: verify on the server, upsert the Supabase user
@@ -81,34 +83,45 @@ export default function LoginPage() {
           {stage === "phone" ? (
             <>
               <div className="space-y-2">
-                <Label htmlFor="phone">מספר טלפון</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  dir="ltr"
-                  placeholder="+972 50 000 0000"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/[\s-]/g, ""))}
-                />
+                <Label>מספר טלפון</Label>
+                <PhoneInput autoFocus onChange={setPhone} />
               </div>
-              <Button className="w-full" onClick={sendCode} disabled={busy || phone.length < 8}>
+              <Button
+                className="w-full"
+                onClick={sendCode}
+                disabled={busy || !isValidPhone(phone)}
+              >
                 {busy ? "שולח…" : "שלח קוד"}
               </Button>
             </>
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="otp">הזינו את הקוד בן 6 הספרות שנשלח אל {phone}</Label>
+                <Label htmlFor="otp">
+                  הזינו את הקוד בן 6 הספרות שנשלח אל{" "}
+                  <bdi dir="ltr">{formatPhoneDisplay(phone)}</bdi>
+                </Label>
                 <Input
                   id="otp"
                   inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
                   dir="ltr"
                   maxLength={6}
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setCode(digits);
+                    // Verification continues automatically at 6 digits.
+                    if (digits.length === 6 && !busy) verifyCode(digits);
+                  }}
                 />
               </div>
-              <Button className="w-full" onClick={verifyCode} disabled={busy || code.length !== 6}>
+              <Button
+                className="w-full"
+                onClick={() => verifyCode()}
+                disabled={busy || code.length !== 6}
+              >
                 {busy ? "מאמת…" : "אימות וכניסה"}
               </Button>
               <Button variant="ghost" className="w-full" onClick={() => setStage("phone")}>

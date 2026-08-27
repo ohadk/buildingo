@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const updateSchema = z.object({
@@ -63,6 +64,16 @@ export const PATCH = withErrorHandling(
       .select("*")
       .single();
     if (error) throw new ApiError(500, error.message);
+
+    await logAudit({
+      buildingId: data.building_id,
+      actorId: user.id,
+      action: "vendor_updated",
+      entityType: "vendor_agent",
+      entityId: data.id,
+      details: { name: body.vendorName, service: body.serviceType },
+    });
+
     return NextResponse.json({ vendorAgent: data });
   },
 );
@@ -72,17 +83,32 @@ export const DELETE = withErrorHandling(
   async (req: NextRequest, ctx: { params: Promise<{ id: string }> }) => {
     const user = await requireRole(req, "vaad", "super_admin");
     const { id } = await ctx.params;
-    await findScoped(id, user.building_id, user.role === "super_admin");
+    const scoped = await findScoped(id, user.building_id, user.role === "super_admin");
 
     // Tickets reference vendor agents; detach them before deleting so
     // history is preserved.
     const db = supabaseAdmin();
+    const { data: vendor } = await db
+      .from("vendor_agents")
+      .select("vendor_name")
+      .eq("id", id)
+      .maybeSingle();
     await db
       .from("tickets")
       .update({ assigned_vendor_agent_id: null })
       .eq("assigned_vendor_agent_id", id);
     const { error } = await db.from("vendor_agents").delete().eq("id", id);
     if (error) throw new ApiError(500, error.message);
+
+    await logAudit({
+      buildingId: scoped.building_id,
+      actorId: user.id,
+      action: "vendor_deleted",
+      entityType: "vendor_agent",
+      entityId: id,
+      details: { name: vendor?.vendor_name ?? "" },
+    });
+
     return NextResponse.json({ ok: true });
   },
 );

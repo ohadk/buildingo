@@ -17,6 +17,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _inviteController = TextEditingController();
   int _occupants = 1;
   String? _leaseFileName;
@@ -27,7 +28,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     // Users arriving via a join request / self-serve already gave a name.
-    _nameController.text = context.read<SessionController>().user?.fullName ?? '';
+    final user = context.read<SessionController>().user;
+    _nameController.text = user?.fullName ?? '';
+    _emailController.text = user?.email ?? '';
   }
 
   Future<void> _pickLease() async {
@@ -69,6 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await session.completeOnboarding(
         fullName: _nameController.text.trim(),
         numOccupants: _occupants,
+        email: _emailController.text.trim(),
       );
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -135,6 +139,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _nameController,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(labelText: l10n.fullName),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(labelText: l10n.emailOptional),
             ),
             const SizedBox(height: 16),
             Row(

@@ -2,6 +2,7 @@ class AppUser {
   final String id;
   final String phoneNumber;
   final String fullName;
+  final String? email;
   final String role; // super_admin | vaad | tenant
   final String? buildingId;
   final String? apartmentId;
@@ -12,6 +13,7 @@ class AppUser {
     : id = j['id'],
       phoneNumber = j['phone_number'],
       fullName = j['full_name'] ?? '',
+      email = j['email'],
       role = j['role'],
       buildingId = j['building_id'],
       apartmentId = j['apartment_id'],
@@ -30,13 +32,17 @@ class Building {
   final String address;
   final String city;
   final String? joinCode;
+  final String feeMethod; // fixed | per_sqm
+  final bool requireJoinDocs;
 
   Building.fromJson(Map<String, dynamic> j)
     : id = j['id'],
       name = j['name'],
       address = j['address'],
       city = j['city'],
-      joinCode = j['join_code'];
+      joinCode = j['join_code'],
+      feeMethod = j['fee_method'] ?? 'fixed',
+      requireJoinDocs = j['require_join_docs'] ?? false;
 }
 
 /// A tenant's request to join an existing building, decided by the Vaad.
@@ -47,6 +53,12 @@ class JoinRequest {
   final String? buildingName;
   final String? fullName;
   final String? phoneNumber;
+  final String? email;
+  final int? numOccupants;
+  final int? floor;
+  final String? parkingSpot;
+  final String? docUrl;
+  final String? arnonaDocUrl;
 
   JoinRequest.fromJson(Map<String, dynamic> j)
     : id = j['id'],
@@ -54,7 +66,13 @@ class JoinRequest {
       apartmentNumber = j['apartment_number'],
       buildingName = j['buildings']?['name'],
       fullName = j['full_name'] ?? j['users']?['full_name'],
-      phoneNumber = j['users']?['phone_number'];
+      phoneNumber = j['users']?['phone_number'],
+      email = j['email'],
+      numOccupants = j['num_occupants'],
+      floor = j['floor'],
+      parkingSpot = j['parking_spot'],
+      docUrl = j['doc_url'],
+      arnonaDocUrl = j['arnona_doc_url'];
 }
 
 class Apartment {
@@ -85,6 +103,8 @@ class Ticket {
   final String id;
   final String title;
   final String description;
+  final String? location;
+  final String? imageUrl;
   final String status;
   final String agentStatus;
   final String? vendorName;
@@ -96,6 +116,8 @@ class Ticket {
     : id = j['id'],
       title = j['title'],
       description = j['description'],
+      location = j['location'],
+      imageUrl = j['image_url'],
       status = j['status'],
       agentStatus = j['agent_status'] ?? 'idle',
       vendorName = j['vendor_agents']?['vendor_name'],
@@ -106,16 +128,45 @@ class Ticket {
           .toList();
 }
 
+/// One row of the building activity trail (audit log).
+class AuditLog {
+  final String id;
+  final String action;
+  final Map<String, dynamic> details;
+  final String? actorName;
+  final DateTime createdAt;
+
+  AuditLog.fromJson(Map<String, dynamic> j)
+    : id = j['id'],
+      action = j['action'],
+      details = Map<String, dynamic>.from(j['details'] ?? {}),
+      actorName = j['actor']?['full_name'] ?? j['actor']?['phone_number'],
+      createdAt = DateTime.parse(j['created_at']);
+}
+
 class Payment {
   final String id;
+  final String? apartmentId;
   final int month;
   final int year;
   final double amount;
   final String status;
   final int? apartmentNumber;
 
+  /// Local synthetic row for optimistic matrix updates.
+  Payment({
+    required this.id,
+    required this.apartmentId,
+    required this.month,
+    required this.year,
+    required this.amount,
+    required this.status,
+    this.apartmentNumber,
+  });
+
   Payment.fromJson(Map<String, dynamic> j)
     : id = j['id'],
+      apartmentId = j['apartment_id'],
       month = j['month'],
       year = j['year'],
       amount = double.parse(j['amount'].toString()),
@@ -128,12 +179,18 @@ class Expense {
   final String category;
   final double amount;
   final String expenseDate;
+  final String? description;
+  final String? provider;
+  final String? receiptUrl;
 
   Expense.fromJson(Map<String, dynamic> j)
     : title = j['title'],
       category = j['category'],
       amount = double.parse(j['amount'].toString()),
-      expenseDate = j['expense_date'];
+      expenseDate = j['expense_date'],
+      description = j['description'],
+      provider = j['provider'],
+      receiptUrl = j['receipt_url'];
 }
 
 class VendorAgent {
@@ -181,6 +238,31 @@ class DirectoryEntry {
           .toList();
 }
 
+/// One holding period of an apartment (owner or renter), part of the
+/// unit's occupancy history. status: active | pending | ended.
+class Tenancy {
+  final String id;
+  final String? fullName;
+  final String? phoneNumber;
+  final String holderType; // owner | renter
+  final int? numOccupants;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final String? endDebtPolicy;
+  final String status;
+
+  Tenancy.fromJson(Map<String, dynamic> j)
+    : id = j['id'],
+      fullName = j['full_name'],
+      phoneNumber = j['phone_number'],
+      holderType = j['holder_type'] ?? 'renter',
+      numOccupants = j['num_occupants'],
+      startedAt = DateTime.parse(j['started_at']),
+      endedAt = j['ended_at'] != null ? DateTime.parse(j['ended_at']) : null,
+      endDebtPolicy = j['end_debt_policy'],
+      status = j['status'] ?? 'active';
+}
+
 class DocumentItem {
   final String title;
   final String filePath;
@@ -213,6 +295,7 @@ class Vote {
   final String id;
   final String title;
   final List<String> options;
+  final bool allowMultiple;
   final bool isActive;
   final Map<String, int> tally;
   final Set<String> votedApartments;
@@ -221,6 +304,7 @@ class Vote {
     : id = j['id'],
       title = j['title'],
       options = (j['options'] as List).map((o) => o.toString()).toList(),
+      allowMultiple = j['allow_multiple'] ?? false,
       isActive = j['is_active'] ?? true,
       tally = _tally(j['vote_ballots']),
       votedApartments = ((j['vote_ballots'] ?? []) as List)

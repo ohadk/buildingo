@@ -38,20 +38,57 @@ async function resolveFirebaseUid(req: NextRequest): Promise<string> {
   throw new ApiError(401, "Not authenticated");
 }
 
-export async function getCurrentUser(req: NextRequest): Promise<AppUser> {
+type BuildingPlanRow = {
+  is_active: boolean;
+  plan_status: "trial" | "active" | "blocked";
+  trial_ends_at: string;
+};
+
+/** Why a building has no data access (null = access OK). */
+export function buildingBlockReason(
+  b: BuildingPlanRow | null,
+): "blocked" | "trial_expired" | null {
+  if (!b) return null;
+  if (!b.is_active || b.plan_status === "blocked") return "blocked";
+  if (b.plan_status === "trial" && new Date(b.trial_ends_at) < new Date()) {
+    return "trial_expired";
+  }
+  return null;
+}
+
+const USER_WITH_PLAN =
+  "*, buildings!users_building_id_fkey(is_active, plan_status, trial_ends_at)";
+
+/**
+ * Like getCurrentUser but never rejects a blocked/expired building —
+ * returns the reason instead so /api/auth/me can show a friendly screen.
+ */
+export async function getCurrentUserWithAccess(
+  req: NextRequest,
+): Promise<{ user: AppUser; blockedReason: "blocked" | "trial_expired" | null }> {
   const uid = await resolveFirebaseUid(req);
   const { data, error } = await supabaseAdmin()
     .from("users")
-    .select("*, buildings!users_building_id_fkey(is_active)")
+    .select(USER_WITH_PLAN)
     .eq("firebase_uid", uid)
     .maybeSingle();
   if (error) throw new ApiError(500, error.message);
   if (!data || !data.is_active) throw new ApiError(403, "No active profile for this account");
-  const { buildings, ...user } = data as AppUser & { buildings: { is_active: boolean } | null };
-  if (user.role !== "super_admin" && buildings && !buildings.is_active) {
+  const { buildings, ...user } = data as AppUser & { buildings: BuildingPlanRow | null };
+  const blockedReason =
+    user.role === "super_admin" ? null : buildingBlockReason(buildings);
+  return { user: user as AppUser, blockedReason };
+}
+
+export async function getCurrentUser(req: NextRequest): Promise<AppUser> {
+  const { user, blockedReason } = await getCurrentUserWithAccess(req);
+  if (blockedReason === "blocked") {
     throw new ApiError(403, "Building access is suspended");
   }
-  return user as AppUser;
+  if (blockedReason === "trial_expired") {
+    throw new ApiError(402, "The building's free trial has ended");
+  }
+  return user;
 }
 
 export async function requireRole(req: NextRequest, ...roles: UserRole[]): Promise<AppUser> {
@@ -74,12 +111,12 @@ export async function getSessionUser(): Promise<AppUser | null> {
     const decoded = await adminAuth().verifySessionCookie(session, true);
     const { data } = await supabaseAdmin()
       .from("users")
-      .select("*, buildings!users_building_id_fkey(is_active)")
+      .select(USER_WITH_PLAN)
       .eq("firebase_uid", decoded.uid)
       .maybeSingle();
     if (!data || !data.is_active) return null;
-    const { buildings, ...user } = data as AppUser & { buildings: { is_active: boolean } | null };
-    if (user.role !== "super_admin" && buildings && !buildings.is_active) return null;
+    const { buildings, ...user } = data as AppUser & { buildings: BuildingPlanRow | null };
+    if (user.role !== "super_admin" && buildingBlockReason(buildings)) return null;
     return user as AppUser;
   } catch {
     return null;

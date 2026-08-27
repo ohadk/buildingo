@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const patchSchema = z.object({
@@ -37,6 +38,15 @@ export const PATCH = withErrorHandling(
       building_id: ticket.building_id,
       label: STATUS_LABELS[status],
       actor: user.id,
+    });
+
+    await logAudit({
+      buildingId: ticket.building_id,
+      actorId: user.id,
+      action: "ticket_status_changed",
+      entityType: "ticket",
+      entityId: ticket.id,
+      details: { title: ticket.title, status },
     });
 
     return NextResponse.json({ ticket });

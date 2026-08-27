@@ -19,6 +19,7 @@ class CreateBuildingScreen extends StatefulWidget {
 
 class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
   final _name = TextEditingController();
+  final _email = TextEditingController();
   final _country = TextEditingController(text: 'ישראל');
   final _city = TextEditingController();
   final _address = TextEditingController();
@@ -60,6 +61,7 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
         if (int.tryParse(_myApt.text) != null)
           'myApartmentNumber': int.parse(_myApt.text),
         'fullName': _name.text.trim(),
+        if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
       });
       if (!mounted) return;
       await showDialog(
@@ -88,10 +90,45 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          // 14-day free trial notice — the app is a paid product.
+          Container(
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: DiraColors.goldLight,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: DiraColors.goldDark,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.trialNotice,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: DiraColors.ink,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           TextField(
             controller: _name,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(labelText: l10n.fullName),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            textDirection: TextDirection.ltr,
+            decoration: InputDecoration(labelText: l10n.emailOptional),
           ),
           const SizedBox(height: 12),
           Row(

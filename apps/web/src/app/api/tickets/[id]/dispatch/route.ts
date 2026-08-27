@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { runVendorDispatchAgent } from "@/lib/agent/dispatch";
 import type { Apartment, Building, Ticket, VendorAgent } from "@/lib/types";
@@ -49,6 +50,15 @@ export const POST = withErrorHandling(
       label: "Approved by Vaad",
       detail: `Dispatching AI agent to ${vendor.vendor_name}`,
       actor: user.id,
+    });
+
+    await logAudit({
+      buildingId: ticket.building_id,
+      actorId: user.id,
+      action: "ticket_dispatched",
+      entityType: "ticket",
+      entityId: ticket.id,
+      details: { title: ticket.title, vendor: vendor.vendor_name },
     });
 
     // 2. Run the Claude agent

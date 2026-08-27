@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import 'create_building_screen.dart';
 import 'join_building_screen.dart';
+import 'tenant_profile_screen.dart';
 
 /// First screen for a signed-in user whose phone isn't linked to any
 /// building: create one (Vaad), find one (tenant), or enter a code.
@@ -104,6 +105,16 @@ class _ChoiceView extends StatelessWidget {
                       subtitle: l10n.choiceCodeSubtitle,
                       onTap: () => _enterCode(context),
                     ),
+                    const SizedBox(height: 20),
+                    Text(
+                      l10n.askVaadInviteHint,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: DiraColors.inkSoft,
+                        height: 1.4,
+                      ),
+                    ),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -128,8 +139,9 @@ class _ChoiceView extends StatelessWidget {
   }
 }
 
-/// Bottom sheet: enter a code → resolve it → (building code) pick an
-/// apartment → join.
+/// Bottom sheet: enter a code → resolve it. Personal invitations join
+/// immediately; building join codes open the full tenant profile form
+/// so the Vaad can review every detail before approving.
 class _CodeSheet extends StatefulWidget {
   const _CodeSheet();
 
@@ -139,10 +151,6 @@ class _CodeSheet extends StatefulWidget {
 
 class _CodeSheetState extends State<_CodeSheet> {
   final _codeController = TextEditingController();
-  final _aptController = TextEditingController();
-  final _nameController = TextEditingController();
-  String? _buildingName;
-  String? _kind; // building | invitation
   bool _busy = false;
   String? _error;
 
@@ -151,46 +159,39 @@ class _CodeSheetState extends State<_CodeSheet> {
       _busy = true;
       _error = null;
     });
+    final code = _codeController.text.trim();
     try {
-      final res = await api.get(
-        '/api/join?code=${Uri.encodeComponent(_codeController.text.trim())}',
-      );
+      final res = await api.get('/api/join?code=${Uri.encodeComponent(code)}');
       if (!mounted) return;
-      setState(() {
-        _kind = res['kind'];
-        _buildingName = res['building']?['name'];
-      });
-      // Personal invitations carry the apartment already — join now.
-      if (_kind == 'invitation') await _join();
-    } on ApiException catch (e) {
-      setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 
-  Future<void> _join() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await context.read<SessionController>().joinWithCode(
-        _codeController.text.trim(),
-        apartmentNumber: int.tryParse(_aptController.text.trim()),
-        fullName: _nameController.text.trim(),
+      if (res['kind'] == 'invitation') {
+        // Personal invitations carry the apartment already — join now.
+        await context.read<SessionController>().joinWithCode(code);
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+
+      // Building join code → collect the full tenant profile.
+      final buildingName =
+          res['building']?['name'] as String? ?? context.l10n.myBuilding;
+      final requireDocs = res['building']?['require_join_docs'] == true;
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TenantProfileScreen(
+            joinCode: code,
+            buildingName: buildingName,
+            requireDocs: requireDocs,
+          ),
+        ),
       );
-      if (mounted) Navigator.pop(context);
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  bool get _buildingFormValid =>
-      _nameController.text.trim().length >= 2 &&
-      int.tryParse(_aptController.text.trim()) != null;
 
   @override
   Widget build(BuildContext context) {
@@ -212,53 +213,14 @@ class _CodeSheetState extends State<_CodeSheet> {
             controller: _codeController,
             textDirection: TextDirection.ltr,
             autofocus: true,
+            onChanged: (_) => setState(() {}),
             decoration: InputDecoration(labelText: l10n.codeLabel),
           ),
-          if (_kind == 'building' && _buildingName != null) ...[
-            const SizedBox(height: 14),
-            Card(
-              color: DiraColors.sagePale,
-              child: ListTile(
-                leading: const Icon(
-                  Icons.apartment,
-                  color: DiraColors.sageDark,
-                ),
-                title: Text(l10n.joiningBuilding(_buildingName!)),
-                subtitle: Text(
-                  l10n.joinPendingNote,
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: l10n.fullName),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _aptController,
-              keyboardType: TextInputType.number,
-              textDirection: TextDirection.ltr,
-              decoration: InputDecoration(labelText: l10n.yourApartmentNumber),
-              onChanged: (_) => setState(() {}),
-            ),
-          ],
           const SizedBox(height: 18),
           ElevatedButton(
-            onPressed: _busy
-                ? null
-                : _kind == 'building'
-                ? (_buildingFormValid ? _join : null)
-                : (_codeController.text.trim().length >= 4 ? _check : null),
-            child: Text(
-              _busy
-                  ? l10n.pleaseWait
-                  : _kind == 'building'
-                  ? l10n.askToJoin
-                  : l10n.checkCode,
-            ),
+            onPressed:
+                _busy || _codeController.text.trim().length < 4 ? null : _check,
+            child: Text(_busy ? l10n.pleaseWait : l10n.checkCode),
           ),
           if (_error != null)
             Padding(

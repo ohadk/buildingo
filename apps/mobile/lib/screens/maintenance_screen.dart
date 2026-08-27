@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
@@ -163,6 +165,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'maintenance-fab',
         backgroundColor: DiraColors.brick,
         foregroundColor: DiraColors.creamCard,
         onPressed: () => Navigator.of(context)
@@ -211,6 +214,51 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                             t.description,
                             style: const TextStyle(color: DiraColors.inkSoft),
                           ),
+                          if (t.location != null) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.place_outlined,
+                                  size: 15,
+                                  color: DiraColors.inkSoft,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  t.location!,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: DiraColors.inkSoft,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (t.imageUrl != null) ...[
+                            const SizedBox(height: 10),
+                            GestureDetector(
+                              onTap: () => showDialog(
+                                context: context,
+                                builder: (_) => Dialog(
+                                  backgroundColor: Colors.transparent,
+                                  child: InteractiveViewer(
+                                    child: Image.network(t.imageUrl!),
+                                  ),
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  t.imageUrl!,
+                                  height: 140,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 6),
                           Text(
                             '${t.reporterName ?? l10n.resident} · '
@@ -309,8 +357,51 @@ class NewTicketScreen extends StatefulWidget {
 class _NewTicketScreenState extends State<NewTicketScreen> {
   final _title = TextEditingController();
   final _description = TextEditingController();
+
+  /// Selected location key: one of the common-area keys, 'floor', or null.
+  String? _locationKey;
+  int _floor = 1;
+  PlatformFile? _photo;
   bool _busy = false;
   String? _error;
+
+  static const _commonAreas = <(String, IconData)>[
+    ('lobby', Icons.meeting_room_outlined),
+    ('stairwell', Icons.stairs_outlined),
+    ('elevator', Icons.elevator_outlined),
+    ('parking', Icons.local_parking_outlined),
+    ('roof', Icons.roofing_outlined),
+    ('yard', Icons.grass_outlined),
+  ];
+
+  String _areaLabel(BuildContext context, String key) {
+    final l10n = context.l10n;
+    return switch (key) {
+      'lobby' => l10n.locLobby,
+      'stairwell' => l10n.locStairwell,
+      'elevator' => l10n.locElevator,
+      'parking' => l10n.locParking,
+      'roof' => l10n.locRoof,
+      'yard' => l10n.locYard,
+      _ => key,
+    };
+  }
+
+  String? get _locationText {
+    final key = _locationKey;
+    if (key == null) return null;
+    if (key == 'floor') return context.l10n.floorN('$_floor');
+    return _areaLabel(context, key);
+  }
+
+  Future<void> _pickPhoto() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
+    );
+    final file = result.firstOrNull;
+    if (file != null) setState(() => _photo = file);
+  }
 
   Future<void> _submit() async {
     setState(() {
@@ -318,9 +409,21 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
       _error = null;
     });
     try {
+      String? imagePath;
+      final photo = _photo;
+      if (photo != null) {
+        final res = await api.uploadFile(
+          '/api/tickets/upload',
+          bytes: await photo.readAsBytes(),
+          filename: photo.name,
+        );
+        imagePath = res['imagePath'] as String?;
+      }
       await api.post('/api/tickets', {
         'title': _title.text.trim(),
         'description': _description.text.trim(),
+        if (_locationText != null) 'location': _locationText,
+        'imagePath': ?imagePath,
       });
       if (mounted) Navigator.of(context).pop();
     } on ApiException catch (e) {
@@ -335,49 +438,165 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.reportAFault)),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _title,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: l10n.whatHappened,
-                hintText: l10n.faultHint,
-              ),
+        children: [
+          TextField(
+            controller: _title,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: l10n.whatHappened,
+              hintText: l10n.faultHint,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _description,
-              onChanged: (_) => setState(() {}),
-              maxLines: 5,
-              decoration: InputDecoration(
-                labelText: l10n.details,
-                hintText: l10n.detailsHint,
-              ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _description,
+            onChanged: (_) => setState(() {}),
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: l10n.details,
+              hintText: l10n.detailsHint,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed:
-                  _busy ||
-                      _title.text.trim().length < 3 ||
-                      _description.text.trim().length < 3
-                  ? null
-                  : _submit,
-              child: Text(_busy ? l10n.submitting : l10n.submitReport),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.ticketLocationLabel,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14.5,
             ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: DiraColors.brick),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (key, icon) in _commonAreas)
+                ChoiceChip(
+                  avatar: Icon(
+                    icon,
+                    size: 17,
+                    color: _locationKey == key
+                        ? DiraColors.brickDark
+                        : DiraColors.inkSoft,
+                  ),
+                  label: Text(_areaLabel(context, key)),
+                  selected: _locationKey == key,
+                  onSelected: (v) =>
+                      setState(() => _locationKey = v ? key : null),
                 ),
+              ChoiceChip(
+                avatar: Icon(
+                  Icons.apartment_outlined,
+                  size: 17,
+                  color: _locationKey == 'floor'
+                      ? DiraColors.brickDark
+                      : DiraColors.inkSoft,
+                ),
+                label: Text(
+                  _locationKey == 'floor'
+                      ? l10n.floorN('$_floor')
+                      : l10n.floorLabel,
+                ),
+                selected: _locationKey == 'floor',
+                onSelected: (v) =>
+                    setState(() => _locationKey = v ? 'floor' : null),
               ),
+            ],
+          ),
+          if (_locationKey == 'floor') ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton.outlined(
+                  onPressed: _floor > 0
+                      ? () => setState(() => _floor--)
+                      : null,
+                  icon: const Icon(Icons.remove),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Text(
+                    l10n.floorN('$_floor'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton.outlined(
+                  onPressed: () => setState(() => _floor++),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
           ],
-        ),
+          const SizedBox(height: 20),
+          if (_photo == null)
+            OutlinedButton.icon(
+              onPressed: _pickPhoto,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: Text(l10n.addPhoto),
+            )
+          else
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: _photo!.path != null
+                      ? Image.file(
+                          File(_photo!.path!),
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 72,
+                          height: 72,
+                          color: DiraColors.creamDeep,
+                          child: const Icon(Icons.image_outlined),
+                        ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _photo!.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: DiraColors.inkSoft,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l10n.removePhoto,
+                  onPressed: () => setState(() => _photo = null),
+                  icon: const Icon(Icons.close, color: DiraColors.brick),
+                ),
+              ],
+            ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed:
+                _busy ||
+                    _title.text.trim().length < 3 ||
+                    _description.text.trim().length < 3
+                ? null
+                : _submit,
+            child: Text(_busy ? l10n.submitting : l10n.submitReport),
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: DiraColors.brick),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -494,6 +713,7 @@ class _VendorAgentsScreenState extends State<VendorAgentsScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.vendorAiAgents)),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'vendors-fab',
         backgroundColor: DiraColors.brick,
         foregroundColor: DiraColors.creamCard,
         onPressed: _addVendor,
@@ -754,7 +974,7 @@ class _VendorAgentDialogState extends State<_VendorAgentDialog> {
       return l10n.errEmailRequired;
     }
     if ((_channels.contains('sms') || _channels.contains('whatsapp')) &&
-        _phoneE164.isEmpty) {
+        !PhoneField.isValid(_phoneE164)) {
       return l10n.errPhoneRequired;
     }
     return null;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 
@@ -102,6 +103,15 @@ export const POST = withErrorHandling(
         created_by: user.id,
       }),
     ]);
+
+    await logAudit({
+      buildingId: meeting.building_id,
+      actorId: user.id,
+      action: "meeting_closed",
+      entityType: "meeting",
+      entityId: meeting.id,
+      details: { title: meeting.title },
+    });
 
     return NextResponse.json({ summaryDocPath: path, summaryText });
   },

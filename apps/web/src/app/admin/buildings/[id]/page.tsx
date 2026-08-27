@@ -2,9 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PRICE_PER_APARTMENT_ILS } from "@/lib/billing";
 import { formatDateHe, formatPhoneDisplay } from "@/lib/format";
 import { AssignVaadButton } from "../../actions";
-import { ToggleBuildingAccessButton, ToggleUserAccessButton } from "./actions";
+import {
+  SubscriptionControls,
+  ToggleBuildingAccessButton,
+  ToggleUserAccessButton,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +24,15 @@ interface BuildingDetail {
   fixed_monthly_fee: number | null;
   price_per_sqm: number | null;
   is_active: boolean;
+  plan_status: "trial" | "active" | "blocked";
+  trial_ends_at: string;
   created_at: string;
   apartments: { id: string; apartment_number: number; floor: number }[];
   users: {
     id: string;
     full_name: string;
     phone_number: string;
+    email: string | null;
     role: string;
     apartment_id: string | null;
     onboarded_at: string | null;
@@ -66,9 +74,9 @@ export default async function BuildingDetailPage({
     .from("buildings")
     .select(
       `id, name, address, city, country, postal_code, fee_method, fixed_monthly_fee,
-       price_per_sqm, is_active, created_at,
+       price_per_sqm, is_active, plan_status, trial_ends_at, created_at,
        apartments(id, apartment_number, floor),
-       users!users_building_id_fkey(id, full_name, phone_number, role, apartment_id, onboarded_at, is_active, created_at),
+       users!users_building_id_fkey(id, full_name, phone_number, email, role, apartment_id, onboarded_at, is_active, created_at),
        invitations(id, status, role, phone_number, apartment_id),
        tickets(id, title, status, agent_status, agent_log, created_at)`,
     )
@@ -106,6 +114,9 @@ export default async function BuildingDetailPage({
 
   const vaadMembers = b.users.filter((u) => u.role === "vaad");
   const pendingVaadInvites = awaitingInvitees.filter((i) => i.role === "vaad");
+  const trialDaysLeft = Math.ceil(
+    (new Date(b.trial_ends_at).getTime() - Date.now()) / 86_400_000,
+  );
 
   const stats = [
     {
@@ -179,6 +190,49 @@ export default async function BuildingDetailPage({
           </Card>
         ))}
       </div>
+
+      <section>
+        <h2 className="mb-3 text-xl font-bold text-ink-900">מנוי וגישה</h2>
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-6">
+          <div>
+            <div className="flex items-center gap-2">
+              {b.plan_status === "active" ? (
+                <span className="rounded-full bg-sage-100 px-3 py-1 text-sm font-semibold text-sage-700">
+                  מנוי פעיל (שולם)
+                </span>
+              ) : b.plan_status === "blocked" ? (
+                <span className="rounded-full bg-terracotta-100 px-3 py-1 text-sm font-semibold text-brick-600">
+                  חסום
+                </span>
+              ) : trialDaysLeft > 0 ? (
+                <span className="rounded-full bg-gold-300 px-3 py-1 text-sm font-semibold text-gold-700">
+                  תקופת ניסיון — נותרו {trialDaysLeft} ימים
+                </span>
+              ) : (
+                <span className="rounded-full bg-terracotta-100 px-3 py-1 text-sm font-semibold text-brick-600">
+                  תקופת הניסיון הסתיימה — הגישה חסומה
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-ink-600">
+              {b.plan_status === "trial"
+                ? `הניסיון מסתיים ב־${formatDateHe(b.trial_ends_at)}. בסיום, הדיירים והוועד יאבדו גישה עד הפעלת מנוי.`
+                : b.plan_status === "active"
+                  ? "לבניין מנוי פעיל ללא הגבלת זמן."
+                  : "הבניין חסום — אף משתמש לא יכול לגשת לנתונים."}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-ink-900">
+              מחיר מנוי: {b.apartments.length} דירות × ₪{PRICE_PER_APARTMENT_ILS} = ₪
+              {(b.apartments.length * PRICE_PER_APARTMENT_ILS).toFixed(2)} לחודש
+            </p>
+          </div>
+          <SubscriptionControls
+            buildingId={b.id}
+            planStatus={b.plan_status}
+            trialEndsAt={b.trial_ends_at}
+          />
+        </Card>
+      </section>
 
       <section>
         <h2 className="mb-3 text-xl font-bold text-ink-900">
@@ -285,6 +339,9 @@ export default async function BuildingDetailPage({
                       </td>
                       <td dir="ltr" className="px-5 py-3 text-right text-ink-600">
                         {formatPhoneDisplay(u.phone_number)}
+                        {u.email && (
+                          <div className="text-xs text-ink-400">{u.email}</div>
+                        )}
                       </td>
                       <td className="px-5 py-3">{apartmentNumber(u.apartment_id) ?? "—"}</td>
                       <td className="px-5 py-3">

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../core/api_client.dart';
+import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import 'directory_screen.dart';
 import 'documents_screen.dart';
 import 'home_screen.dart';
 import 'maintenance_screen.dart';
+import 'meetings_screen.dart';
 import 'payments_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -16,6 +20,93 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+
+  /// The + button: tenants go straight to a new ticket; the Vaad picks
+  /// between an announcement, a ticket, or a resident assembly.
+  void _openCreateSheet() {
+    final isVaad = context.read<SessionController>().user?.isVaad ?? false;
+    if (!isVaad) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const NewTicketScreen()),
+      );
+      return;
+    }
+    final l10n = context.l10n;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.whatToCreate,
+                textAlign: TextAlign.center,
+                style: heading(fontSize: 18),
+              ),
+              const SizedBox(height: 14),
+              _CreateOption(
+                icon: Icons.campaign_rounded,
+                color: DiraColors.gold,
+                label: l10n.messageToBuilding,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _composeAnnouncement();
+                },
+              ),
+              _CreateOption(
+                icon: Icons.handyman_rounded,
+                color: DiraColors.brick,
+                label: l10n.reportFault,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NewTicketScreen()),
+                  );
+                },
+              ),
+              _CreateOption(
+                icon: Icons.groups_rounded,
+                color: DiraColors.sageDark,
+                label: l10n.newAssembly,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MeetingsScreen(openComposer: true),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _composeAnnouncement() async {
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => const _AnnouncementSheet(),
+    );
+    if (sent == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.announcementPublished)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +123,10 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: _index, children: screens),
-      // Centered "new report" FAB docked into the nav bar's notch.
+      // Centered "create" FAB docked into the nav bar's notch.
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const NewTicketScreen()),
-        ),
+        heroTag: 'shell-fab',
+        onPressed: _openCreateSheet,
         tooltip: l10n.newReport,
         elevation: 2,
         shape: const CircleBorder(),
@@ -86,6 +176,199 @@ class _MainShellState extends State<MainShell> {
                 onTap: () => setState(() => _index = 4),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom-sheet composer for a building-wide announcement (Vaad only).
+class _AnnouncementSheet extends StatefulWidget {
+  const _AnnouncementSheet();
+
+  @override
+  State<_AnnouncementSheet> createState() => _AnnouncementSheetState();
+}
+
+class _AnnouncementSheetState extends State<_AnnouncementSheet> {
+  final _title = TextEditingController();
+  final _body = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  bool get _valid =>
+      _title.text.trim().length >= 2 && _body.text.trim().length >= 2;
+
+  InputDecoration _boxDecoration(String label) => InputDecoration(
+    labelText: label,
+    alignLabelWithHint: true,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: DiraColors.ink.withValues(alpha: 0.14)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: DiraColors.brick, width: 1.5),
+    ),
+  );
+
+  Future<void> _send() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await api.post('/api/announcements', {
+        'title': _title.text.trim(),
+        'body': _body.text.trim(),
+      });
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: DiraColors.ink.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 19,
+                  backgroundColor: DiraColors.goldLight,
+                  child: Icon(
+                    Icons.campaign_rounded,
+                    color: DiraColors.goldDark,
+                    size: 21,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.messageToBuilding, style: heading(fontSize: 19)),
+                      Text(
+                        l10n.announcementSubtitle,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: DiraColors.inkSoft,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _title,
+              onChanged: (_) => setState(() {}),
+              textInputAction: TextInputAction.next,
+              decoration: _boxDecoration(l10n.titleLabel),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _body,
+              onChanged: (_) => setState(() {}),
+              maxLines: 5,
+              minLines: 4,
+              decoration: _boxDecoration(l10n.announcementBody),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _busy || !_valid ? null : _send,
+              icon: const Icon(Icons.send_rounded, size: 18),
+              label: Text(_busy ? l10n.pleaseWait : l10n.publishAnnouncement),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: DiraColors.brick),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateOption extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  const _CreateOption({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 19,
+                  backgroundColor: color.withValues(alpha: 0.14),
+                  child: Icon(icon, color: color, size: 21),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: DiraColors.inkSoft),
+              ],
+            ),
           ),
         ),
       ),

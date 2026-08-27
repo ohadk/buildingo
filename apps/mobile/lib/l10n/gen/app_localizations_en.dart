@@ -395,6 +395,153 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newAssembly => 'New assembly';
 
   @override
+  String get activityLog => 'Activity log';
+
+  @override
+  String get activityEmptyTitle => 'No activity yet';
+
+  @override
+  String get activityEmptyBody =>
+      'Every action in the building — tenants joining, tickets, assemblies, votes and payments — will be recorded here.';
+
+  @override
+  String get auditTenantJoined => 'Tenant joined';
+
+  @override
+  String get auditJoinRequested => 'Join request';
+
+  @override
+  String get auditJoinRejected => 'Request rejected';
+
+  @override
+  String get auditTicketCreated => 'Ticket opened';
+
+  @override
+  String get auditTicketDispatched => 'Ticket sent to vendor';
+
+  @override
+  String get auditTicketStatus => 'Ticket status updated';
+
+  @override
+  String get auditMeetingCreated => 'Assembly scheduled';
+
+  @override
+  String get auditMeetingClosed => 'Assembly closed';
+
+  @override
+  String get auditVoteCast => 'Vote cast';
+
+  @override
+  String get auditPaymentMarked => 'Payment marked';
+
+  @override
+  String get auditPaymentsBulk => 'Bulk payments marked';
+
+  @override
+  String get auditExpenseAdded => 'Expense recorded';
+
+  @override
+  String get auditAnnouncement => 'Announcement published';
+
+  @override
+  String get auditVendorAdded => 'Vendor agent added';
+
+  @override
+  String get auditVendorUpdated => 'Vendor agent updated';
+
+  @override
+  String get auditVendorDeleted => 'Vendor agent deleted';
+
+  @override
+  String get auditBuildingCreated => 'Building created';
+
+  @override
+  String get auditVaadInvited => 'Invitation sent';
+
+  @override
+  String get meetingsEmptyTitle => 'No assemblies yet';
+
+  @override
+  String get meetingsEmptyBody =>
+      'Plan resident assemblies, vote on decisions and publish summaries for the whole building.';
+
+  @override
+  String get residentsAssembly => 'Residents assembly';
+
+  @override
+  String get meetingLocationLabel => 'Location';
+
+  @override
+  String get agendaItems => 'Agenda items';
+
+  @override
+  String get agendaItemsHint =>
+      'Add agenda items — each one can be a discussion or a vote.';
+
+  @override
+  String get newAgendaItem => 'New item';
+
+  @override
+  String get withVote => 'With a vote';
+
+  @override
+  String get addItem => 'Add';
+
+  @override
+  String get voteChip => 'Vote';
+
+  @override
+  String get discussionChip => 'Discussion';
+
+  @override
+  String get createMeetingCta => 'Create assembly';
+
+  @override
+  String get whatToCreate => 'What would you like to create?';
+
+  @override
+  String get ticketLocationLabel => 'Fault location';
+
+  @override
+  String get locLobby => 'Lobby';
+
+  @override
+  String get locStairwell => 'Stairwell';
+
+  @override
+  String get locElevator => 'Elevator';
+
+  @override
+  String get locParking => 'Parking';
+
+  @override
+  String get locRoof => 'Roof';
+
+  @override
+  String get locYard => 'Yard';
+
+  @override
+  String get addPhoto => 'Add photo';
+
+  @override
+  String get removePhoto => 'Remove photo';
+
+  @override
+  String get messageToBuilding => 'Message to the building';
+
+  @override
+  String get announcementBody => 'Message body';
+
+  @override
+  String get announcementSubtitle => 'Will be sent to all building residents';
+
+  @override
+  String get publishAnnouncement => 'Publish message';
+
+  @override
+  String get announcementPublished => 'The message was published to residents';
+
+  @override
   String get agenda => 'Agenda';
 
   @override
@@ -732,4 +879,450 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invitePending => 'Invited · waiting to connect';
+
+  @override
+  String get findBuildingHint =>
+      'Search by city and address — pick from the suggestions so we find an exact match.';
+
+  @override
+  String get pickCityFirst => 'Choose a city first';
+
+  @override
+  String get askVaadInviteHint =>
+      'Can\'t find your building? Ask your Vaad to send you a personal invite or the building\'s join link.';
+
+  @override
+  String get tenantProfileTitle => 'Your details';
+
+  @override
+  String get tenantProfileHint =>
+      'These details are sent to the building\'s Vaad, who approves your request.';
+
+  @override
+  String get floorLabel => 'Floor';
+
+  @override
+  String get numOccupantsLabel => 'Occupants';
+
+  @override
+  String get parkingOptional => 'Parking (optional)';
+
+  @override
+  String get attachDocOptional => 'Attach a document (optional)';
+
+  @override
+  String get sendJoinRequest => 'Send join request';
+
+  @override
+  String occupantsN(String n) {
+    return '$n occupants';
+  }
+
+  @override
+  String get viewAttachedDoc => 'View attached document';
+
+  @override
+  String get docsSection => 'Recommended documents';
+
+  @override
+  String get docsSectionRequired => 'Required documents';
+
+  @override
+  String get docsExplain =>
+      'The Arnona bill shows the apartment\'s size (sqm), which affects the Vaad fee. The agreement confirms you live in this apartment.';
+
+  @override
+  String get attachArnona => 'Arnona bill';
+
+  @override
+  String get arnonaHint => 'Shows the apartment size in sqm';
+
+  @override
+  String get attachResidence => 'Proof of residence';
+
+  @override
+  String get residenceHint => 'Rent or purchase agreement';
+
+  @override
+  String get optional => 'optional';
+
+  @override
+  String get requireDocsTitle => 'Require documents to join';
+
+  @override
+  String get requireDocsSubtitle =>
+      'New residents must attach an Arnona bill and proof of residence';
+
+  @override
+  String get joinRequestPending => 'Join request awaiting approval';
+
+  @override
+  String get financesTitle => 'Finances';
+
+  @override
+  String get expensesTab => 'Expenses';
+
+  @override
+  String collectionSummary(String count, String pct, String amount) {
+    return '$count apartments · $pct% collected · $amount debt';
+  }
+
+  @override
+  String get allApartments => 'All apartments';
+
+  @override
+  String get onlyWithDebt => 'With debt only';
+
+  @override
+  String get collapseAll => 'Collapse all';
+
+  @override
+  String get apartmentColumn => 'Apt';
+
+  @override
+  String get debtColumn => 'Debt';
+
+  @override
+  String aptTiny(String n) {
+    return 'Apt $n';
+  }
+
+  @override
+  String debtAmount(String amount) {
+    return '$amount debt';
+  }
+
+  @override
+  String get noDebt => 'No debt';
+
+  @override
+  String get markFloorPaid => 'Mark floor as paid';
+
+  @override
+  String get residentsSection => 'Residents';
+
+  @override
+  String occupiedOfTotal(String occupied, String total) {
+    return '$occupied/$total occupied';
+  }
+
+  @override
+  String get searchResidents => 'Search by name, phone or apartment';
+
+  @override
+  String get pendingInvitesSection => 'Pending invitations';
+
+  @override
+  String get noDocsForApartment => 'No documents attached';
+
+  @override
+  String sqmShort(String n) {
+    return '$n sqm';
+  }
+
+  @override
+  String get currentPeriod => 'Current';
+
+  @override
+  String get statusPaid => 'Paid';
+
+  @override
+  String get statusUnpaid => 'Not paid';
+
+  @override
+  String get statusPending => 'Pending';
+
+  @override
+  String get statusOverdue => 'Overdue';
+
+  @override
+  String get noApartmentsYet => 'No apartments defined yet';
+
+  @override
+  String get noExpensesYet => 'No expenses recorded yet';
+
+  @override
+  String get providerOptional => 'Provider (optional)';
+
+  @override
+  String get descriptionOptional => 'Description (optional)';
+
+  @override
+  String get attachReceipt => 'Attach a receipt (optional)';
+
+  @override
+  String get viewReceipt => 'View receipt';
+
+  @override
+  String get expenseSaved => 'Expense recorded';
+
+  @override
+  String joinApprovedSnack(String name) {
+    return '$name was approved and joined the building';
+  }
+
+  @override
+  String joinRejectedSnack(String name) {
+    return '$name\'s request was rejected';
+  }
+
+  @override
+  String get viewArnonaDoc => 'View Arnona bill';
+
+  @override
+  String get viewResidenceDoc => 'View proof of residence';
+
+  @override
+  String get myBuilding => 'My building';
+
+  @override
+  String get trialNotice =>
+      '14-day free trial: full access for the whole building. Afterwards it\'s just ₪4.90 per apartment per month — contact us to subscribe.';
+
+  @override
+  String get trialEndedTitle => 'The free trial has ended';
+
+  @override
+  String get trialEndedBody =>
+      'Your building\'s 14-day trial is over. All your data is safe and waiting for you.';
+
+  @override
+  String get accessBlockedTitle => 'Access is suspended';
+
+  @override
+  String get accessBlockedBody =>
+      'Access for this building has been suspended. Contact us to restore it — all data is kept.';
+
+  @override
+  String get pricingLine => '₪4.90 per apartment / month';
+
+  @override
+  String get likeItContactUs =>
+      'Like Buildingo? Contact us and we\'ll activate your building\'s subscription — no in-app payment needed.';
+
+  @override
+  String get contactUs => 'Contact us';
+
+  @override
+  String get contactFormHint =>
+      'Leave your details and we\'ll get back to you shortly.';
+
+  @override
+  String get contactMessage => 'Message';
+
+  @override
+  String get contactSend => 'Send';
+
+  @override
+  String get invalidPhone => 'Invalid phone number';
+
+  @override
+  String get contactSentTitle => 'Message sent!';
+
+  @override
+  String get contactSentBody =>
+      'Thanks! We received your message and will get back to you soon.';
+
+  @override
+  String get transferHolder => 'Replace holder';
+
+  @override
+  String get holdersHistory => 'Holders history';
+
+  @override
+  String get currentHolder => 'Current holder';
+
+  @override
+  String get pendingHolder => 'Awaiting details';
+
+  @override
+  String get holderOwner => 'Owner';
+
+  @override
+  String get holderRenter => 'Renter';
+
+  @override
+  String get noPreviousHolders => 'No previous holders';
+
+  @override
+  String previousHoldersN(String n) {
+    return '$n previous holders';
+  }
+
+  @override
+  String periodSince(String date) {
+    return 'Since $date';
+  }
+
+  @override
+  String get newHolderFallback => 'New holder';
+
+  @override
+  String get noPhone => 'no phone';
+
+  @override
+  String apartmentCardTitle(String n) {
+    return 'Apartment $n card';
+  }
+
+  @override
+  String get stepEndTenancy => 'End tenancy';
+
+  @override
+  String get stepIncomingHolder => 'Incoming holder';
+
+  @override
+  String get stepConfirmTransfer => 'Confirm & transfer';
+
+  @override
+  String endTenancyTitle(String name) {
+    return 'End tenancy — $name';
+  }
+
+  @override
+  String get endTenancyBody =>
+      'The apartment card is fully preserved. The outgoing holder is archived with their period, and the history stays attached to the apartment.';
+
+  @override
+  String get endDateLabel => 'Effective end date';
+
+  @override
+  String get debtQuestion => 'What happens to open dues';
+
+  @override
+  String get debtKeepTitle => 'Debt stays with the outgoing renter';
+
+  @override
+  String get debtKeepBody =>
+      'Open dues remain in their name and stay in collection tracking';
+
+  @override
+  String get debtOwnerTitle => 'Debt is transferred to the owner';
+
+  @override
+  String get debtOwnerBody =>
+      'The Vaad will collect from the owner per the contract clause';
+
+  @override
+  String get debtCloseTitle => 'Close the debt';
+
+  @override
+  String get debtCloseBody =>
+      'The debt is cleared by Vaad decision — recorded in the building log';
+
+  @override
+  String incomingDetailsBody(String n, String date) {
+    return 'The details will be attached to apartment $n from $date.';
+  }
+
+  @override
+  String get modeSelfTitle => 'The holder fills in their own details';
+
+  @override
+  String get modeSelfBody =>
+      'We send a link by SMS. They verify their phone and fill in name, occupants and contract — the apartment is marked \"awaiting details\" until then.';
+
+  @override
+  String get modeVaadTitle => 'Filled in by the Vaad';
+
+  @override
+  String get modeVaadBody =>
+      'Fill in the details here and now. A link can still be sent later.';
+
+  @override
+  String get optionalField => 'Optional';
+
+  @override
+  String get mobilePhoneLabel => 'Mobile phone';
+
+  @override
+  String get holderTypeLabel => 'Holding type';
+
+  @override
+  String get startDateLabel => 'Tenancy start date';
+
+  @override
+  String get sendSmsOnTransfer =>
+      'Send the link by SMS as soon as the transfer is confirmed';
+
+  @override
+  String get linkExplainTitle => 'What the holder completes';
+
+  @override
+  String get linkStepOtp => 'Phone verification with an SMS code';
+
+  @override
+  String get linkStepProfile => 'Full name and number of occupants';
+
+  @override
+  String get linkStepContract => 'Uploading a rental contract · not mandatory';
+
+  @override
+  String get linkStepConfirm => 'Confirming parking and contact details';
+
+  @override
+  String get selfCompleteNote =>
+      'The holder will complete their details via the link';
+
+  @override
+  String get keptOnCardTitle => 'Kept on the apartment card';
+
+  @override
+  String get keptOnCardBody =>
+      'Payment history, maintenance tickets, the apartment\'s receipts and assembly protocols';
+
+  @override
+  String get movesToNewTitle => 'Moves to the new holder';
+
+  @override
+  String get movesToNewBody =>
+      'Dues from the effective date, access to the building board, the residents book and votes';
+
+  @override
+  String get staysWithOutgoingTitle => 'Stays with the outgoing holder';
+
+  @override
+  String get staysWithOutgoingBody =>
+      'Their rental contract and personal documents · app access is blocked on the effective date';
+
+  @override
+  String get transferLogNote =>
+      'The transfer is recorded in the building log with the approver\'s name and the date. All previous holders can be viewed on the apartment card.';
+
+  @override
+  String get confirmAndTransfer => 'Confirm & transfer';
+
+  @override
+  String get backBtn => 'Back';
+
+  @override
+  String get transferDone => 'The holder was replaced successfully';
+
+  @override
+  String get auditTenantTransferred => 'Holder replaced';
+
+  @override
+  String get pollOptionsLabel => 'Answer options';
+
+  @override
+  String optionHint(String n) {
+    return 'Option $n';
+  }
+
+  @override
+  String get addOption => 'Add option';
+
+  @override
+  String get allowMultipleAnswers => 'Allow multiple answers';
+
+  @override
+  String get multiChoiceChip => 'Multiple answers';
+
+  @override
+  String optionsCount(String n) {
+    return '$n options';
+  }
+
+  @override
+  String get submitVote => 'Submit vote';
 }
