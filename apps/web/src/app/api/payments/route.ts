@@ -21,6 +21,8 @@ const patchSchema = z
     status: z.enum(["pending", "paid", "overdue"]),
     paymentDate: z.string().optional(),
     notes: z.string().optional(),
+    /** Storage path of an uploaded receipt (see /api/payments/upload). */
+    receiptPath: z.string().max(500).optional(),
   })
   .refine(
     (b) => b.paymentId != null || (b.apartmentId != null && b.month != null && b.year != null),
@@ -69,7 +71,19 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
   const { data, error } = await query;
   if (error) throw new ApiError(500, error.message);
-  return NextResponse.json({ payments: data });
+
+  // Attach a viewable link for any receipt the Vaad uploaded.
+  const db = supabaseAdmin();
+  const payments = await Promise.all(
+    (data ?? []).map(async (p) => {
+      if (!p.receipt_path) return { ...p, receipt_url: null };
+      const { data: signed } = await db.storage
+        .from("receipts")
+        .createSignedUrl(p.receipt_path, 60 * 60);
+      return { ...p, receipt_url: signed?.signedUrl ?? null };
+    }),
+  );
+  return NextResponse.json({ payments });
 });
 
 /**
@@ -122,6 +136,7 @@ export const PATCH = withErrorHandling(async (req: NextRequest) => {
         ? (body.paymentDate ?? new Date().toISOString().slice(0, 10))
         : null,
     ...(body.notes !== undefined ? { notes: body.notes } : {}),
+    ...(body.receiptPath !== undefined ? { receipt_path: body.receiptPath } : {}),
   };
 
   const logMark = (p: {

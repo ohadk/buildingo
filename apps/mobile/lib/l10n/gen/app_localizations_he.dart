@@ -1314,4 +1314,67 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get submitVote => 'שליחת הצבעה';
+
+  @override
+  String get allSettled => 'הכול משולם';
+
+  @override
+  String monthsPaidOfYear(String paid, String total, String year) {
+    return '$paid מתוך $total חודשים שולמו · $year';
+  }
+
+  @override
+  String get noChargesForYear => 'אין חיובים לשנה זו';
+
+  @override
+  String paidOnDate(String date) {
+    return 'שולם ב-$date';
+  }
+
+  @override
+  String get receiptShort => 'קבלה';
+
+  @override
+  String get receiptAttached => 'הקבלה צורפה';
+
+  @override
+  String get attachReceiptOnlyPaid => 'אפשר לצרף קבלה רק לחודש ששולם';
+
+  @override
+  String get attachReceiptHint => 'לחיצה ארוכה על חודש ששולם — צירוף קבלה';
+
+  @override
+  String get takePhoto => 'צילום במצלמה';
+
+  @override
+  String get fromGallery => 'בחירה מהגלריה';
+
+  @override
+  String get chooseFile => 'עיון בקבצים';
+
+  @override
+  String get locOther => 'אחר';
+
+  @override
+  String get locOtherHint => 'איפה בדיוק?';
+
+  @override
+  String get uploadDocument => 'העלאת מסמך';
+
+  @override
+  String get documentsUploaded => 'המסמכים הועלו';
+
+  @override
+  String get addAttachment => 'הוספת קובץ (מצלמה / גלריה)';
+
+  @override
+  String get addMoreFiles => 'הוספת קבצים נוספים';
+
+  @override
+  String uploadNFiles(String n) {
+    return 'העלאת $n קבצים';
+  }
+
+  @override
+  String get allYear => 'כל השנה';
 }

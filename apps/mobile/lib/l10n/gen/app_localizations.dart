@@ -2491,6 +2491,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Submit vote'**
   String get submitVote;
+
+  /// No description provided for @allSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'All settled'**
+  String get allSettled;
+
+  /// No description provided for @monthsPaidOfYear.
+  ///
+  /// In en, this message translates to:
+  /// **'{paid} of {total} months paid · {year}'**
+  String monthsPaidOfYear(String paid, String total, String year);
+
+  /// No description provided for @noChargesForYear.
+  ///
+  /// In en, this message translates to:
+  /// **'No charges for this year'**
+  String get noChargesForYear;
+
+  /// No description provided for @paidOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid on {date}'**
+  String paidOnDate(String date);
+
+  /// No description provided for @receiptShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt'**
+  String get receiptShort;
+
+  /// No description provided for @receiptAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt attached'**
+  String get receiptAttached;
+
+  /// No description provided for @attachReceiptOnlyPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'A receipt can only be attached to a paid month'**
+  String get attachReceiptOnlyPaid;
+
+  /// No description provided for @attachReceiptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press a paid month to attach a receipt'**
+  String get attachReceiptHint;
+
+  /// No description provided for @takePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get takePhoto;
+
+  /// No description provided for @fromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get fromGallery;
+
+  /// No description provided for @chooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse files'**
+  String get chooseFile;
+
+  /// No description provided for @locOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get locOther;
+
+  /// No description provided for @locOtherHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Where exactly?'**
+  String get locOtherHint;
+
+  /// No description provided for @uploadDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload document'**
+  String get uploadDocument;
+
+  /// No description provided for @documentsUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents uploaded'**
+  String get documentsUploaded;
+
+  /// No description provided for @addAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Add file (camera / gallery)'**
+  String get addAttachment;
+
+  /// No description provided for @addMoreFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Add more files'**
+  String get addMoreFiles;
+
+  /// No description provided for @uploadNFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload {n} files'**
+  String uploadNFiles(String n);
+
+  /// No description provided for @allYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole year'**
+  String get allYear;
 }
 
 class _AppLocalizationsDelegate

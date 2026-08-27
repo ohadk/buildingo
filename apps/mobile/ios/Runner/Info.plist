@@ -6,6 +6,10 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Buildingo uses the camera to photograph faults and scan documents.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Buildingo uses your photo library to attach pictures to reports and documents.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Buildingo</string>
 	<key>CFBundleExecutable</key>

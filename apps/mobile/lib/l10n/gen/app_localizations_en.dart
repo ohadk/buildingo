@@ -1325,4 +1325,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get submitVote => 'Submit vote';
+
+  @override
+  String get allSettled => 'All settled';
+
+  @override
+  String monthsPaidOfYear(String paid, String total, String year) {
+    return '$paid of $total months paid · $year';
+  }
+
+  @override
+  String get noChargesForYear => 'No charges for this year';
+
+  @override
+  String paidOnDate(String date) {
+    return 'Paid on $date';
+  }
+
+  @override
+  String get receiptShort => 'Receipt';
+
+  @override
+  String get receiptAttached => 'Receipt attached';
+
+  @override
+  String get attachReceiptOnlyPaid =>
+      'A receipt can only be attached to a paid month';
+
+  @override
+  String get attachReceiptHint => 'Long-press a paid month to attach a receipt';
+
+  @override
+  String get takePhoto => 'Take a photo';
+
+  @override
+  String get fromGallery => 'Choose from gallery';
+
+  @override
+  String get chooseFile => 'Browse files';
+
+  @override
+  String get locOther => 'Other';
+
+  @override
+  String get locOtherHint => 'Where exactly?';
+
+  @override
+  String get uploadDocument => 'Upload document';
+
+  @override
+  String get documentsUploaded => 'Documents uploaded';
+
+  @override
+  String get addAttachment => 'Add file (camera / gallery)';
+
+  @override
+  String get addMoreFiles => 'Add more files';
+
+  @override
+  String uploadNFiles(String n) {
+    return 'Upload $n files';
+  }
+
+  @override
+  String get allYear => 'Whole year';
 }

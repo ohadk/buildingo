@@ -152,6 +152,8 @@ class Payment {
   final double amount;
   final String status;
   final int? apartmentNumber;
+  final DateTime? paymentDate;
+  final String? receiptUrl;
 
   /// Local synthetic row for optimistic matrix updates.
   Payment({
@@ -162,6 +164,8 @@ class Payment {
     required this.amount,
     required this.status,
     this.apartmentNumber,
+    this.paymentDate,
+    this.receiptUrl,
   });
 
   Payment.fromJson(Map<String, dynamic> j)
@@ -171,7 +175,11 @@ class Payment {
       year = j['year'],
       amount = double.parse(j['amount'].toString()),
       status = j['status'],
-      apartmentNumber = j['apartments']?['apartment_number'];
+      apartmentNumber = j['apartments']?['apartment_number'],
+      paymentDate = j['payment_date'] != null
+          ? DateTime.tryParse(j['payment_date'])
+          : null,
+      receiptUrl = j['receipt_url'];
 }
 
 class Expense {

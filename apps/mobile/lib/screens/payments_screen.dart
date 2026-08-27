@@ -30,6 +30,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   /// Matrix filters: year (default current), half-year window so all
   /// six month columns fit on screen, and an apartment filter.
   int _year = DateTime.now().year;
+
+  /// Expense-ledger filters: default to the current month; 0 = whole year.
+  int _expYear = DateTime.now().year;
+  int _expMonth = DateTime.now().month;
   int _half = DateTime.now().month <= 6 ? 0 : 1;
   bool _onlyWithDebt = false;
 
@@ -69,10 +73,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             .map((e) => Expense.fromJson(e))
             .toList();
         if (isVaad) {
-          _apartments = ((results[2]['directory'] ?? []) as List)
-              .map((e) => DirectoryEntry.fromJson(e))
-              .toList()
-            ..sort((a, b) => a.apartmentNumber.compareTo(b.apartmentNumber));
+          _apartments =
+              ((results[2]['directory'] ?? []) as List)
+                  .map((e) => DirectoryEntry.fromJson(e))
+                  .toList()
+                ..sort(
+                  (a, b) => a.apartmentNumber.compareTo(b.apartmentNumber),
+                );
         }
         _loading = false;
       });
@@ -90,7 +97,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   List<int> get _years {
     final now = DateTime.now();
-    final years = <int>{now.year, now.year + 1, ..._payments.map((p) => p.year)};
+    final years = <int>{
+      now.year,
+      now.year + 1,
+      ..._payments.map((p) => p.year),
+    };
     return years.toList()..sort();
   }
 
@@ -128,7 +139,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   /// Optimistic toggle: flip the cell instantly, sync with the server in
   /// the background and roll back (with an error message) on failure.
   Future<void> _toggleCell(DirectoryEntry apt, DateTime month) async {
-    final previous = _cellIndex[_cellKey(apt.apartmentId, month.year, month.month)];
+    final previous =
+        _cellIndex[_cellKey(apt.apartmentId, month.year, month.month)];
     final newStatus = previous?.status == 'paid' ? 'pending' : 'paid';
 
     setState(() {
@@ -156,7 +168,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       });
       if (!mounted) return;
       setState(
-        () => _replaceCell(apt.apartmentId, month, Payment.fromJson(res['payment'])),
+        () => _replaceCell(
+          apt.apartmentId,
+          month,
+          Payment.fromJson(res['payment']),
+        ),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -233,6 +249,39 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           DateFormat('MMMM', locale).format(now),
         ),
       );
+      await _load();
+    } on ApiException catch (e) {
+      _snack(e.message);
+    }
+  }
+
+  /// Long-press on a paid matrix cell: attach the receipt document.
+  /// The resident then sees it next to that month in their own view.
+  Future<void> _attachReceipt(DirectoryEntry apt, DateTime month) async {
+    final l10n = context.l10n;
+    final p = _cellIndex[_cellKey(apt.apartmentId, month.year, month.month)];
+    if (p == null || p.status != 'paid') {
+      _snack(l10n.attachReceiptOnlyPaid);
+      return;
+    }
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'heic', 'webp'],
+    );
+    final file = result.firstOrNull;
+    if (file == null) return;
+    try {
+      final up = await api.uploadFile(
+        '/api/payments/upload',
+        bytes: await file.readAsBytes(),
+        filename: file.name,
+      );
+      await api.patch('/api/payments', {
+        'paymentId': p.id,
+        'status': 'paid',
+        'receiptPath': up['receiptPath'],
+      });
+      _snack(l10n.receiptAttached);
       await _load();
     } on ApiException catch (e) {
       _snack(e.message);
@@ -324,7 +373,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     // Header line: apartments · % collected (of dues that came due) · debt.
     final dueRows = _payments.where(_isDue).toList();
     final paidDue = dueRows.where((p) => p.status == 'paid').length;
-    final pct = dueRows.isEmpty ? 100 : (paidDue * 100 / dueRows.length).round();
+    final pct = dueRows.isEmpty
+        ? 100
+        : (paidDue * 100 / dueRows.length).round();
     final totalDebt = dueRows
         .where((p) => p.status != 'paid')
         .fold(0.0, (s, p) => s + p.amount);
@@ -344,8 +395,14 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     final sortedFloors = floors.keys.toList()..sort();
 
     String halfLabel(int half) {
-      final from = DateFormat('MMM', locale).format(DateTime(_year, half * 6 + 1));
-      final to = DateFormat('MMM', locale).format(DateTime(_year, half * 6 + 6));
+      final from = DateFormat(
+        'MMM',
+        locale,
+      ).format(DateTime(_year, half * 6 + 1));
+      final to = DateFormat(
+        'MMM',
+        locale,
+      ).format(DateTime(_year, half * 6 + 6));
       return '$from–$to';
     }
 
@@ -372,9 +429,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 _DropdownChip<int>(
                   label: '$_year',
                   value: _year,
-                  items: [
-                    for (final y in _years) (value: y, label: '$y'),
-                  ],
+                  items: [for (final y in _years) (value: y, label: '$y')],
                   onSelected: (y) => setState(() => _year = y),
                 ),
                 const SizedBox(width: 8),
@@ -443,6 +498,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                           () => _expandedOverride[floor] = !expanded,
                         ),
                         onCellTap: _toggleCell,
+                        onCellLongPress: _attachReceipt,
                         onMarkFloorPaid: () => _bulkMark(apts, months),
                       );
                     }),
@@ -455,6 +511,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             alignment: AlignmentDirectional.centerEnd,
             child: _Legend(),
           ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.attachReceiptHint,
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontSize: 11, color: DiraColors.inkSoft),
+          ),
           const SizedBox(height: 90),
         ],
       ),
@@ -466,9 +528,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).languageCode;
     final visible = _onlyWithDebt
-        ? _apartments
-              .where((a) => _debtOf(a.apartmentId) > 0)
-              .toList()
+        ? _apartments.where((a) => _debtOf(a.apartmentId) > 0).toList()
         : _apartments;
     return Row(
       children: [
@@ -527,15 +587,27 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   // ------------------------------------------------------------------
-  // Tab 1 (tenant): own dues
+  // Tab 1 (tenant): own dues — hero summary, year filter, month cards
+  // with the payment date and the attached receipt.
   // ------------------------------------------------------------------
   Widget _tenantTab(BuildContext context) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).languageCode;
     final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    final now = DateTime.now();
+
+    // Open debt counts only months whose due date has arrived.
     final totalDue = _payments
-        .where((p) => p.status != 'paid')
+        .where((p) => p.status != 'paid' && _isDue(p))
         .fold(0.0, (sum, p) => sum + p.amount);
+
+    final yearPayments = _payments.where((p) => p.year == _year).toList()
+      ..sort((a, b) => b.month.compareTo(a.month));
+    final dueThisYear = yearPayments.where(_isDue).length;
+    final paidThisYear = yearPayments
+        .where((p) => p.status == 'paid')
+        .length;
+    final hasDebt = totalDue > 0;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -543,41 +615,177 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _SummaryCard(
-            label: l10n.youOwe,
-            value: currency.format(totalDue),
-            color: DiraColors.brick,
+          // Hero: open debt (brick) or all-settled (green) + year progress.
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: hasDebt ? DiraColors.brickDark : DiraColors.sageDeep,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      hasDebt
+                          ? Icons.error_outline_rounded
+                          : Icons.check_circle_outline_rounded,
+                      size: 18,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      hasDebt ? l10n.youOwe : l10n.noDebt,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  hasDebt ? currency.format(totalDue) : l10n.allSettled,
+                  style: heading(fontSize: 28, color: Colors.white),
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: dueThisYear == 0
+                        ? 1
+                        : (paidThisYear / dueThisYear).clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                    color: DiraColors.gold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.monthsPaidOfYear(
+                    '$paidThisYear',
+                    '$dueThisYear',
+                    '$_year',
+                  ),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          ..._payments.map(
-            (p) => Padding(
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _DropdownChip<int>(
+                label: '$_year',
+                value: _year,
+                items: [
+                  for (final y in _years) (value: y, label: '$y'),
+                ],
+                onSelected: (y) => setState(() => _year = y),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (yearPayments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                l10n.noChargesForYear,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: DiraColors.inkSoft),
+              ),
+            ),
+          ...yearPayments.map((p) {
+            final paid = p.status == 'paid';
+            final due = _isDue(p);
+            final future =
+                !due &&
+                (p.year > now.year ||
+                    (p.year == now.year && p.month > now.month));
+            final (Color avatarBg, Color avatarFg, IconData icon) = paid
+                ? (DiraColors.sageLight, DiraColors.sageDark, Icons.check)
+                : future
+                ? (
+                    DiraColors.creamDeep,
+                    DiraColors.inkSoft,
+                    Icons.schedule_rounded,
+                  )
+                : (
+                    DiraColors.terracottaSoft,
+                    DiraColors.brickDark,
+                    Icons.priority_high_rounded,
+                  );
+            return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Card(
                 child: ListTile(
+                  contentPadding: const EdgeInsetsDirectional.only(
+                    start: 14,
+                    end: 8,
+                    top: 2,
+                    bottom: 2,
+                  ),
+                  leading: CircleAvatar(
+                    backgroundColor: avatarBg,
+                    child: Icon(icon, size: 18, color: avatarFg),
+                  ),
                   title: Text(
                     DateFormat(
                       'MMMM yyyy',
                       locale,
                     ).format(DateTime(p.year, p.month)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14.5,
+                    ),
                   ),
-                  subtitle: Text(currency.format(p.amount)),
-                  trailing: p.status == 'paid'
-                      ? const Icon(
-                          Icons.check_circle,
-                          color: DiraColors.sageDark,
-                        )
-                      : Text(
-                          l10n.statusUnpaid,
-                          style: const TextStyle(
-                            color: DiraColors.brick,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
+                  subtitle: Text(
+                    [
+                      currency.format(p.amount),
+                      if (paid && p.paymentDate != null)
+                        l10n.paidOnDate(
+                          DateFormat(
+                            'd/M/yyyy',
+                            locale,
+                          ).format(p.paymentDate!),
                         ),
+                    ].join(' · '),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: p.receiptUrl != null
+                      ? TextButton.icon(
+                          onPressed: () => launchUrl(
+                            Uri.parse(p.receiptUrl!),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          icon: const Icon(Icons.receipt_long_rounded, size: 17),
+                          label: Text(
+                            l10n.receiptShort,
+                            style: const TextStyle(fontSize: 12.5),
+                          ),
+                        )
+                      : !paid && due
+                      ? Padding(
+                          padding: const EdgeInsetsDirectional.only(end: 8),
+                          child: Text(
+                            l10n.statusUnpaid,
+                            style: const TextStyle(
+                              color: DiraColors.brick,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ),
-            ),
-          ),
+            );
+          }),
           const SizedBox(height: 90),
         ],
       ),
@@ -587,11 +795,32 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   // ------------------------------------------------------------------
   // Tab 2: expense ledger
   // ------------------------------------------------------------------
+  /// Expense years present in the ledger (plus the current one).
+  List<int> get _expenseYears {
+    final years = <int>{
+      DateTime.now().year,
+      ..._expenses.map((e) => int.parse(e.expenseDate.substring(0, 4))),
+    };
+    return years.toList()..sort();
+  }
+
+  /// Ledger rows narrowed to the selected year (and month, unless
+  /// "whole year" is chosen).
+  List<Expense> get _filteredExpenses => [
+    for (final e in _expenses)
+      if (int.parse(e.expenseDate.substring(0, 4)) == _expYear &&
+          (_expMonth == 0 ||
+              int.parse(e.expenseDate.substring(5, 7)) == _expMonth))
+        e,
+  ];
+
   Widget _expensesTab(BuildContext context) {
     final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
     final isVaad = context.read<SessionController>().user?.isVaad ?? false;
     final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
-    final totalExpenses = _expenses.fold(0.0, (sum, e) => sum + e.amount);
+    final visible = _filteredExpenses;
+    final totalExpenses = visible.fold(0.0, (sum, e) => sum + e.amount);
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -600,52 +829,91 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: _SummaryCard(
-                  label: l10n.buildingExpenses,
-                  value: currency.format(totalExpenses),
-                  color: DiraColors.sageDark,
-                ),
+              _DropdownChip<int>(
+                label: '$_expYear',
+                value: _expYear,
+                items: [
+                  for (final y in _expenseYears) (value: y, label: '$y'),
+                ],
+                onSelected: (y) => setState(() => _expYear = y),
               ),
-              if (isVaad) ...[
-                const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              _DropdownChip<int>(
+                label: _expMonth == 0
+                    ? l10n.allYear
+                    : DateFormat(
+                        'MMMM',
+                        locale,
+                      ).format(DateTime(_expYear, _expMonth)),
+                value: _expMonth,
+                items: [
+                  (value: 0, label: l10n.allYear),
+                  for (var m = 1; m <= 12; m++)
+                    (
+                      value: m,
+                      label: DateFormat(
+                        'MMMM',
+                        locale,
+                      ).format(DateTime(_expYear, m)),
+                    ),
+                ],
+                onSelected: (m) => setState(() => _expMonth = m),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // IntrinsicHeight bounds the stretch: inside a ListView the Row
+          // gets infinite height and stretching alone would crash layout.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Expanded(
-                  child: Card(
-                    child: InkWell(
-                      onTap: _addExpense,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_circle_outline,
-                              color: DiraColors.brick,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              l10n.recordExpense,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: DiraColors.brickDark,
+                  child: _SummaryCard(
+                    label: l10n.buildingExpenses,
+                    value: currency.format(totalExpenses),
+                    color: DiraColors.sageDark,
+                  ),
+                ),
+                if (isVaad) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Card(
+                      child: InkWell(
+                        onTap: _addExpense,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.add_circle_outline,
+                                color: DiraColors.brick,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                l10n.recordExpense,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: DiraColors.brickDark,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
           const SizedBox(height: 16),
-          if (_expenses.isEmpty)
+          if (visible.isEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -656,7 +924,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               ),
             )
           else
-            ..._groupedExpenses(context),
+            ..._groupedExpenses(context, visible),
           const SizedBox(height: 90),
         ],
       ),
@@ -664,11 +932,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   /// Expenses grouped by month with a small month header, like the design.
-  List<Widget> _groupedExpenses(BuildContext context) {
+  List<Widget> _groupedExpenses(BuildContext context, List<Expense> expenses) {
     final locale = Localizations.localeOf(context).languageCode;
     final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
     final groups = <String, List<Expense>>{};
-    for (final e in _expenses) {
+    for (final e in expenses) {
       groups.putIfAbsent(e.expenseDate.substring(0, 7), () => []).add(e);
     }
     final keys = groups.keys.toList()..sort((a, b) => b.compareTo(a));
@@ -688,9 +956,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 style: heading(fontSize: 16),
               ),
               Text(
-                currency.format(
-                  groups[key]!.fold(0.0, (s, e) => s + e.amount),
-                ),
+                currency.format(groups[key]!.fold(0.0, (s, e) => s + e.amount)),
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -727,6 +993,7 @@ class _FloorSection extends StatelessWidget {
   final String Function(String apartmentId, int year, int month) cellKey;
   final VoidCallback onToggleExpand;
   final void Function(DirectoryEntry apt, DateTime month) onCellTap;
+  final void Function(DirectoryEntry apt, DateTime month) onCellLongPress;
   final VoidCallback onMarkFloorPaid;
 
   const _FloorSection({
@@ -740,6 +1007,7 @@ class _FloorSection extends StatelessWidget {
     required this.cellKey,
     required this.onToggleExpand,
     required this.onCellTap,
+    required this.onCellLongPress,
     required this.onMarkFloorPaid,
   });
 
@@ -824,6 +1092,7 @@ class _FloorSection extends StatelessWidget {
                           payment: p,
                           month: m,
                           onTap: () => onCellTap(a, m),
+                          onLongPress: () => onCellLongPress(a, m),
                         ),
                       ),
                     );
@@ -880,24 +1149,34 @@ class _MatrixCell extends StatelessWidget {
   final Payment? payment;
   final DateTime month;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const _MatrixCell({
     required this.payment,
     required this.month,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Two visual states only: paid (green check) or empty.
+    // Two visual states only: paid (green check) or empty. A tiny
+    // receipt glyph marks paid months that have a receipt attached.
     final paid = payment?.status == 'paid';
     final bg = paid ? DiraColors.sageLight : DiraColors.creamDeep;
     final child = paid
-        ? const Icon(Icons.check, size: 15, color: DiraColors.sageDark)
+        ? payment?.receiptUrl != null
+              ? const Icon(
+                  Icons.receipt_long_rounded,
+                  size: 14,
+                  color: DiraColors.sageDark,
+                )
+              : const Icon(Icons.check, size: 15, color: DiraColors.sageDark)
         : const SizedBox.shrink();
 
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(11),
       child: Container(
         height: _MatrixDims.cellHeight,
@@ -1266,7 +1545,9 @@ class _ExpenseSheetState extends State<_ExpenseSheet> {
                     ? Icons.attach_file_rounded
                     : Icons.check_circle,
                 size: 18,
-                color: _receipt == null ? DiraColors.brick : DiraColors.sageDark,
+                color: _receipt == null
+                    ? DiraColors.brick
+                    : DiraColors.sageDark,
               ),
               label: Text(_receipt?.name ?? l10n.attachReceipt),
             ),

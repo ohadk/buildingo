@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
@@ -11,6 +9,7 @@ import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/attachment_picker.dart';
 import '../widgets/phone_field.dart';
 import '../widgets/ticket_timeline.dart';
 
@@ -357,11 +356,12 @@ class NewTicketScreen extends StatefulWidget {
 class _NewTicketScreenState extends State<NewTicketScreen> {
   final _title = TextEditingController();
   final _description = TextEditingController();
+  final _otherLocation = TextEditingController();
 
-  /// Selected location key: one of the common-area keys, 'floor', or null.
+  /// Selected location key: a common-area key, 'floor', 'other', or null.
   String? _locationKey;
   int _floor = 1;
-  PlatformFile? _photo;
+  PickedAttachment? _photo;
   bool _busy = false;
   String? _error;
 
@@ -391,16 +391,17 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
     final key = _locationKey;
     if (key == null) return null;
     if (key == 'floor') return context.l10n.floorN('$_floor');
+    if (key == 'other') {
+      final text = _otherLocation.text.trim();
+      return text.isEmpty ? null : text;
+    }
     return _areaLabel(context, key);
   }
 
+  /// Camera or photo library, via the shared source sheet.
   Future<void> _pickPhoto() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
-    );
-    final file = result.firstOrNull;
-    if (file != null) setState(() => _photo = file);
+    final picked = await pickAttachments(context);
+    if (picked.isNotEmpty) setState(() => _photo = picked.first);
   }
 
   Future<void> _submit() async {
@@ -414,7 +415,7 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
       if (photo != null) {
         final res = await api.uploadFile(
           '/api/tickets/upload',
-          bytes: await photo.readAsBytes(),
+          bytes: photo.bytes,
           filename: photo.name,
         );
         imagePath = res['imagePath'] as String?;
@@ -503,8 +504,32 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
                 onSelected: (v) =>
                     setState(() => _locationKey = v ? 'floor' : null),
               ),
+              ChoiceChip(
+                avatar: Icon(
+                  Icons.edit_location_alt_outlined,
+                  size: 17,
+                  color: _locationKey == 'other'
+                      ? DiraColors.brickDark
+                      : DiraColors.inkSoft,
+                ),
+                label: Text(l10n.locOther),
+                selected: _locationKey == 'other',
+                onSelected: (v) =>
+                    setState(() => _locationKey = v ? 'other' : null),
+              ),
             ],
           ),
+          if (_locationKey == 'other') ...[
+            const SizedBox(height: 10),
+            TextField(
+              controller: _otherLocation,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: l10n.locOther,
+                hintText: l10n.locOtherHint,
+              ),
+            ),
+          ],
           if (_locationKey == 'floor') ...[
             const SizedBox(height: 10),
             Row(
@@ -545,19 +570,12 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: _photo!.path != null
-                      ? Image.file(
-                          File(_photo!.path!),
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          width: 72,
-                          height: 72,
-                          color: DiraColors.creamDeep,
-                          child: const Icon(Icons.image_outlined),
-                        ),
+                  child: Image.memory(
+                    _photo!.bytes,
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
