@@ -344,6 +344,18 @@ abstract class AppLocalizations {
   /// **'No open tickets — all quiet in the building.'**
   String get noOpenTickets;
 
+  /// No description provided for @noTicketsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No tickets yet'**
+  String get noTicketsYet;
+
+  /// No description provided for @noTicketsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap + below to report a fault in the building.'**
+  String get noTicketsHint;
+
   /// No description provided for @communityBoard.
   ///
   /// In en, this message translates to:
@@ -1568,6 +1580,18 @@ abstract class AppLocalizations {
   /// **'Unpaid this month'**
   String get unpaidThisMonth;
 
+  /// No description provided for @collectionSummaryLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{unpaid} apartments unpaid · of {total} · {pct}% collected'**
+  String collectionSummaryLine(String unpaid, String total, String pct);
+
+  /// No description provided for @collectionStatSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{unpaid} of {total} · {pct}% collected'**
+  String collectionStatSub(String unpaid, String total, String pct);
+
   /// No description provided for @collectedThisMonth.
   ///
   /// In en, this message translates to:
@@ -1609,6 +1633,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View all'**
   String get viewAll;
+
+  /// No description provided for @buildingSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Building schedule'**
+  String get buildingSchedule;
+
+  /// No description provided for @comingUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming up'**
+  String get comingUp;
+
+  /// No description provided for @viewCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Full schedule'**
+  String get viewCalendar;
+
+  /// No description provided for @scheduleGarbage.
+  ///
+  /// In en, this message translates to:
+  /// **'Garbage collection'**
+  String get scheduleGarbage;
+
+  /// No description provided for @scheduleCleaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Building cleaning'**
+  String get scheduleCleaning;
+
+  /// No description provided for @scheduleBulkWaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk waste pickup'**
+  String get scheduleBulkWaste;
+
+  /// No description provided for @scheduleOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get scheduleOther;
+
+  /// No description provided for @addScheduleEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to schedule'**
+  String get addScheduleEvent;
+
+  /// No description provided for @scheduleEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule yet'**
+  String get scheduleEmptyTitle;
+
+  /// No description provided for @scheduleEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add garbage collection days, cleaning times and one-off pickups so everyone in the building knows what\'s coming.'**
+  String get scheduleEmptyBody;
+
+  /// No description provided for @scheduleWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get scheduleWeekly;
+
+  /// No description provided for @scheduleOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time'**
+  String get scheduleOnce;
+
+  /// No description provided for @scheduleDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day of week'**
+  String get scheduleDay;
+
+  /// No description provided for @scheduleDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get scheduleDate;
+
+  /// No description provided for @scheduleTimeOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Time (optional)'**
+  String get scheduleTimeOptional;
+
+  /// No description provided for @scheduleNotesOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes (optional)'**
+  String get scheduleNotesOptional;
+
+  /// No description provided for @scheduleSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule updated'**
+  String get scheduleSaved;
+
+  /// No description provided for @scheduleTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get scheduleTomorrow;
+
+  /// No description provided for @scheduleRecurring.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats weekly'**
+  String get scheduleRecurring;
+
+  /// No description provided for @scheduleEventTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get scheduleEventTitle;
+
+  /// No description provided for @scheduleEventType.
+  ///
+  /// In en, this message translates to:
+  /// **'Event type'**
+  String get scheduleEventType;
+
+  /// No description provided for @monday.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday'**
+  String get monday;
+
+  /// No description provided for @tuesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuesday'**
+  String get tuesday;
+
+  /// No description provided for @wednesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Wednesday'**
+  String get wednesday;
+
+  /// No description provided for @thursday.
+  ///
+  /// In en, this message translates to:
+  /// **'Thursday'**
+  String get thursday;
+
+  /// No description provided for @friday.
+  ///
+  /// In en, this message translates to:
+  /// **'Friday'**
+  String get friday;
+
+  /// No description provided for @saturday.
+  ///
+  /// In en, this message translates to:
+  /// **'Saturday'**
+  String get saturday;
+
+  /// No description provided for @sunday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunday'**
+  String get sunday;
 
   /// No description provided for @dateToday.
   ///

@@ -139,6 +139,12 @@ class AppLocalizationsHe extends AppLocalizations {
   String get noOpenTickets => 'אין קריאות פתוחות — הכול שקט בבניין.';
 
   @override
+  String get noTicketsYet => 'אין קריאות עדיין';
+
+  @override
+  String get noTicketsHint => 'לחצו על + למטה כדי לדווח על תקלה בבניין.';
+
+  @override
   String get communityBoard => 'לוח הקהילה';
 
   @override
@@ -797,6 +803,16 @@ class AppLocalizationsHe extends AppLocalizations {
   String get unpaidThisMonth => 'לא שילמו החודש';
 
   @override
+  String collectionSummaryLine(String unpaid, String total, String pct) {
+    return '$unpaid דירות לא שילמו · מתוך $total · $pct% נגבה';
+  }
+
+  @override
+  String collectionStatSub(String unpaid, String total, String pct) {
+    return '$unpaid מתוך $total · $pct% נגבה';
+  }
+
+  @override
   String get collectedThisMonth => 'נגבו החודש';
 
   @override
@@ -820,6 +836,91 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get viewAll => 'הכל';
+
+  @override
+  String get buildingSchedule => 'לוח הבניין';
+
+  @override
+  String get comingUp => 'בקרוב';
+
+  @override
+  String get viewCalendar => 'לוח מלא';
+
+  @override
+  String get scheduleGarbage => 'פינוי אשפה';
+
+  @override
+  String get scheduleCleaning => 'ניקוי הבניין';
+
+  @override
+  String get scheduleBulkWaste => 'פינוי גזם';
+
+  @override
+  String get scheduleOther => 'אחר';
+
+  @override
+  String get addScheduleEvent => 'הוספה ללוח';
+
+  @override
+  String get scheduleEmptyTitle => 'אין לוח עדיין';
+
+  @override
+  String get scheduleEmptyBody =>
+      'הוסיפו ימי פינוי אשפה, ניקוי ואירועים חד-פעמיים — כדי שכל הדיירים ידעו מה קורה בבניין.';
+
+  @override
+  String get scheduleWeekly => 'שבועי';
+
+  @override
+  String get scheduleOnce => 'חד-פעמי';
+
+  @override
+  String get scheduleDay => 'יום בשבוע';
+
+  @override
+  String get scheduleDate => 'תאריך';
+
+  @override
+  String get scheduleTimeOptional => 'שעה (רשות)';
+
+  @override
+  String get scheduleNotesOptional => 'הערות (רשות)';
+
+  @override
+  String get scheduleSaved => 'הלוח עודכן';
+
+  @override
+  String get scheduleTomorrow => 'מחר';
+
+  @override
+  String get scheduleRecurring => 'חוזר מדי שבוע';
+
+  @override
+  String get scheduleEventTitle => 'כותרת';
+
+  @override
+  String get scheduleEventType => 'סוג אירוע';
+
+  @override
+  String get monday => 'שני';
+
+  @override
+  String get tuesday => 'שלישי';
+
+  @override
+  String get wednesday => 'רביעי';
+
+  @override
+  String get thursday => 'חמישי';
+
+  @override
+  String get friday => 'שישי';
+
+  @override
+  String get saturday => 'שבת';
+
+  @override
+  String get sunday => 'ראשון';
 
   @override
   String get dateToday => 'היום';

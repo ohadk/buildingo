@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 import '../core/api_client.dart';
 import '../core/models.dart';
@@ -14,6 +15,7 @@ import 'documents_screen.dart';
 import 'maintenance_screen.dart';
 import 'meetings_screen.dart';
 import 'profile_screen.dart';
+import 'schedule_screen.dart';
 
 /// Home tab. Tenants get the design's home: blush hero with the two
 /// stat cards (open tickets / next payment), gold announcement banner,
@@ -33,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Announcement> _announcements = [];
   List<Payment> _payments = [];
   List<JoinRequest> _joinRequests = [];
+  List<ScheduleOccurrence> _upcomingSchedule = [];
   bool _loading = true;
   StreamSubscription<String>? _realtimeSub;
 
@@ -46,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'announcements',
       'payments',
       'join_requests',
+      'schedule_events',
     }, _load);
   }
 
@@ -57,11 +61,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _load() async {
     final isVaad = context.read<SessionController>().user?.isVaad ?? false;
+    final fmt = DateFormat('yyyy-MM-dd');
+    final today = DateTime.now();
+    final horizon = today.add(const Duration(days: 14));
     try {
       final futures = <Future<Map<String, dynamic>>>[
         api.get('/api/tickets'),
         api.get('/api/announcements'),
         api.get('/api/payments'),
+        api.get(
+          '/api/schedule-events?from=${fmt.format(today)}&to=${fmt.format(horizon)}',
+        ),
         if (isVaad) api.get('/api/join-requests'),
       ];
       final results = await Future.wait(futures);
@@ -76,8 +86,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _payments = ((results[2]['payments'] ?? []) as List)
             .map((p) => Payment.fromJson(p))
             .toList();
+        _upcomingSchedule = ((results[3]['occurrences'] ?? []) as List)
+            .map((e) => ScheduleOccurrence.fromJson(e))
+            .toList();
         _joinRequests = isVaad
-            ? ((results[3]['joinRequests'] ?? []) as List)
+            ? ((results[4]['joinRequests'] ?? []) as List)
                   .map((e) => JoinRequest.fromJson(e))
                   .toList()
             : [];
@@ -189,6 +202,17 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             _MenuTile(
+              icon: Icons.calendar_month_rounded,
+              color: DiraColors.sage,
+              label: l10n.buildingSchedule,
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+                );
+              },
+            ),
+            _MenuTile(
               icon: Icons.campaign_rounded,
               color: DiraColors.goldDark,
               label: l10n.assemblies,
@@ -281,6 +305,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final unpaidApartments = monthPayments
         .where((p) => p.status != 'paid')
         .toList();
+    final outstanding = unpaidApartments.fold<double>(0, (s, p) => s + p.amount);
+    final totalDue = monthPayments.fold<double>(0, (s, p) => s + p.amount);
+    final collected = totalDue - outstanding;
+    final collectedPct = totalDue > 0 ? (collected / totalDue * 100).round() : 100;
 
     return Container(
       decoration: const BoxDecoration(
@@ -359,11 +387,19 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 10),
               if (isVaad)
                 _StatCard(
-                  label: l10n.unpaidThisMonth,
-                  value: '${unpaidApartments.length}',
+                  label: l10n.leftToCollect,
+                  value: monthPayments.isEmpty
+                      ? '—'
+                      : unpaidApartments.isEmpty
+                      ? l10n.allPaid
+                      : '₪${outstanding.toStringAsFixed(0)}',
                   sub: monthPayments.isEmpty
                       ? l10n.noDuesYet
-                      : l10n.ofTotal('${monthPayments.length}'),
+                      : l10n.collectionStatSub(
+                          '${unpaidApartments.length}',
+                          '${monthPayments.length}',
+                          '$collectedPct',
+                        ),
                   icon: Icons.credit_card_rounded,
                   accent: unpaidApartments.isNotEmpty,
                   onTap: () => widget.onNavigate(1),
@@ -441,71 +477,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
       const SizedBox(height: 16),
+      ..._scheduleSection(context),
+      const SizedBox(height: 16),
       ..._boardSection(context),
       const SizedBox(height: 110),
     ];
   }
 
   // ------------------------------------------------------------------
-  // Vaad body: quick actions, open tickets, unpaid apartments, board
+  // Vaad body: schedule, community board, open tickets
   // ------------------------------------------------------------------
   List<Widget> _vaadBody(BuildContext context) {
     final l10n = context.l10n;
-    final now = DateTime.now();
-    final monthPayments = _payments
-        .where((p) => p.month == now.month && p.year == now.year)
-        .toList();
-    final unpaidApartments =
-        monthPayments.where((p) => p.status != 'paid').toList()..sort(
-          (a, b) => (a.apartmentNumber ?? 0).compareTo(b.apartmentNumber ?? 0),
-        );
-    final collected = monthPayments
-        .where((p) => p.status == 'paid')
-        .fold<double>(0, (s, p) => s + p.amount);
-    final totalDue = monthPayments.fold<double>(0, (s, p) => s + p.amount);
-
     return [
-      _SectionHeader(
-        title: l10n.unpaidThisMonth,
-        actionLabel: l10n.viewAll,
-        onAction: () => widget.onNavigate(1),
-      ),
-      const SizedBox(height: 12),
-      if (!_loading && monthPayments.isEmpty)
-        Card(
-          child: ListTile(
-            leading: const Icon(
-              Icons.info_outline_rounded,
-              color: DiraColors.goldDark,
-            ),
-            title: Text(
-              l10n.noDuesYet,
-              style: const TextStyle(fontSize: 14, color: DiraColors.inkSoft),
-            ),
-            trailing: TextButton(
-              onPressed: () => widget.onNavigate(1),
-              child: Text(l10n.generateMonthDues),
-            ),
-          ),
-        )
-      else if (!_loading && unpaidApartments.isEmpty)
-        Card(
-          color: DiraColors.sagePale,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              l10n.allApartmentsPaid,
-              style: const TextStyle(color: DiraColors.sageDark),
-            ),
-          ),
-        )
-      else if (!_loading)
-        _CollectionCard(
-          unpaid: unpaidApartments,
-          collected: collected,
-          totalDue: totalDue,
-          onSeeAll: () => widget.onNavigate(1),
-        ),
+      ..._scheduleSection(context),
       const SizedBox(height: 16),
       ..._boardSection(context),
       const SizedBox(height: 16),
@@ -542,6 +527,74 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
       const SizedBox(height: 110),
+    ];
+  }
+
+  // ------------------------------------------------------------------
+  // Building schedule preview (shared)
+  // ------------------------------------------------------------------
+  List<Widget> _scheduleSection(BuildContext context) {
+    final l10n = context.l10n;
+    void openCalendar() {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+      );
+    }
+
+    return [
+      _SectionHeader(
+        title: l10n.comingUp,
+        actionLabel: l10n.viewCalendar,
+        onAction: openCalendar,
+      ),
+      const SizedBox(height: 12),
+      if (_loading)
+        const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: CircularProgressIndicator(color: DiraColors.brick),
+          ),
+        )
+      else if (_upcomingSchedule.isEmpty)
+        Card(
+          child: InkWell(
+            onTap: openCalendar,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: DiraColors.sage.withValues(alpha: 0.35),
+                    child: const Icon(
+                      Icons.calendar_month_outlined,
+                      color: DiraColors.sageDark,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      l10n.scheduleEmptyTitle,
+                      style: const TextStyle(
+                        color: DiraColors.inkSoft,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: DiraColors.inkSoft),
+                ],
+              ),
+            ),
+          ),
+        )
+      else
+        ..._upcomingSchedule.take(3).map(
+          (o) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: ScheduleEventTile(occurrence: o),
+          ),
+        ),
     ];
   }
 
@@ -672,133 +725,6 @@ class _MenuTile extends StatelessWidget {
   }
 }
 
-/// Compact monthly-collection summary: the outstanding total, the
-/// collection progress bar, and one small chip per unpaid apartment.
-class _CollectionCard extends StatelessWidget {
-  final List<Payment> unpaid;
-  final double collected;
-  final double totalDue;
-  final VoidCallback onSeeAll;
-
-  const _CollectionCard({
-    required this.unpaid,
-    required this.collected,
-    required this.totalDue,
-    required this.onSeeAll,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final outstanding = unpaid.fold<double>(0, (s, p) => s + p.amount);
-    const maxChips = 8;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.leftToCollect,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: DiraColors.inkSoft,
-                        ),
-                      ),
-                      Text(
-                        '₪${outstanding.toStringAsFixed(0)}',
-                        style: heading(fontSize: 27, color: DiraColors.brick),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  '₪${collected.toStringAsFixed(0)} '
-                  '${l10n.ofTotal('₪${totalDue.toStringAsFixed(0)}')}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: DiraColors.inkSoft,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: totalDue > 0 ? collected / totalDue : 0,
-                minHeight: 8,
-                backgroundColor: DiraColors.creamDeep,
-                color: DiraColors.sage,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                ...unpaid.take(maxChips).map(
-                  (p) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: DiraColors.terracottaSoft,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '${l10n.apartmentShort('${p.apartmentNumber ?? '—'}')}'
-                      ' · ₪${p.amount.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: DiraColors.brickDark,
-                      ),
-                    ),
-                  ),
-                ),
-                if (unpaid.length > maxChips)
-                  InkWell(
-                    onTap: onSeeAll,
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: DiraColors.creamDeep,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '+${unpaid.length - maxChips}',
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: DiraColors.ink,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// White KPI card inside the blush hero, per the design mockup.
 class _StatCard extends StatelessWidget {
   final String label;
@@ -867,16 +793,21 @@ class _StatCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (sub != null)
-                    Text(
-                      sub!,
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        color: DiraColors.inkSoft,
-                      ),
-                    ),
                 ],
               ),
+              if (sub != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  sub!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: DiraColors.inkSoft,
+                    height: 1.25,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

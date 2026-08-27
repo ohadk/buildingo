@@ -148,20 +148,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           l10n.maintenance,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          if (isVaad)
-            IconButton(
-              tooltip: l10n.vendorAgents,
-              icon: const Icon(Icons.smart_toy_outlined),
-              onPressed: () => Navigator.of(context)
-                  .push(
-                    MaterialPageRoute(
-                      builder: (_) => const VendorAgentsScreen(),
-                    ),
-                  )
-                  .then((_) => _load()),
-            ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'maintenance-fab',
@@ -182,13 +168,52 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               color: DiraColors.brick,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _tickets.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, i) {
-                  final t = _tickets[i];
-                  return Card(
+              child: _tickets.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(24, 48, 24, 110),
+                      children: [
+                        Center(
+                          child: Column(
+                            children: [
+                              CircleAvatar(
+                                radius: 36,
+                                backgroundColor:
+                                    DiraColors.brick.withValues(alpha: 0.12),
+                                child: const Icon(
+                                  Icons.home_repair_service_outlined,
+                                  size: 34,
+                                  color: DiraColors.brick,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Text(
+                                l10n.noTicketsYet,
+                                textAlign: TextAlign.center,
+                                style: heading(fontSize: 18),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l10n.noTicketsHint,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: DiraColors.inkSoft,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _tickets.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, i) {
+                        final t = _tickets[i];
+                        return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(

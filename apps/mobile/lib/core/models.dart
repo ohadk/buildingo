@@ -355,3 +355,23 @@ class Meeting {
           .map((v) => Vote.fromJson(v))
           .toList();
 }
+
+/// One concrete date for a building schedule rule (garbage, cleaning…).
+class ScheduleOccurrence {
+  final String id;
+  final String eventType;
+  final String title;
+  final String? notes;
+  final String recurrence;
+  final DateTime occurrenceDate;
+  final String? timeOfDay;
+
+  ScheduleOccurrence.fromJson(Map<String, dynamic> j)
+    : id = j['id'],
+      eventType = j['event_type'],
+      title = j['title'],
+      notes = j['notes'],
+      recurrence = j['recurrence'],
+      occurrenceDate = DateTime.parse(j['occurrence_date']),
+      timeOfDay = j['time_of_day']?.toString().substring(0, 5);
+}

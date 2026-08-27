@@ -139,6 +139,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noOpenTickets => 'No open tickets — all quiet in the building.';
 
   @override
+  String get noTicketsYet => 'No tickets yet';
+
+  @override
+  String get noTicketsHint => 'Tap + below to report a fault in the building.';
+
+  @override
   String get communityBoard => 'Community Board';
 
   @override
@@ -801,6 +807,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unpaidThisMonth => 'Unpaid this month';
 
   @override
+  String collectionSummaryLine(String unpaid, String total, String pct) {
+    return '$unpaid apartments unpaid · of $total · $pct% collected';
+  }
+
+  @override
+  String collectionStatSub(String unpaid, String total, String pct) {
+    return '$unpaid of $total · $pct% collected';
+  }
+
+  @override
   String get collectedThisMonth => 'Collected this month';
 
   @override
@@ -824,6 +840,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewAll => 'View all';
+
+  @override
+  String get buildingSchedule => 'Building schedule';
+
+  @override
+  String get comingUp => 'Coming up';
+
+  @override
+  String get viewCalendar => 'Full schedule';
+
+  @override
+  String get scheduleGarbage => 'Garbage collection';
+
+  @override
+  String get scheduleCleaning => 'Building cleaning';
+
+  @override
+  String get scheduleBulkWaste => 'Bulk waste pickup';
+
+  @override
+  String get scheduleOther => 'Other';
+
+  @override
+  String get addScheduleEvent => 'Add to schedule';
+
+  @override
+  String get scheduleEmptyTitle => 'No schedule yet';
+
+  @override
+  String get scheduleEmptyBody =>
+      'Add garbage collection days, cleaning times and one-off pickups so everyone in the building knows what\'s coming.';
+
+  @override
+  String get scheduleWeekly => 'Weekly';
+
+  @override
+  String get scheduleOnce => 'One-time';
+
+  @override
+  String get scheduleDay => 'Day of week';
+
+  @override
+  String get scheduleDate => 'Date';
+
+  @override
+  String get scheduleTimeOptional => 'Time (optional)';
+
+  @override
+  String get scheduleNotesOptional => 'Notes (optional)';
+
+  @override
+  String get scheduleSaved => 'Schedule updated';
+
+  @override
+  String get scheduleTomorrow => 'Tomorrow';
+
+  @override
+  String get scheduleRecurring => 'Repeats weekly';
+
+  @override
+  String get scheduleEventTitle => 'Title';
+
+  @override
+  String get scheduleEventType => 'Event type';
+
+  @override
+  String get monday => 'Monday';
+
+  @override
+  String get tuesday => 'Tuesday';
+
+  @override
+  String get wednesday => 'Wednesday';
+
+  @override
+  String get thursday => 'Thursday';
+
+  @override
+  String get friday => 'Friday';
+
+  @override
+  String get saturday => 'Saturday';
+
+  @override
+  String get sunday => 'Sunday';
 
   @override
   String get dateToday => 'Today';
