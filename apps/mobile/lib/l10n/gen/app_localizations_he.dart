@@ -56,6 +56,21 @@ class AppLocalizationsHe extends AppLocalizations {
   String get completeProfile => 'השלמת פרופיל';
 
   @override
+  String get myProfile => 'הפרופיל שלי';
+
+  @override
+  String get menu => 'תפריט';
+
+  @override
+  String get leftToCollect => 'נותר לגבייה';
+
+  @override
+  String get profileUpdated => 'הפרופיל נשמר';
+
+  @override
+  String get changePhoto => 'החלפת תמונה';
+
+  @override
   String apartmentAndFloor(String apt, String floor) {
     return 'דירה $apt, קומה $floor';
   }
@@ -89,13 +104,13 @@ class AppLocalizationsHe extends AppLocalizations {
   String get navPayments => 'תשלומים';
 
   @override
-  String get navMaintenance => 'תחזוקה';
-
-  @override
   String get navResidents => 'דיירים';
 
   @override
   String get navDocs => 'מסמכים';
+
+  @override
+  String get navAgents => 'סוכנים';
 
   @override
   String get neighbor => 'שכן/ה';
@@ -153,7 +168,7 @@ class AppLocalizationsHe extends AppLocalizations {
   }
 
   @override
-  String get maintenance => 'תחזוקה';
+  String get maintenance => 'תקלות ותיקונים';
 
   @override
   String get vendorAgents => 'סוכני ספקים';

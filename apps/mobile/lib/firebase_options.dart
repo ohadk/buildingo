@@ -38,10 +38,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBl8m0vtNBJMcCxUBGpWlqS-C6vaT3yR-0',
-    appId: '1:848466124816:ios:687f6ce893762d7a65aa95',
+    appId: '1:848466124816:ios:c5eda3e8bd7c107c65aa95',
     messagingSenderId: '848466124816',
     projectId: 'buildingo-6ff54',
     storageBucket: 'buildingo-6ff54.firebasestorage.app',
-    iosBundleId: 'com.dira.diraMobile',
+    iosBundleId: 'com.buildingo.buildingoMobile',
   );
 }

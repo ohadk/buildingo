@@ -138,6 +138,27 @@ class SessionController extends ChangeNotifier {
     await refreshMe();
   }
 
+  /// Self-service profile edit (name / email / occupants).
+  Future<void> updateProfile({
+    String? fullName,
+    String? email,
+    int? numOccupants,
+  }) async {
+    await api.patch('/api/auth/me', {
+      if (fullName != null && fullName.isNotEmpty) 'fullName': fullName,
+      // Empty string clears the stored email.
+      if (email != null) 'email': email.isEmpty ? null : email,
+      'numOccupants': ?numOccupants,
+    });
+    await refreshMe();
+  }
+
+  /// Uploads a new profile picture and refreshes the signed URL.
+  Future<void> uploadAvatar(List<int> bytes, String filename) async {
+    await api.uploadFile('/api/profile/avatar', bytes: bytes, filename: filename);
+    await refreshMe();
+  }
+
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
     realtime.setBuilding(null);

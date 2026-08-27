@@ -15,7 +15,7 @@ Future<void> showInviteSheet(BuildContext context) async {
   final session = context.read<SessionController>();
   final code = session.building?.joinCode;
   if (code == null) return;
-  final link = '${ApiClient.baseUrl}/join/$code';
+  final link = '${ApiClient.publicWebUrl}/join/$code';
   final message = context.l10n.shareJoinMessage(
     session.building?.name ?? '',
     link,

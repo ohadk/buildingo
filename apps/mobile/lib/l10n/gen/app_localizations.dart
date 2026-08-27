@@ -188,6 +188,36 @@ abstract class AppLocalizations {
   /// **'Complete your profile'**
   String get completeProfile;
 
+  /// No description provided for @myProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'My profile'**
+  String get myProfile;
+
+  /// No description provided for @menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get menu;
+
+  /// No description provided for @leftToCollect.
+  ///
+  /// In en, this message translates to:
+  /// **'Left to collect'**
+  String get leftToCollect;
+
+  /// No description provided for @profileUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved'**
+  String get profileUpdated;
+
+  /// No description provided for @changePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get changePhoto;
+
   /// No description provided for @apartmentAndFloor.
   ///
   /// In en, this message translates to:
@@ -248,12 +278,6 @@ abstract class AppLocalizations {
   /// **'Payments'**
   String get navPayments;
 
-  /// No description provided for @navMaintenance.
-  ///
-  /// In en, this message translates to:
-  /// **'Maintenance'**
-  String get navMaintenance;
-
   /// No description provided for @navResidents.
   ///
   /// In en, this message translates to:
@@ -265,6 +289,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Docs'**
   String get navDocs;
+
+  /// No description provided for @navAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents'**
+  String get navAgents;
 
   /// No description provided for @neighbor.
   ///
@@ -365,7 +395,7 @@ abstract class AppLocalizations {
   /// No description provided for @maintenance.
   ///
   /// In en, this message translates to:
-  /// **'Maintenance'**
+  /// **'Faults & Repairs'**
   String get maintenance;
 
   /// No description provided for @vendorAgents.

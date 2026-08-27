@@ -488,6 +488,7 @@ class _NewMeetingScreenState extends State<NewMeetingScreen> {
 
   Future<void> _create() async {
     final l10n = context.l10n;
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;

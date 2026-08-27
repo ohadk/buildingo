@@ -190,6 +190,7 @@ class _UploadDocSheetState extends State<_UploadDocSheet> {
   }
 
   Future<void> _send() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;

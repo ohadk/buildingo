@@ -123,7 +123,7 @@ development without real SMS.
 ### 3. Mobile (`apps/mobile`)
 
 Firebase apps are already registered (`com.dira.dira_mobile` /
-`com.dira.diraMobile`) and `lib/firebase_options.dart` is generated;
+`com.buildingo.buildingoMobile`) and `lib/firebase_options.dart` is generated;
 `google-services.json` and `GoogleService-Info.plist` are in place.
 
 ```bash
@@ -148,6 +148,21 @@ Notes for phone auth on device:
 - **DB/Storage → Supabase** (already hosted).
 - **Mobile** ships through the app stores; point `API_BASE_URL` at the
   App Hosting URL.
+
+### 5. Test users
+
+Firebase test phone numbers (Console → Authentication → Sign-in method →
+Phone). No real SMS is sent — the verification code for **all** of them
+is `111111`. The occupied ones live in the building
+**מייזנר 17, פתח תקווה**:
+
+| Phone | Role | Name | Apartment |
+|---|---|---|---|
+| `+972547788999` | Super admin | — | — (web console only) |
+| `+972547760683` | Vaad | אוהד קצב | Apt 2, floor 1 |
+| `+972548899656` | Tenant | אבנר נתניהו | Apt 15, floor 5 |
+| `+972548899653` | *free* | — | for testing new sign-ups / invites |
+| `+972547777777` | *free* | — | for testing new sign-ups / invites |
 
 ## End-to-end walkthrough
 

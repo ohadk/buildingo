@@ -11,7 +11,6 @@ import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
-import '../widgets/invite_sheet.dart';
 import '../widgets/phone_field.dart';
 import 'tenant_transfer_screen.dart';
 
@@ -183,14 +182,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           l10n.directoryTitle,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          if (isVaad)
-            IconButton(
-              tooltip: l10n.inviteLinkShare,
-              icon: const Icon(Icons.ios_share_rounded, color: DiraColors.brick),
-              onPressed: () => showInviteSheet(context),
-            ),
-        ],
       ),
       body: _loading
           ? const Center(
@@ -1070,10 +1061,10 @@ class _InviteLinkCard extends StatelessWidget {
     final building = context.watch<SessionController>().building;
     final code = building?.joinCode;
     if (building == null || code == null) return const SizedBox.shrink();
-    final link = '${ApiClient.baseUrl}/join/$code';
+    final link = '${ApiClient.publicWebUrl}/join/$code';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
       decoration: BoxDecoration(
         color: DiraColors.sageLight,
         borderRadius: BorderRadius.circular(16),
@@ -1081,6 +1072,40 @@ class _InviteLinkCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Header: what this link is and who can use it.
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 17,
+                backgroundColor: DiraColors.sagePale,
+                child: Icon(
+                  Icons.group_add_rounded,
+                  size: 19,
+                  color: DiraColors.sageDark,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.inviteResidents,
+                      style: heading(fontSize: 15.5, color: DiraColors.sageDeep),
+                    ),
+                    Text(
+                      l10n.inviteLinkExplain,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: DiraColors.sageDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           // One slim row: link + copy + WhatsApp share.
           Row(
             children: [

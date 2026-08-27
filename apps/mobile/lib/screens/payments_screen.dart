@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
@@ -11,6 +10,7 @@ import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/attachment_picker.dart';
 
 /// Finances tab: two sub-tabs — the payment matrix (or the tenant's own
 /// dues) and the building expense ledger.
@@ -264,16 +264,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       _snack(l10n.attachReceiptOnlyPaid);
       return;
     }
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'heic', 'webp'],
-    );
-    final file = result.firstOrNull;
+    final picked = await pickAttachments(context, allowPdf: true);
+    final file = picked.firstOrNull;
     if (file == null) return;
     try {
       final up = await api.uploadFile(
         '/api/payments/upload',
-        bytes: await file.readAsBytes(),
+        bytes: file.bytes,
         filename: file.name,
       );
       await api.patch('/api/payments', {
@@ -323,14 +320,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             l10n.financesTitle,
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-          actions: [
-            if (isVaad)
-              IconButton(
-                tooltip: l10n.generateMonthDues,
-                icon: const Icon(Icons.playlist_add),
-                onPressed: _generateMonth,
-              ),
-          ],
           bottom: TabBar(
             labelColor: DiraColors.brickDark,
             unselectedLabelColor: DiraColors.inkSoft,
@@ -455,6 +444,16 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       _expandedOverride[f] = false;
                     }
                   }),
+                ),
+                const SizedBox(width: 8),
+                ActionChip(
+                  avatar: const Icon(
+                    Icons.playlist_add,
+                    size: 18,
+                    color: DiraColors.brickDark,
+                  ),
+                  label: Text(l10n.generateMonthDues),
+                  onPressed: _generateMonth,
                 ),
               ],
             ),
@@ -1408,7 +1407,7 @@ class _ExpenseSheetState extends State<_ExpenseSheet> {
   final _category = TextEditingController();
   final _provider = TextEditingController();
   final _amount = TextEditingController();
-  PlatformFile? _receipt;
+  PickedAttachment? _receipt;
   bool _busy = false;
   String? _error;
 
@@ -1418,15 +1417,15 @@ class _ExpenseSheetState extends State<_ExpenseSheet> {
       (double.tryParse(_amount.text.trim()) ?? 0) > 0;
 
   Future<void> _pickReceipt() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-    );
-    final file = result.firstOrNull;
+    final picked = await pickAttachments(context, allowPdf: true);
+    final file = picked.firstOrNull;
     if (file != null) setState(() => _receipt = file);
   }
 
   Future<void> _save() async {
+    // Dismiss the keyboard now; otherwise it stays open after the
+    // sheet pops because focus is still on a text field.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;
@@ -1437,7 +1436,7 @@ class _ExpenseSheetState extends State<_ExpenseSheet> {
       if (receipt != null) {
         final res = await api.uploadFile(
           '/api/expenses/upload',
-          bytes: await receipt.readAsBytes(),
+          bytes: receipt.bytes,
           filename: receipt.name,
         );
         receiptPath = res['receiptPath'] as String?;

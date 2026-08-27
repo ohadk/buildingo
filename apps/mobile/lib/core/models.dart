@@ -9,6 +9,9 @@ class AppUser {
   final int numOccupants;
   final DateTime? onboardedAt;
 
+  /// Short-lived signed URL for the profile picture (null when unset).
+  final String? avatarUrl;
+
   AppUser.fromJson(Map<String, dynamic> j)
     : id = j['id'],
       phoneNumber = j['phone_number'],
@@ -20,7 +23,8 @@ class AppUser {
       numOccupants = j['num_occupants'] ?? 1,
       onboardedAt = j['onboarded_at'] != null
           ? DateTime.parse(j['onboarded_at'])
-          : null;
+          : null,
+      avatarUrl = j['avatar_url'];
 
   bool get isVaad => role == 'vaad';
   bool get needsOnboarding => onboardedAt == null && role != 'super_admin';

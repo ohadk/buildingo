@@ -6,10 +6,6 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Buildingo uses the camera to photograph faults and scan documents.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Buildingo uses your photo library to attach pictures to reports and documents.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Buildingo</string>
 	<key>CFBundleExecutable</key>
@@ -19,17 +15,13 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>dira_mobile</string>
+	<string>Buildingo</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<!-- Firebase Phone Auth reCAPTCHA fallback (required on simulators, where
-	     silent APNs verification is unavailable). Scheme = encoded GOOGLE_APP_ID. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -37,12 +29,18 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>app-1-848466124816-ios-687f6ce893762d7a65aa95</string>
+				<string>app-1-848466124816-ios-c5eda3e8bd7c107c65aa95</string>
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Buildingo uses the camera to photograph faults and scan documents.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Buildingo uses your photo library to attach pictures to reports and documents.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -48,14 +48,16 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const body = createSchema.parse(await req.json());
   const db = supabaseAdmin();
 
-  const name = `${body.address}, ${body.city}`;
+  const address = body.address.trim();
+  const city = body.city.trim();
+  const name = `${address}, ${city}`;
 
   const { data: building, error } = await db
     .from("buildings")
     .insert({
       name,
-      address: body.address,
-      city: body.city,
+      address,
+      city,
       country: body.country,
       postal_code: body.postalCode ?? null,
       fee_method: body.feeMethod,
@@ -67,6 +69,10 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     })
     .select("*")
     .single();
+  // 23505 = unique violation on uq_buildings_active_address.
+  if (error?.code === "23505") {
+    throw new ApiError(409, "A building at this address already exists");
+  }
   if (error) throw new ApiError(500, error.message);
 
   const apartments = Array.from({ length: body.apartmentCount }, (_, i) => ({

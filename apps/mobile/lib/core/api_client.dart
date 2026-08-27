@@ -19,6 +19,14 @@ class ApiClient {
     defaultValue: 'http://localhost:3000',
   );
 
+  /// Origin used for user-facing links (join/share). Unlike [baseUrl]
+  /// (which may be a LAN IP during development), this should always be
+  /// the public domain; it falls back to [baseUrl] when not provided.
+  static const publicWebUrl = String.fromEnvironment(
+    'PUBLIC_WEB_URL',
+    defaultValue: baseUrl,
+  );
+
   Future<Map<String, String>> _headers({bool json = true}) async {
     final token = await FirebaseAuth.instance.currentUser?.getIdToken();
     return {

@@ -56,6 +56,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get completeProfile => 'Complete your profile';
 
   @override
+  String get myProfile => 'My profile';
+
+  @override
+  String get menu => 'Menu';
+
+  @override
+  String get leftToCollect => 'Left to collect';
+
+  @override
+  String get profileUpdated => 'Profile saved';
+
+  @override
+  String get changePhoto => 'Change photo';
+
+  @override
   String apartmentAndFloor(String apt, String floor) {
     return 'Apartment $apt, floor $floor';
   }
@@ -89,13 +104,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navPayments => 'Payments';
 
   @override
-  String get navMaintenance => 'Maintenance';
-
-  @override
   String get navResidents => 'Residents';
 
   @override
   String get navDocs => 'Docs';
+
+  @override
+  String get navAgents => 'Agents';
 
   @override
   String get neighbor => 'neighbor';
@@ -153,7 +168,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get maintenance => 'Maintenance';
+  String get maintenance => 'Faults & Repairs';
 
   @override
   String get vendorAgents => 'Vendor Agents';

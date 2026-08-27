@@ -405,6 +405,7 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
   }
 
   Future<void> _submit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;

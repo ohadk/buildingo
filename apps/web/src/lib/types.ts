@@ -15,6 +15,7 @@ export interface AppUser {
   apartment_id: string | null;
   num_occupants: number;
   lease_contract_path: string | null;
+  avatar_path?: string | null;
   onboarded_at: string | null;
   is_active: boolean;
 }

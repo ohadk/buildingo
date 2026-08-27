@@ -7,7 +7,7 @@ import '../l10n/l10n.dart';
 import 'directory_screen.dart';
 import 'documents_screen.dart';
 import 'home_screen.dart';
-import 'maintenance_screen.dart';
+import 'maintenance_screen.dart' show NewTicketScreen, VendorAgentsScreen;
 import 'meetings_screen.dart';
 import 'payments_screen.dart';
 
@@ -111,12 +111,15 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // The Vaad manages AI vendor agents often enough to earn a tab;
+    // their documents vault moves to the home hamburger menu. Tenants
+    // keep the documents tab (they have no agents to manage).
+    final isVaad = context.watch<SessionController>().user?.isVaad ?? false;
     final screens = [
       HomeScreen(onNavigate: (i) => setState(() => _index = i)),
       const PaymentsScreen(),
-      const MaintenanceScreen(),
       const DirectoryScreen(),
-      const DocumentsScreen(),
+      if (isVaad) const VendorAgentsScreen() else const DocumentsScreen(),
     ];
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
@@ -156,24 +159,19 @@ class _MainShellState extends State<MainShell> {
                 selected: _index == 1,
                 onTap: () => setState(() => _index = 1),
               ),
-              // Middle tab sits under the docked FAB: label only.
+              // Empty slot under the docked FAB.
+              const Expanded(child: SizedBox()),
               _NavItem(
-                icon: null,
-                label: l10n.navMaintenance,
+                icon: Icons.people_alt_rounded,
+                label: l10n.navResidents,
                 selected: _index == 2,
                 onTap: () => setState(() => _index = 2),
               ),
               _NavItem(
-                icon: Icons.people_alt_rounded,
-                label: l10n.navResidents,
+                icon: isVaad ? Icons.smart_toy_rounded : Icons.folder_rounded,
+                label: isVaad ? l10n.navAgents : l10n.navDocs,
                 selected: _index == 3,
                 onTap: () => setState(() => _index = 3),
-              ),
-              _NavItem(
-                icon: Icons.folder_rounded,
-                label: l10n.navDocs,
-                selected: _index == 4,
-                onTap: () => setState(() => _index = 4),
               ),
             ],
           ),
@@ -215,6 +213,7 @@ class _AnnouncementSheetState extends State<_AnnouncementSheet> {
   );
 
   Future<void> _send() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;

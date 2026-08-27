@@ -68,6 +68,7 @@ class _TenantTransferScreenState extends State<TenantTransferScreen> {
   }
 
   Future<void> _submit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;
