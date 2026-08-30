@@ -816,6 +816,32 @@ class AppLocalizationsHe extends AppLocalizations {
   String get collectedThisMonth => 'נגבו החודש';
 
   @override
+  String collectionHeroSub(String total, String pct) {
+    return 'מתוך $total · $pct% נגבה';
+  }
+
+  @override
+  String get noTicketsThisMonth => 'אין קריאות חדשות החודש';
+
+  @override
+  String ticketsThisMonth(String n) {
+    return '$n חדשות החודש';
+  }
+
+  @override
+  String get ticketsSameAsLastMonth => 'כמו בחודש שעבר';
+
+  @override
+  String ticketsUpVsLastMonth(String pct) {
+    return '+$pct% לעומת חודש שעבר';
+  }
+
+  @override
+  String ticketsDownVsLastMonth(String pct) {
+    return '-$pct% לעומת חודש שעבר';
+  }
+
+  @override
   String ofTotal(String total) {
     return 'מתוך $total';
   }
@@ -872,6 +898,21 @@ class AppLocalizationsHe extends AppLocalizations {
   String get scheduleWeekly => 'שבועי';
 
   @override
+  String get scheduleBiweekly => 'כל שבועיים';
+
+  @override
+  String get scheduleDaily => 'כל יום';
+
+  @override
+  String get scheduleMonthly => 'כל חודש';
+
+  @override
+  String get scheduleRepeat => 'תדירות';
+
+  @override
+  String get scheduleDayOfMonth => 'יום בחודש';
+
+  @override
   String get scheduleOnce => 'חד-פעמי';
 
   @override
@@ -888,6 +929,10 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get scheduleSaved => 'הלוח עודכן';
+
+  @override
+  String get scheduleNotReady =>
+      'לוח הבניין עדיין לא מוכן. יש להריץ את migration 0018_schedule_events.sql בעורך SQL של Supabase ולנסות שוב.';
 
   @override
   String get scheduleTomorrow => 'מחר';

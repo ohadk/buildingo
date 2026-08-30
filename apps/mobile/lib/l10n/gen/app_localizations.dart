@@ -1598,6 +1598,42 @@ abstract class AppLocalizations {
   /// **'Collected this month'**
   String get collectedThisMonth;
 
+  /// No description provided for @collectionHeroSub.
+  ///
+  /// In en, this message translates to:
+  /// **'of {total} · {pct}% collected'**
+  String collectionHeroSub(String total, String pct);
+
+  /// No description provided for @noTicketsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'No new tickets this month'**
+  String get noTicketsThisMonth;
+
+  /// No description provided for @ticketsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} new this month'**
+  String ticketsThisMonth(String n);
+
+  /// No description provided for @ticketsSameAsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as last month'**
+  String get ticketsSameAsLastMonth;
+
+  /// No description provided for @ticketsUpVsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'+{pct}% vs last month'**
+  String ticketsUpVsLastMonth(String pct);
+
+  /// No description provided for @ticketsDownVsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'-{pct}% vs last month'**
+  String ticketsDownVsLastMonth(String pct);
+
   /// No description provided for @ofTotal.
   ///
   /// In en, this message translates to:
@@ -1700,6 +1736,36 @@ abstract class AppLocalizations {
   /// **'Weekly'**
   String get scheduleWeekly;
 
+  /// No description provided for @scheduleBiweekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 2 weeks'**
+  String get scheduleBiweekly;
+
+  /// No description provided for @scheduleDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get scheduleDaily;
+
+  /// No description provided for @scheduleMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get scheduleMonthly;
+
+  /// No description provided for @scheduleRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get scheduleRepeat;
+
+  /// No description provided for @scheduleDayOfMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Day of month'**
+  String get scheduleDayOfMonth;
+
   /// No description provided for @scheduleOnce.
   ///
   /// In en, this message translates to:
@@ -1735,6 +1801,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Schedule updated'**
   String get scheduleSaved;
+
+  /// No description provided for @scheduleNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Building schedule is not ready yet. Run migration 0018_schedule_events.sql in the Supabase SQL editor, then try again.'**
+  String get scheduleNotReady;
 
   /// No description provided for @scheduleTomorrow.
   ///

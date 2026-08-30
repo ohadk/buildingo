@@ -99,6 +99,8 @@ Run in the SQL editor (or `supabase db push`), in order:
 3. `supabase/migrations/0003_storage.sql`
 4. `supabase/seed.sql` — **first replace the phone number** with yours; that
    number becomes the super admin on first sign-in.
+5. Later migrations in `supabase/migrations/` (e.g. `0018_schedule_events.sql`
+   for the building schedule) — run each new file in the SQL editor when added.
 
 ### 2. Web (`apps/web`)
 

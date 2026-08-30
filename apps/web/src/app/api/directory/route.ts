@@ -13,7 +13,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("apartments")
-    .select("id, apartment_number, floor, parking_spot, users(id, full_name, phone_number, role, num_occupants)")
+    .select("id, apartment_number, floor, parking_spot, monthly_fee, size_sqm, users(id, full_name, phone_number, role, num_occupants)")
     .eq("building_id", user.building_id)
     .order("floor")
     .order("apartment_number");

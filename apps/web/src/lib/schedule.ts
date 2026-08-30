@@ -1,18 +1,39 @@
+export type ScheduleRecurrence =
+  | "once"
+  | "daily"
+  | "weekly"
+  | "biweekly"
+  | "monthly";
+
 export type ScheduleEventRow = {
   id: string;
   building_id: string;
   event_type: string;
   title: string;
   notes: string | null;
-  recurrence: "weekly" | "once";
+  recurrence: ScheduleRecurrence;
   day_of_week: number | null;
+  day_of_month: number | null;
   specific_date: string | null;
   time_of_day: string | null;
   is_active: boolean;
+  created_at?: string;
 };
 
 export type ScheduleOccurrence = ScheduleEventRow & {
   occurrence_date: string;
+  /** Full timestamp for one-off events (e.g. resident assemblies). */
+  starts_at?: string;
+};
+
+export type MeetingRow = {
+  id: string;
+  building_id: string;
+  title: string;
+  agenda: string;
+  meeting_date: string;
+  location: string | null;
+  is_closed: boolean;
 };
 
 function parseDate(s: string): Date {
@@ -27,7 +48,12 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Expand weekly/one-off rules into concrete dates inside [from, to]. */
+function daysBetween(a: Date, b: Date): number {
+  const ms = parseDate(formatDate(b)).getTime() - parseDate(formatDate(a)).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+/** Expand schedule rules into concrete dates inside [from, to]. */
 export function expandScheduleEvents(
   events: ScheduleEventRow[],
   from: string,
@@ -47,20 +73,120 @@ export function expandScheduleEvents(
       continue;
     }
 
-    if (event.recurrence === "weekly" && event.day_of_week != null) {
+    if (event.recurrence === "daily") {
+      const cur = new Date(fromD);
+      while (cur <= toD) {
+        out.push({ ...event, occurrence_date: formatDate(cur) });
+        cur.setDate(cur.getDate() + 1);
+      }
+      continue;
+    }
+
+    if (
+      (event.recurrence === "weekly" || event.recurrence === "biweekly") &&
+      event.day_of_week != null
+    ) {
+      const anchor =
+        event.specific_date ??
+        (event.created_at ? event.created_at.slice(0, 10) : from);
+      const step = event.recurrence === "biweekly" ? 14 : 7;
       const cur = new Date(fromD);
       while (cur <= toD) {
         if (cur.getDay() === event.day_of_week) {
-          out.push({ ...event, occurrence_date: formatDate(cur) });
+          const delta = daysBetween(parseDate(anchor), cur);
+          if (delta >= 0 && delta % step === 0) {
+            out.push({ ...event, occurrence_date: formatDate(cur) });
+          }
         }
         cur.setDate(cur.getDate() + 1);
+      }
+      continue;
+    }
+
+    if (event.recurrence === "monthly" && event.day_of_month != null) {
+      let y = fromD.getFullYear();
+      let m = fromD.getMonth();
+      const endY = toD.getFullYear();
+      const endM = toD.getMonth();
+      while (y < endY || (y === endY && m <= endM)) {
+        const lastDay = new Date(y, m + 1, 0).getDate();
+        const dom = Math.min(event.day_of_month, lastDay);
+        const d = new Date(y, m, dom);
+        if (d >= fromD && d <= toD) {
+          out.push({ ...event, occurrence_date: formatDate(d) });
+        }
+        m += 1;
+        if (m > 11) {
+          m = 0;
+          y += 1;
+        }
       }
     }
   }
 
-  return out.sort((a, b) => {
-    const left = `${a.occurrence_date}T${a.time_of_day ?? "23:59"}`;
-    const right = `${b.occurrence_date}T${b.time_of_day ?? "23:59"}`;
-    return left.localeCompare(right);
-  });
+  return out.sort(compareOccurrences);
+}
+
+/** Map resident assemblies into schedule occurrences for a date window. */
+export function meetingsToOccurrences(
+  meetings: MeetingRow[],
+  from: string,
+  to: string,
+): ScheduleOccurrence[] {
+  const fromD = parseDate(from);
+  const toD = parseDate(to);
+  const out: ScheduleOccurrence[] = [];
+
+  for (const meeting of meetings) {
+    const dt = new Date(meeting.meeting_date);
+    const dateStr = formatDate(dt);
+    const dateOnly = parseDate(dateStr);
+    if (dateOnly < fromD || dateOnly > toD) continue;
+
+    const h = `${dt.getHours()}`.padStart(2, "0");
+    const m = `${dt.getMinutes()}`.padStart(2, "0");
+
+    out.push({
+      id: meeting.id,
+      building_id: meeting.building_id,
+      event_type: "meeting",
+      title: meeting.title,
+      notes: meeting.location,
+      recurrence: "once",
+      day_of_week: null,
+      day_of_month: null,
+      specific_date: dateStr,
+      time_of_day: `${h}:${m}`,
+      is_active: !meeting.is_closed,
+      occurrence_date: dateStr,
+      starts_at: meeting.meeting_date,
+    });
+  }
+
+  return out;
+}
+
+function compareOccurrences(a: ScheduleOccurrence, b: ScheduleOccurrence): number {
+  const left = a.starts_at ?? `${a.occurrence_date}T${a.time_of_day ?? "23:59"}`;
+  const right = b.starts_at ?? `${b.occurrence_date}T${b.time_of_day ?? "23:59"}`;
+  return left.localeCompare(right);
+}
+
+/** Merge schedule rules and assemblies into one sorted timeline. */
+export function mergeScheduleOccurrences(
+  schedule: ScheduleOccurrence[],
+  meetings: ScheduleOccurrence[],
+): ScheduleOccurrence[] {
+  return [...schedule, ...meetings].sort(compareOccurrences);
+}
+
+export function isScheduleTableMissing(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("schedule_events") &&
+    (m.includes("schema cache") ||
+      m.includes("pgrst205") ||
+      m.includes("does not exist") ||
+      m.includes("could not find the table"))
+  );
 }

@@ -37,6 +37,8 @@ class Building {
   final String city;
   final String? joinCode;
   final String feeMethod; // fixed | per_sqm
+  final double? fixedMonthlyFee;
+  final double? pricePerSqm;
   final bool requireJoinDocs;
 
   Building.fromJson(Map<String, dynamic> j)
@@ -46,6 +48,8 @@ class Building {
       city = j['city'],
       joinCode = j['join_code'],
       feeMethod = j['fee_method'] ?? 'fixed',
+      fixedMonthlyFee = (j['fixed_monthly_fee'] as num?)?.toDouble(),
+      pricePerSqm = (j['price_per_sqm'] as num?)?.toDouble(),
       requireJoinDocs = j['require_join_docs'] ?? false;
 }
 
@@ -232,6 +236,8 @@ class DirectoryEntry {
   final int apartmentNumber;
   final int floor;
   final String? parkingSpot;
+  final double monthlyFee;
+  final double? sizeSqm;
   final List<({String name, String phone, String role})> residents;
 
   DirectoryEntry.fromJson(Map<String, dynamic> j)
@@ -239,6 +245,8 @@ class DirectoryEntry {
       apartmentNumber = j['apartment_number'],
       floor = j['floor'],
       parkingSpot = j['parking_spot'],
+      monthlyFee = (j['monthly_fee'] as num?)?.toDouble() ?? 0,
+      sizeSqm = (j['size_sqm'] as num?)?.toDouble(),
       residents = ((j['users'] ?? []) as List)
           .map(
             (u) => (
@@ -365,6 +373,8 @@ class ScheduleOccurrence {
   final String recurrence;
   final DateTime occurrenceDate;
   final String? timeOfDay;
+  final int? dayOfMonth;
+  final DateTime? startsAt;
 
   ScheduleOccurrence.fromJson(Map<String, dynamic> j)
     : id = j['id'],
@@ -373,5 +383,11 @@ class ScheduleOccurrence {
       notes = j['notes'],
       recurrence = j['recurrence'],
       occurrenceDate = DateTime.parse(j['occurrence_date']),
-      timeOfDay = j['time_of_day']?.toString().substring(0, 5);
+      timeOfDay = j['time_of_day']?.toString().substring(0, 5),
+      dayOfMonth = j['day_of_month'],
+      startsAt = j['starts_at'] != null
+          ? DateTime.parse(j['starts_at'] as String)
+          : null;
+
+  bool get isMeeting => eventType == 'meeting';
 }

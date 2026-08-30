@@ -16,6 +16,7 @@ class ScheduleUi {
     'garbage' => Icons.delete_outline_rounded,
     'cleaning' => Icons.cleaning_services_outlined,
     'bulk_waste' => Icons.inventory_2_outlined,
+    'meeting' => Icons.groups_outlined,
     _ => Icons.event_note_outlined,
   };
 
@@ -23,6 +24,7 @@ class ScheduleUi {
     'garbage' => DiraColors.sageDark,
     'cleaning' => DiraColors.goldDark,
     'bulk_waste' => DiraColors.brick,
+    'meeting' => DiraColors.brickDark,
     _ => DiraColors.inkSoft,
   };
 
@@ -31,8 +33,30 @@ class ScheduleUi {
         'garbage' => l10n.scheduleGarbage,
         'cleaning' => l10n.scheduleCleaning,
         'bulk_waste' => l10n.scheduleBulkWaste,
+        'meeting' => l10n.residentsAssembly,
         _ => l10n.scheduleOther,
       };
+
+  static String recurrenceLabel(AppLocalizations l10n, String recurrence) =>
+      switch (recurrence) {
+        'daily' => l10n.scheduleDaily,
+        'weekly' => l10n.scheduleWeekly,
+        'biweekly' => l10n.scheduleBiweekly,
+        'monthly' => l10n.scheduleMonthly,
+        _ => l10n.scheduleOnce,
+      };
+
+  static String recurrenceDetail(
+    AppLocalizations l10n,
+    ScheduleOccurrence occurrence,
+  ) {
+    final parts = <String>[
+      recurrenceLabel(l10n, occurrence.recurrence),
+      if (occurrence.recurrence == 'monthly' && occurrence.dayOfMonth != null)
+        '${occurrence.dayOfMonth}',
+    ];
+    return parts.join(' · ');
+  }
 
   static String weekdayLabel(AppLocalizations l10n, int day) => switch (day) {
     0 => l10n.sunday,
@@ -79,6 +103,9 @@ class ScheduleEventTile extends StatelessWidget {
     final when = showRelativeDay
         ? ScheduleUi.relativeDayLabel(l10n, occurrence.occurrenceDate, locale)
         : DateFormat('EEEE, d MMM', locale).format(occurrence.occurrenceDate);
+    final timeLabel = occurrence.startsAt != null
+        ? DateFormat.Hm(locale).format(occurrence.startsAt!.toLocal())
+        : occurrence.timeOfDay;
 
     return Card(
       child: Padding(
@@ -111,9 +138,10 @@ class ScheduleEventTile extends StatelessWidget {
                   Text(
                     [
                       when,
-                      if (occurrence.timeOfDay != null) occurrence.timeOfDay!,
-                      if (occurrence.recurrence == 'weekly')
-                        l10n.scheduleRecurring,
+                      ?timeLabel,
+                      if (occurrence.isMeeting) l10n.residentsAssembly,
+                      if (!occurrence.isMeeting && occurrence.recurrence != 'once')
+                        ScheduleUi.recurrenceLabel(l10n, occurrence.recurrence),
                     ].join(' · '),
                     style: const TextStyle(
                       fontSize: 12.5,
@@ -162,7 +190,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final now = DateTime.now();
     _month = DateTime(now.year, now.month);
     _load();
-    _realtimeSub = realtime.listen({'schedule_events'}, _load);
+    _realtimeSub = realtime.listen({'schedule_events', 'meetings'}, _load);
   }
 
   @override
@@ -192,9 +220,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       });
     } on ApiException catch (e) {
       if (mounted) {
+        final msg = e.message.toLowerCase();
         setState(() {
           _loading = false;
-          _error = e.message;
+          _error = e.status == 503 ||
+                  msg.contains('schedule_events') ||
+                  msg.contains('schema cache') ||
+                  msg.contains('not set up yet')
+              ? context.l10n.scheduleNotReady
+              : e.message;
         });
       }
     }
@@ -248,13 +282,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       ),
       floatingActionButton: isVaad
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               heroTag: 'schedule-fab',
               backgroundColor: DiraColors.brick,
               foregroundColor: DiraColors.creamCard,
+              tooltip: l10n.addScheduleEvent,
               onPressed: _addEvent,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addScheduleEvent),
+              child: const Icon(Icons.add, size: 28),
             )
           : null,
       body: Column(
@@ -287,7 +321,36 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     child: CircularProgressIndicator(color: DiraColors.brick),
                   )
                 : _error != null
-                ? Center(child: Text(_error!))
+                ? ListView(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(36),
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 36,
+                              backgroundColor:
+                                  DiraColors.goldLight.withValues(alpha: 0.6),
+                              child: const Icon(
+                                Icons.info_outline_rounded,
+                                size: 34,
+                                color: DiraColors.goldDark,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Text(
+                              _error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: DiraColors.inkSoft,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
                 : _occurrences.isEmpty
                 ? ListView(
                     children: [
@@ -374,6 +437,7 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
   String _eventType = 'garbage';
   String _recurrence = 'weekly';
   int _dayOfWeek = DateTime.now().weekday % 7; // JS-style 0=Sun
+  int _dayOfMonth = DateTime.now().day;
   DateTime _specificDate = DateTime.now();
   TimeOfDay? _time;
   final _title = TextEditingController();
@@ -425,8 +489,13 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
         'title': _titleValue(l10n),
         'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         'recurrence': _recurrence,
-        if (_recurrence == 'weekly') 'dayOfWeek': _dayOfWeek,
-        if (_recurrence == 'once') 'specificDate': fmt.format(_specificDate),
+        if (_recurrence == 'weekly' || _recurrence == 'biweekly')
+          'dayOfWeek': _dayOfWeek,
+        if (_recurrence == 'monthly') 'dayOfMonth': _dayOfMonth,
+        if (_recurrence == 'once')
+          'specificDate': fmt.format(_specificDate),
+        if (_recurrence == 'biweekly')
+          'specificDate': fmt.format(_specificDate),
         if (_time != null)
           'timeOfDay':
               '${_time!.hour.toString().padLeft(2, '0')}:${_time!.minute.toString().padLeft(2, '0')}',
@@ -434,9 +503,15 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) {
+        final msg = e.message.toLowerCase();
         setState(() {
           _busy = false;
-          _error = e.message;
+          _error = e.status == 503 ||
+                  msg.contains('schedule_events') ||
+                  msg.contains('schema cache') ||
+                  msg.contains('not set up yet')
+              ? l10n.scheduleNotReady
+              : e.message;
         });
       }
     }
@@ -481,16 +556,37 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
               ],
             ),
             const SizedBox(height: 12),
-            SegmentedButton<String>(
-              segments: [
-                ButtonSegment(value: 'weekly', label: Text(l10n.scheduleWeekly)),
-                ButtonSegment(value: 'once', label: Text(l10n.scheduleOnce)),
+            DropdownButtonFormField<String>(
+              initialValue: _recurrence,
+              decoration: InputDecoration(labelText: l10n.scheduleRepeat),
+              items: [
+                DropdownMenuItem(
+                  value: 'once',
+                  child: Text(l10n.scheduleOnce),
+                ),
+                DropdownMenuItem(
+                  value: 'daily',
+                  child: Text(l10n.scheduleDaily),
+                ),
+                DropdownMenuItem(
+                  value: 'weekly',
+                  child: Text(l10n.scheduleWeekly),
+                ),
+                DropdownMenuItem(
+                  value: 'biweekly',
+                  child: Text(l10n.scheduleBiweekly),
+                ),
+                DropdownMenuItem(
+                  value: 'monthly',
+                  child: Text(l10n.scheduleMonthly),
+                ),
               ],
-              selected: {_recurrence},
-              onSelectionChanged: (s) => setState(() => _recurrence = s.first),
+              onChanged: (v) {
+                if (v != null) setState(() => _recurrence = v);
+              },
             ),
             const SizedBox(height: 12),
-            if (_recurrence == 'weekly')
+            if (_recurrence == 'weekly' || _recurrence == 'biweekly')
               DropdownButtonFormField<int>(
                 initialValue: _dayOfWeek,
                 decoration: InputDecoration(labelText: l10n.scheduleDay),
@@ -504,8 +600,21 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
                 onChanged: (v) {
                   if (v != null) setState(() => _dayOfWeek = v);
                 },
-              )
-            else
+              ),
+            if (_recurrence == 'monthly')
+              DropdownButtonFormField<int>(
+                initialValue: _dayOfMonth,
+                decoration: InputDecoration(labelText: l10n.scheduleDayOfMonth),
+                items: [
+                  for (var d = 1; d <= 31; d++)
+                    DropdownMenuItem(value: d, child: Text('$d')),
+                ],
+                onChanged: (v) {
+                  if (v != null) setState(() => _dayOfMonth = v);
+                },
+              ),
+            if (_recurrence == 'once' || _recurrence == 'biweekly') ...[
+              const SizedBox(height: 4),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.scheduleDate),
@@ -516,6 +625,7 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
                 trailing: const Icon(Icons.calendar_today_outlined),
                 onTap: _pickDate,
               ),
+            ],
             const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,

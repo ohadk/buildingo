@@ -36,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Payment> _payments = [];
   List<JoinRequest> _joinRequests = [];
   List<ScheduleOccurrence> _upcomingSchedule = [];
+  List<DirectoryEntry> _apartments = [];
   bool _loading = true;
   StreamSubscription<String>? _realtimeSub;
 
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'payments',
       'join_requests',
       'schedule_events',
+      'meetings',
     }, _load);
   }
 
@@ -65,34 +67,45 @@ class _HomeScreenState extends State<HomeScreen> {
     final today = DateTime.now();
     final horizon = today.add(const Duration(days: 14));
     try {
-      final futures = <Future<Map<String, dynamic>>>[
+      final core = await Future.wait([
         api.get('/api/tickets'),
         api.get('/api/announcements'),
         api.get('/api/payments'),
-        api.get(
-          '/api/schedule-events?from=${fmt.format(today)}&to=${fmt.format(horizon)}',
-        ),
         if (isVaad) api.get('/api/join-requests'),
-      ];
-      final results = await Future.wait(futures);
-      if (!mounted) return;
-      setState(() {
-        _tickets = ((results[0]['tickets'] ?? []) as List)
-            .map((t) => Ticket.fromJson(t))
-            .toList();
-        _announcements = ((results[1]['announcements'] ?? []) as List)
-            .map((a) => Announcement.fromJson(a))
-            .toList();
-        _payments = ((results[2]['payments'] ?? []) as List)
-            .map((p) => Payment.fromJson(p))
-            .toList();
-        _upcomingSchedule = ((results[3]['occurrences'] ?? []) as List)
+        if (isVaad) api.get('/api/directory'),
+      ]);
+      var schedule = <ScheduleOccurrence>[];
+      try {
+        final scheduleRes = await api.get(
+          '/api/schedule-events?from=${fmt.format(today)}&to=${fmt.format(horizon)}',
+        );
+        schedule = ((scheduleRes['occurrences'] ?? []) as List)
             .map((e) => ScheduleOccurrence.fromJson(e))
             .toList();
+      } on ApiException {
+        // Schedule is optional until migration 0018 is applied.
+      }
+      if (!mounted) return;
+      setState(() {
+        _tickets = ((core[0]['tickets'] ?? []) as List)
+            .map((t) => Ticket.fromJson(t))
+            .toList();
+        _announcements = ((core[1]['announcements'] ?? []) as List)
+            .map((a) => Announcement.fromJson(a))
+            .toList();
+        _payments = ((core[2]['payments'] ?? []) as List)
+            .map((p) => Payment.fromJson(p))
+            .toList();
+        _upcomingSchedule = schedule;
         _joinRequests = isVaad
-            ? ((results[4]['joinRequests'] ?? []) as List)
+            ? ((core[3]['joinRequests'] ?? []) as List)
                   .map((e) => JoinRequest.fromJson(e))
                   .toList()
+            : [];
+        _apartments = isVaad
+            ? ((core[4]['directory'] ?? []) as List)
+                .map((e) => DirectoryEntry.fromJson(e))
+                .toList()
             : [];
         _loading = false;
       });
@@ -104,6 +117,46 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Ticket> get _openTickets => _tickets
       .where((t) => ['open', 'approved', 'in_progress'].contains(t.status))
       .toList();
+
+  double _expectedMonthlyTotal(Building? building) {
+    if (building == null || _apartments.isEmpty) return 0;
+    double feeFor(DirectoryEntry a) {
+      if (building.feeMethod == 'per_sqm' &&
+          building.pricePerSqm != null &&
+          a.sizeSqm != null) {
+        return a.sizeSqm! * building.pricePerSqm!;
+      }
+      if (building.feeMethod == 'fixed' && building.fixedMonthlyFee != null) {
+        return building.fixedMonthlyFee!;
+      }
+      return a.monthlyFee;
+    }
+
+    return _apartments.fold(0.0, (sum, a) => sum + feeFor(a));
+  }
+
+  String? _ticketTrendSub(AppLocalizations l10n) {
+    final now = DateTime.now();
+    final thisMonth = _tickets
+        .where(
+          (t) =>
+              t.createdAt.year == now.year && t.createdAt.month == now.month,
+        )
+        .length;
+    final last = DateTime(now.year, now.month - 1);
+    final lastMonth = _tickets
+        .where(
+          (t) =>
+              t.createdAt.year == last.year && t.createdAt.month == last.month,
+        )
+        .length;
+    if (thisMonth == 0 && lastMonth == 0) return l10n.noTicketsThisMonth;
+    if (lastMonth == 0) return l10n.ticketsThisMonth('$thisMonth');
+    final pct = ((thisMonth - lastMonth) / lastMonth * 100).round();
+    if (pct == 0) return l10n.ticketsSameAsLastMonth;
+    if (pct > 0) return l10n.ticketsUpVsLastMonth('$pct');
+    return l10n.ticketsDownVsLastMonth('${pct.abs()}');
+  }
 
   Future<void> _decideJoin(JoinRequest request, bool approve) async {
     try {
@@ -302,13 +355,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final monthPayments = _payments
         .where((p) => p.month == now.month && p.year == now.year)
         .toList();
-    final unpaidApartments = monthPayments
-        .where((p) => p.status != 'paid')
-        .toList();
-    final outstanding = unpaidApartments.fold<double>(0, (s, p) => s + p.amount);
-    final totalDue = monthPayments.fold<double>(0, (s, p) => s + p.amount);
-    final collected = totalDue - outstanding;
-    final collectedPct = totalDue > 0 ? (collected / totalDue * 100).round() : 100;
+    final collected = monthPayments
+        .where((p) => p.status == 'paid')
+        .fold<double>(0, (s, p) => s + p.amount);
+    final expectedTotal = _expectedMonthlyTotal(session.building);
+    final totalDue = monthPayments.isNotEmpty
+        ? monthPayments.fold<double>(0, (s, p) => s + p.amount)
+        : expectedTotal;
+    final collectedPct =
+        totalDue > 0 ? (collected / totalDue * 100).round() : 0;
+    final ticketSub = _ticketTrendSub(l10n);
 
     return Container(
       decoration: const BoxDecoration(
@@ -375,47 +431,47 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              _StatCard(
-                label: l10n.openTicketsStat,
-                value: '${_openTickets.length}',
-                sub: agentCount > 0 ? l10n.withAgentCount('$agentCount') : null,
-                icon: Icons.home_repair_service_rounded,
-                onTap: _openTicketsScreen,
-              ),
-              const SizedBox(width: 10),
-              if (isVaad)
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 _StatCard(
-                  label: l10n.leftToCollect,
-                  value: monthPayments.isEmpty
-                      ? '—'
-                      : unpaidApartments.isEmpty
-                      ? l10n.allPaid
-                      : '₪${outstanding.toStringAsFixed(0)}',
-                  sub: monthPayments.isEmpty
-                      ? l10n.noDuesYet
-                      : l10n.collectionStatSub(
-                          '${unpaidApartments.length}',
-                          '${monthPayments.length}',
-                          '$collectedPct',
-                        ),
-                  icon: Icons.credit_card_rounded,
-                  accent: unpaidApartments.isNotEmpty,
-                  onTap: () => widget.onNavigate(1),
-                )
-              else
-                _StatCard(
-                  label: l10n.nextPayment,
-                  value: unpaid.isEmpty
-                      ? l10n.allPaid
-                      : '₪${unpaid.first.amount.toStringAsFixed(0)}',
-                  sub: unpaid.isEmpty ? null : '1.${unpaid.first.month}',
-                  icon: Icons.credit_card_rounded,
-                  accent: unpaid.isNotEmpty,
-                  onTap: () => widget.onNavigate(1),
+                  label: l10n.openTicketsStat,
+                  value: '${_openTickets.length}',
+                  sub: agentCount > 0
+                      ? l10n.withAgentCount('$agentCount')
+                      : ticketSub,
+                  icon: Icons.home_repair_service_rounded,
+                  onTap: _openTicketsScreen,
                 ),
-            ],
+                const SizedBox(width: 10),
+                if (isVaad)
+                  _StatCard(
+                    label: l10n.collectedThisMonth,
+                    value: '₪${collected.toStringAsFixed(0)}',
+                    sub: totalDue > 0
+                        ? l10n.collectionHeroSub(
+                            '₪${totalDue.toStringAsFixed(0)}',
+                            '$collectedPct',
+                          )
+                        : l10n.noApartmentsYet,
+                    icon: Icons.credit_card_rounded,
+                    accent: collectedPct < 100 && totalDue > 0,
+                    onTap: () => widget.onNavigate(1),
+                  )
+                else
+                  _StatCard(
+                    label: l10n.nextPayment,
+                    value: unpaid.isEmpty
+                        ? l10n.allPaid
+                        : '₪${unpaid.first.amount.toStringAsFixed(0)}',
+                    sub: unpaid.isEmpty ? null : '1.${unpaid.first.month}',
+                    icon: Icons.credit_card_rounded,
+                    accent: unpaid.isNotEmpty,
+                    onTap: () => widget.onNavigate(1),
+                  ),
+              ],
+            ),
           ),
           if (isVaad && _joinRequests.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -750,6 +806,7 @@ class _StatCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
+          constraints: const BoxConstraints(minHeight: 92),
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
             color: DiraColors.creamCard,

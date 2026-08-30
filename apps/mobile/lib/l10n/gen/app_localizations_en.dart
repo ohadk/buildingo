@@ -820,6 +820,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get collectedThisMonth => 'Collected this month';
 
   @override
+  String collectionHeroSub(String total, String pct) {
+    return 'of $total · $pct% collected';
+  }
+
+  @override
+  String get noTicketsThisMonth => 'No new tickets this month';
+
+  @override
+  String ticketsThisMonth(String n) {
+    return '$n new this month';
+  }
+
+  @override
+  String get ticketsSameAsLastMonth => 'Same as last month';
+
+  @override
+  String ticketsUpVsLastMonth(String pct) {
+    return '+$pct% vs last month';
+  }
+
+  @override
+  String ticketsDownVsLastMonth(String pct) {
+    return '-$pct% vs last month';
+  }
+
+  @override
   String ofTotal(String total) {
     return 'of $total';
   }
@@ -876,6 +902,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduleWeekly => 'Weekly';
 
   @override
+  String get scheduleBiweekly => 'Every 2 weeks';
+
+  @override
+  String get scheduleDaily => 'Daily';
+
+  @override
+  String get scheduleMonthly => 'Monthly';
+
+  @override
+  String get scheduleRepeat => 'Repeat';
+
+  @override
+  String get scheduleDayOfMonth => 'Day of month';
+
+  @override
   String get scheduleOnce => 'One-time';
 
   @override
@@ -892,6 +933,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scheduleSaved => 'Schedule updated';
+
+  @override
+  String get scheduleNotReady =>
+      'Building schedule is not ready yet. Run migration 0018_schedule_events.sql in the Supabase SQL editor, then try again.';
 
   @override
   String get scheduleTomorrow => 'Tomorrow';

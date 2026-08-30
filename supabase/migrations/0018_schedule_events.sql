@@ -9,8 +9,9 @@ CREATE TABLE schedule_events (
     title VARCHAR(255) NOT NULL,
     notes TEXT,
     recurrence TEXT NOT NULL DEFAULT 'weekly'
-        CHECK (recurrence IN ('weekly', 'once')),
+        CHECK (recurrence IN ('once', 'daily', 'weekly', 'biweekly', 'monthly')),
     day_of_week SMALLINT CHECK (day_of_week IS NULL OR (day_of_week BETWEEN 0 AND 6)),
+    day_of_month SMALLINT CHECK (day_of_month IS NULL OR (day_of_month BETWEEN 1 AND 31)),
     specific_date DATE,
     time_of_day TIME,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -18,8 +19,10 @@ CREATE TABLE schedule_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (
-        (recurrence = 'weekly' AND day_of_week IS NOT NULL AND specific_date IS NULL)
-        OR (recurrence = 'once' AND specific_date IS NOT NULL)
+        (recurrence = 'once' AND specific_date IS NOT NULL)
+        OR (recurrence = 'daily')
+        OR (recurrence IN ('weekly', 'biweekly') AND day_of_week IS NOT NULL)
+        OR (recurrence = 'monthly' AND day_of_month IS NOT NULL)
     )
 );
 

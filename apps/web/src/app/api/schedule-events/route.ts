@@ -2,27 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, getCurrentUser, requireRole, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
-import { expandScheduleEvents } from "@/lib/schedule";
+import { expandScheduleEvents, isScheduleTableMissing, meetingsToOccurrences, mergeScheduleOccurrences } from "@/lib/schedule";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+
+const recurrenceEnum = z.enum(["once", "daily", "weekly", "biweekly", "monthly"]);
 
 const createSchema = z
   .object({
     eventType: z.enum(["garbage", "cleaning", "bulk_waste", "other"]),
     title: z.string().min(2).max(255),
     notes: z.string().max(2000).optional(),
-    recurrence: z.enum(["weekly", "once"]),
+    recurrence: recurrenceEnum,
     dayOfWeek: z.number().int().min(0).max(6).optional(),
+    dayOfMonth: z.number().int().min(1).max(31).optional(),
     specificDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    timeOfDay: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).optional(),
+    timeOfDay: z.string().regex(/^\d{1,2}:\d{2}(:\d{2})?$/).optional(),
   })
   .superRefine((body, ctx) => {
-    if (body.recurrence === "weekly" && body.dayOfWeek == null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "dayOfWeek is required for weekly events",
-        path: ["dayOfWeek"],
-      });
-    }
     if (body.recurrence === "once" && !body.specificDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -30,7 +26,40 @@ const createSchema = z
         path: ["specificDate"],
       });
     }
+    if (
+      (body.recurrence === "weekly" || body.recurrence === "biweekly") &&
+      body.dayOfWeek == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "dayOfWeek is required for weekly events",
+        path: ["dayOfWeek"],
+      });
+    }
+    if (body.recurrence === "monthly" && body.dayOfMonth == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "dayOfMonth is required for monthly events",
+        path: ["dayOfMonth"],
+      });
+    }
   });
+
+function normalizeTime(t?: string): string | null {
+  if (!t) return null;
+  const [h, m] = t.split(":");
+  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+}
+
+function scheduleSetupError(message: string): never {
+  if (isScheduleTableMissing(message)) {
+    throw new ApiError(
+      503,
+      "Building schedule is not set up yet. Run migration 0018_schedule_events.sql in Supabase.",
+    );
+  }
+  throw new ApiError(500, message);
+}
 
 function defaultRange() {
   const today = new Date();
@@ -56,16 +85,37 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     .eq("building_id", user.building_id)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
-  if (error) throw new ApiError(500, error.message);
 
-  const occurrences = expandScheduleEvents(data ?? [], from, to);
-  return NextResponse.json({ occurrences, rules: data });
+  let rules: typeof data = [];
+  if (error) {
+    if (!isScheduleTableMissing(error.message)) scheduleSetupError(error.message);
+  } else {
+    rules = data ?? [];
+  }
+
+  const { data: meetings, error: meetingsError } = await supabaseAdmin()
+    .from("meetings")
+    .select("id, building_id, title, agenda, meeting_date, location, is_closed")
+    .eq("building_id", user.building_id)
+    .gte("meeting_date", `${from}T00:00:00`)
+    .lte("meeting_date", `${to}T23:59:59.999`)
+    .order("meeting_date", { ascending: true });
+  if (meetingsError) throw new ApiError(500, meetingsError.message);
+
+  const scheduleOccurrences = expandScheduleEvents(rules ?? [], from, to);
+  const meetingOccurrences = meetingsToOccurrences(meetings ?? [], from, to);
+  const occurrences = mergeScheduleOccurrences(scheduleOccurrences, meetingOccurrences);
+  return NextResponse.json({ occurrences, rules: rules ?? [] });
 });
 
 /** POST /api/schedule-events — Vaad adds a schedule rule. */
 export const POST = withErrorHandling(async (req: NextRequest) => {
   const user = await requireRole(req, "vaad", "super_admin");
-  const body = createSchema.parse(await req.json());
+  const parsed = createSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    throw new ApiError(400, parsed.error.issues[0]?.message ?? "Invalid schedule event");
+  }
+  const body = parsed.data;
 
   const { data, error } = await supabaseAdmin()
     .from("schedule_events")
@@ -75,14 +125,23 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       title: body.title,
       notes: body.notes ?? null,
       recurrence: body.recurrence,
-      day_of_week: body.recurrence === "weekly" ? body.dayOfWeek : null,
-      specific_date: body.recurrence === "once" ? body.specificDate : null,
-      time_of_day: body.timeOfDay ?? null,
+      day_of_week:
+        body.recurrence === "weekly" || body.recurrence === "biweekly"
+          ? body.dayOfWeek
+          : null,
+      day_of_month: body.recurrence === "monthly" ? body.dayOfMonth : null,
+      specific_date:
+        body.recurrence === "once"
+          ? body.specificDate
+          : body.recurrence === "biweekly"
+            ? (body.specificDate ?? new Date().toISOString().slice(0, 10))
+            : null,
+      time_of_day: normalizeTime(body.timeOfDay),
       created_by: user.id,
     })
     .select("*")
     .single();
-  if (error) throw new ApiError(500, error.message);
+  if (error) scheduleSetupError(error.message);
 
   await logAudit({
     buildingId: user.building_id,
@@ -90,7 +149,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     action: "schedule_event_created",
     entityType: "schedule_event",
     entityId: data.id,
-    details: { title: body.title, eventType: body.eventType },
+    details: { title: body.title, eventType: body.eventType, recurrence: body.recurrence },
   });
 
   return NextResponse.json({ event: data }, { status: 201 });
