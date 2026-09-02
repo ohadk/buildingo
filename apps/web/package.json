@@ -6,7 +6,10 @@
     "dev": "NODE_EXTRA_CA_CERTS=./certs/cloudflare-gateway-ca.pem next dev",
     "build": "next build",
     "start": "NODE_EXTRA_CA_CERTS=./certs/cloudflare-gateway-ca.pem next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "backfill:pii": "npx tsx scripts/backfill-pii.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
@@ -30,6 +33,7 @@
     "@types/react-dom": "^19.2.5",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class AppUser {
   final String id;
   final String phoneNumber;
@@ -64,9 +66,14 @@ class JoinRequest {
   final String? email;
   final int? numOccupants;
   final int? floor;
-  final String? parkingSpot;
+  final List<String> parkingSpots;
   final String? docUrl;
   final String? arnonaDocUrl;
+  final double? sizeSqm;
+
+  /// Display label (joined spots), or null when none.
+  String? get parkingSpot =>
+      parkingSpots.isEmpty ? null : parkingSpots.join(' · ');
 
   JoinRequest.fromJson(Map<String, dynamic> j)
     : id = j['id'],
@@ -78,22 +85,26 @@ class JoinRequest {
       email = j['email'],
       numOccupants = j['num_occupants'],
       floor = j['floor'],
-      parkingSpot = j['parking_spot'],
+      parkingSpots = _parkingSpotsFromJson(j),
       docUrl = j['doc_url'],
-      arnonaDocUrl = j['arnona_doc_url'];
+      arnonaDocUrl = j['arnona_doc_url'],
+      sizeSqm = (j['size_sqm'] as num?)?.toDouble();
 }
 
 class Apartment {
   final String id;
   final int apartmentNumber;
   final int floor;
-  final String? parkingSpot;
+  final List<String> parkingSpots;
+
+  String? get parkingSpot =>
+      parkingSpots.isEmpty ? null : parkingSpots.join(' · ');
 
   Apartment.fromJson(Map<String, dynamic> j)
     : id = j['id'],
       apartmentNumber = j['apartment_number'],
       floor = j['floor'],
-      parkingSpot = j['parking_spot'];
+      parkingSpots = _parkingSpotsFromJson(j);
 }
 
 class TicketEvent {
@@ -113,27 +124,149 @@ class Ticket {
   final String description;
   final String? location;
   final String? imageUrl;
+  final List<String> imageUrls;
+  /// Storage paths used when editing/uploading photos.
+  final List<String> imagePaths;
   final String status;
   final String agentStatus;
+  final String category;
+  final double? costAmount;
+  final String? receiptUrl;
+  final String? progressNote;
+  final DateTime? fixDate;
   final String? vendorName;
   final String? reporterName;
+  final String? reportedBy;
   final DateTime createdAt;
   final List<TicketEvent> events;
+
+  /// Collapses legacy statuses into the 3-stage UI model.
+  String get displayStatus {
+    switch (status) {
+      case 'resolved':
+        return 'resolved';
+      case 'in_progress':
+      case 'approved':
+        return 'in_progress';
+      default:
+        return 'open';
+    }
+  }
 
   Ticket.fromJson(Map<String, dynamic> j)
     : id = j['id'],
       title = j['title'],
-      description = j['description'],
+      description = (j['description'] as String?) ?? '',
       location = j['location'],
       imageUrl = j['image_url'],
+      imageUrls = _ticketImageUrls(j),
+      imagePaths = _ticketImagePaths(j['image_path']),
       status = j['status'],
       agentStatus = j['agent_status'] ?? 'idle',
+      category = (j['category'] as String?) ?? 'other',
+      costAmount = _asDouble(j['cost_amount']),
+      receiptUrl = j['receipt_url'] as String?,
+      progressNote = j['progress_note'] as String?,
+      fixDate = j['fix_date'] != null
+          ? DateTime.tryParse(j['fix_date'].toString())
+          : null,
       vendorName = j['vendor_agents']?['vendor_name'],
       reporterName = j['reporter']?['full_name'],
+      reportedBy = j['reported_by'] as String?,
       createdAt = DateTime.parse(j['created_at']),
       events = ((j['ticket_events'] ?? []) as List)
           .map((e) => TicketEvent.fromJson(e))
           .toList();
+
+  Ticket copyWith({
+    String? status,
+    String? title,
+    String? description,
+    String? location,
+    String? category,
+    String? progressNote,
+    DateTime? fixDate,
+    double? costAmount,
+    String? receiptUrl,
+  }) =>
+      Ticket._(
+        id: id,
+        title: title ?? this.title,
+        description: description ?? this.description,
+        location: location ?? this.location,
+        imageUrl: imageUrl,
+        imageUrls: imageUrls,
+        imagePaths: imagePaths,
+        status: status ?? this.status,
+        agentStatus: agentStatus,
+        category: category ?? this.category,
+        costAmount: costAmount ?? this.costAmount,
+        receiptUrl: receiptUrl ?? this.receiptUrl,
+        progressNote: progressNote ?? this.progressNote,
+        fixDate: fixDate ?? this.fixDate,
+        vendorName: vendorName,
+        reporterName: reporterName,
+        reportedBy: reportedBy,
+        createdAt: createdAt,
+        events: events,
+      );
+
+  const Ticket._({
+    required this.id,
+    required this.title,
+    required this.description,
+    this.location,
+    this.imageUrl,
+    required this.imageUrls,
+    required this.imagePaths,
+    required this.status,
+    required this.agentStatus,
+    required this.category,
+    this.costAmount,
+    this.receiptUrl,
+    this.progressNote,
+    this.fixDate,
+    this.vendorName,
+    this.reporterName,
+    this.reportedBy,
+    required this.createdAt,
+    required this.events,
+  });
+}
+
+List<String> _ticketImageUrls(Map<String, dynamic> j) {
+  final raw = j['image_urls'];
+  if (raw is List) {
+    return raw.whereType<String>().where((u) => u.isNotEmpty).toList();
+  }
+  final single = j['image_url'] as String?;
+  return single == null || single.isEmpty ? const [] : [single];
+}
+
+List<String> _ticketImagePaths(dynamic raw) {
+  if (raw == null) return const [];
+  if (raw is List) {
+    return raw.whereType<String>().where((p) => p.isNotEmpty).toList();
+  }
+  final s = raw.toString();
+  if (s.isEmpty) return const [];
+  if (s.startsWith('[')) {
+    try {
+      final parsed = jsonDecode(s);
+      if (parsed is List) {
+        return parsed.whereType<String>().where((p) => p.isNotEmpty).toList();
+      }
+    } catch (_) {
+      /* fall through */
+    }
+  }
+  return [s];
+}
+
+double? _asDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString());
 }
 
 /// One row of the building activity trail (audit log).
@@ -161,6 +294,7 @@ class Payment {
   final String status;
   final int? apartmentNumber;
   final DateTime? paymentDate;
+  final String? receiptPath;
   final String? receiptUrl;
 
   /// Local synthetic row for optimistic matrix updates.
@@ -173,8 +307,13 @@ class Payment {
     required this.status,
     this.apartmentNumber,
     this.paymentDate,
+    this.receiptPath,
     this.receiptUrl,
   });
+
+  bool get hasReceipt =>
+      (receiptPath != null && receiptPath!.isNotEmpty) ||
+      (receiptUrl != null && receiptUrl!.isNotEmpty);
 
   Payment.fromJson(Map<String, dynamic> j)
     : id = j['id'],
@@ -187,7 +326,8 @@ class Payment {
       paymentDate = j['payment_date'] != null
           ? DateTime.tryParse(j['payment_date'])
           : null,
-      receiptUrl = j['receipt_url'];
+      receiptPath = j['receipt_path'] as String?,
+      receiptUrl = j['receipt_url'] as String?;
 }
 
 class Expense {
@@ -197,6 +337,7 @@ class Expense {
   final String expenseDate;
   final String? description;
   final String? provider;
+  final String? receiptPath;
   final String? receiptUrl;
 
   Expense.fromJson(Map<String, dynamic> j)
@@ -206,7 +347,12 @@ class Expense {
       expenseDate = j['expense_date'],
       description = j['description'],
       provider = j['provider'],
-      receiptUrl = j['receipt_url'];
+      receiptPath = j['receipt_path'] as String?,
+      receiptUrl = j['receipt_url'] as String?;
+
+  bool get hasReceipt =>
+      (receiptPath != null && receiptPath!.isNotEmpty) ||
+      (receiptUrl != null && receiptUrl!.isNotEmpty);
 }
 
 class VendorAgent {
@@ -235,27 +381,59 @@ class DirectoryEntry {
   final String apartmentId;
   final int apartmentNumber;
   final int floor;
-  final String? parkingSpot;
+  final List<String> parkingSpots;
   final double monthlyFee;
   final double? sizeSqm;
-  final List<({String name, String phone, String role})> residents;
+  /// Household size for the apartment (null when vacant / unknown).
+  final int? numOccupants;
+  /// Date the current tenants entered this apartment (active tenancy).
+  final DateTime? residentSince;
+  final List<({String name, String phone, String role, int? numOccupants})>
+      residents;
+
+  String? get parkingSpot =>
+      parkingSpots.isEmpty ? null : parkingSpots.join(' · ');
 
   DirectoryEntry.fromJson(Map<String, dynamic> j)
     : apartmentId = j['id'],
       apartmentNumber = j['apartment_number'],
       floor = j['floor'],
-      parkingSpot = j['parking_spot'],
+      parkingSpots = _parkingSpotsFromJson(j),
       monthlyFee = (j['monthly_fee'] as num?)?.toDouble() ?? 0,
       sizeSqm = (j['size_sqm'] as num?)?.toDouble(),
+      numOccupants = (j['num_occupants'] as num?)?.toInt(),
+      residentSince = j['resident_since'] != null
+          ? DateTime.tryParse(j['resident_since'].toString())
+          : null,
       residents = ((j['users'] ?? []) as List)
           .map(
             (u) => (
               name: (u['full_name'] ?? '') as String,
               phone: (u['phone_number'] ?? '') as String,
               role: (u['role'] ?? 'tenant') as String,
+              numOccupants: (u['num_occupants'] as num?)?.toInt(),
             ),
           )
           .toList();
+}
+
+String? _nullableTrimmed(dynamic raw) {
+  if (raw == null) return null;
+  final s = raw.toString().trim();
+  return s.isEmpty ? null : s;
+}
+
+/// Prefer `parking_spots` array; fall back to legacy single `parking_spot`.
+List<String> _parkingSpotsFromJson(Map<String, dynamic> j) {
+  final raw = j['parking_spots'] ?? j['parkingSpots'];
+  if (raw is List) {
+    return [
+      for (final e in raw)
+        if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+    ];
+  }
+  final single = _nullableTrimmed(j['parking_spot'] ?? j['parkingSpot']);
+  return single == null ? const [] : [single];
 }
 
 /// One holding period of an apartment (owner or renter), part of the
@@ -287,27 +465,58 @@ class DocumentItem {
   final String title;
   final String filePath;
   final String? fileType;
+  final String bucket;
+  final String source; // document | payment_receipt
   final int? apartmentNumber;
+  final int? month;
+  final int? year;
   final DateTime createdAt;
 
+  bool get isPaymentReceipt => source == 'payment_receipt';
+  bool get isPdf =>
+      (fileType ?? '').contains('pdf') ||
+      filePath.toLowerCase().endsWith('.pdf');
+  bool get isImage {
+    final t = (fileType ?? '').toLowerCase();
+    if (t.startsWith('image/')) return true;
+    final p = filePath.toLowerCase();
+    return p.endsWith('.png') ||
+        p.endsWith('.jpg') ||
+        p.endsWith('.jpeg') ||
+        p.endsWith('.webp') ||
+        p.endsWith('.gif') ||
+        p.endsWith('.heic') ||
+        p.endsWith('.heif');
+  }
+
   DocumentItem.fromJson(Map<String, dynamic> j)
-    : title = j['title'],
+    : title = (j['title'] as String?) ?? '',
       filePath = j['file_path'],
       fileType = j['file_type'],
-      apartmentNumber = j['apartments']?['apartment_number'],
+      bucket = (j['bucket'] as String?) ?? 'documents',
+      source = (j['source'] as String?) ?? 'document',
+      apartmentNumber = j['apartments']?['apartment_number'] as int?,
+      month = (j['month'] as num?)?.toInt(),
+      year = (j['year'] as num?)?.toInt(),
       createdAt = DateTime.parse(j['created_at']);
 }
 
 class Announcement {
+  final String id;
   final String title;
   final String body;
   final String? attachmentPath;
+  final DateTime? eventDate;
   final DateTime createdAt;
 
   Announcement.fromJson(Map<String, dynamic> j)
-    : title = j['title'],
+    : id = j['id']?.toString() ?? '${j['created_at']}-${j['title']}',
+      title = j['title'],
       body = j['body'],
       attachmentPath = j['attachment_path'],
+      eventDate = j['event_date'] != null
+          ? DateTime.parse(j['event_date'] as String)
+          : null,
       createdAt = DateTime.parse(j['created_at']);
 }
 

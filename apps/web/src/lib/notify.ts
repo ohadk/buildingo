@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { isWahaConfigured, phoneToChatId, sendText } from "@/lib/waha/client";
 
 export interface SendResult {
   sent: boolean;
@@ -59,4 +60,26 @@ async function sendTwilioMessage(to: string, body: string, whatsapp: boolean): P
 }
 
 export const sendSms = (to: string, body: string) => sendTwilioMessage(to, body, false);
-export const sendWhatsApp = (to: string, body: string) => sendTwilioMessage(to, body, true);
+
+/**
+ * Prefer WAHA (WhatsApp via QR session). Falls back to Twilio if needed.
+ * `session` defaults to WAHA_SESSION / "buildingo".
+ */
+export async function sendWhatsApp(
+  to: string,
+  body: string,
+  opts?: { session?: string },
+): Promise<SendResult> {
+  if (isWahaConfigured()) {
+    const session = opts?.session || env.waha.defaultSession;
+    const chatId = to.includes("@") ? to : phoneToChatId(to);
+    const result = await sendText(session, chatId, body);
+    if (result.ok) {
+      return { sent: true, provider: "waha", detail: result.detail };
+    }
+    const twilio = await sendTwilioMessage(to, body, true);
+    if (twilio.sent) return twilio;
+    return { sent: false, provider: "waha", detail: result.detail };
+  }
+  return sendTwilioMessage(to, body, true);
+}

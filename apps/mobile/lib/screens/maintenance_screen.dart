@@ -8,10 +8,15 @@ import '../core/models.dart';
 import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
+import '../core/ticket_categories.dart';
+import '../core/tickets_controller.dart';
 import '../l10n/l10n.dart';
 import '../widgets/attachment_picker.dart';
-import '../widgets/phone_field.dart';
+import '../widgets/status_pill.dart';
 import '../widgets/ticket_timeline.dart';
+import '../widgets/pending_ticket_card.dart';
+import '../widgets/ticket_photo.dart';
+import '../widgets/vault_file_viewer.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -22,10 +27,13 @@ class MaintenanceScreen extends StatefulWidget {
 
 class _MaintenanceScreenState extends State<MaintenanceScreen> {
   List<Ticket> _tickets = [];
-  List<VendorAgent> _vendors = [];
   bool _loading = true;
   String? _error;
   StreamSubscription<String>? _realtimeSub;
+  Timer? _pollTimer;
+  /// Optimistic status while PATCH is in flight.
+  final Map<String, String> _statusOverrides = {};
+  final Set<String> _statusSaving = {};
 
   @override
   void initState() {
@@ -34,38 +42,39 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     _realtimeSub = realtime.listen({
       'tickets',
       'ticket_events',
-      'vendor_agents',
-    }, _load);
+    }, () => _load(silent: true));
+    // Keep tenant/vaad in sync when Realtime is slow or unavailable.
+    _pollTimer = Timer.periodic(
+      Duration(seconds: realtimeEnabled ? 12 : 4),
+      (_) => _load(silent: true),
+    );
   }
 
   @override
   void dispose() {
     _realtimeSub?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    final isVaad = context.read<SessionController>().user?.isVaad ?? false;
+  Future<void> _load({bool silent = false}) async {
     try {
-      final results = await Future.wait([
-        api.get('/api/tickets'),
-        if (isVaad) api.get('/api/vendor-agents'),
-      ]);
+      final results = await api.get('/api/tickets');
       if (!mounted) return;
       setState(() {
-        _tickets = ((results[0]['tickets'] ?? []) as List)
+        _tickets = ((results['tickets'] ?? []) as List)
             .map((t) => Ticket.fromJson(t))
             .toList();
-        if (isVaad && results.length > 1) {
-          _vendors = ((results[1]['vendorAgents'] ?? []) as List)
-              .map((v) => VendorAgent.fromJson(v))
-              .toList();
-        }
         _loading = false;
         _error = null;
+        // Drop overrides once server catches up.
+        _statusOverrides.removeWhere((id, status) {
+          final match = _tickets.where((t) => t.id == id).firstOrNull;
+          return match == null || match.status == status;
+        });
       });
     } on ApiException catch (e) {
-      if (mounted) {
+      if (mounted && !silent) {
         setState(() {
           _loading = false;
           _error = e.message;
@@ -75,59 +84,115 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   }
 
   Future<void> _approveAndDispatch(Ticket ticket) async {
-    if (_vendors.isEmpty) {
-      _snack(context.l10n.configureVendorFirst);
+    // AI vendor dispatch ships in the next release; MVP is manual workflow.
+    _snack(context.l10n.agentDispatchComingSoon);
+  }
+
+  Ticket _displayTicket(Ticket t) {
+    final override = _statusOverrides[t.id];
+    if (override == null || override == t.status) return t;
+    return t.copyWith(status: override);
+  }
+
+  String _effectiveStatus(Ticket t) =>
+      _statusOverrides[t.id] ?? t.status;
+
+  Future<void> _setStatus(Ticket ticket, String status) async {
+    final current = _effectiveStatus(ticket);
+    final currentUi = ticket.copyWith(status: current).displayStatus;
+    final nextUi = status == 'approved' ? 'in_progress' : status;
+
+    if (currentUi == nextUi) {
+      if (nextUi == 'resolved') {
+        await _openCostSheet(_displayTicket(ticket));
+      } else if (nextUi == 'in_progress') {
+        await _openProgressSheet(_displayTicket(ticket));
+      }
       return;
     }
-    final vendor = await showModalBottomSheet<VendorAgent>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                ctx.l10n.dispatchToWhichVendor,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            ..._vendors.map(
-              (v) => ListTile(
-                leading: const Icon(Icons.smart_toy, color: DiraColors.brick),
-                title: Text(v.vendorName),
-                subtitle: Text(v.serviceType),
-                onTap: () => Navigator.pop(ctx, v),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (vendor == null || !mounted) return;
 
-    _snack(context.l10n.agentDispatchingTo(vendor.vendorName));
+    final previous = current;
+    final patchStatus = status == 'approved' ? 'in_progress' : status;
+    setState(() {
+      _statusOverrides[ticket.id] = patchStatus;
+      _statusSaving.add(ticket.id);
+    });
+
     try {
-      final res = await api.post('/api/tickets/${ticket.id}/dispatch', {
-        'vendorAgentId': vendor.id,
-      });
+      await api.patch('/api/tickets/${ticket.id}', {'status': patchStatus});
       if (!mounted) return;
-      _snack(res['agentSummary'] ?? context.l10n.vendorContacted);
-      await _load();
+      setState(() => _statusSaving.remove(ticket.id));
+      unawaited(
+        _load(silent: true).whenComplete(() {
+          if (mounted) {
+            setState(() => _statusOverrides.remove(ticket.id));
+          }
+        }),
+      );
+      if (patchStatus == 'in_progress') {
+        await _openProgressSheet(_displayTicket(ticket));
+      } else if (patchStatus == 'resolved') {
+        await _openCostSheet(_displayTicket(ticket));
+      }
     } on ApiException catch (e) {
-      if (mounted) _snack(context.l10n.dispatchFailed(e.message));
+      if (!mounted) return;
+      setState(() {
+        _statusSaving.remove(ticket.id);
+        if (previous == ticket.status) {
+          _statusOverrides.remove(ticket.id);
+        } else {
+          _statusOverrides[ticket.id] = previous;
+        }
+      });
+      _snack(e.message);
     }
   }
 
-  Future<void> _markResolved(Ticket ticket) async {
-    try {
-      await api.patch('/api/tickets/${ticket.id}', {'status': 'resolved'});
+  Future<void> _openProgressSheet(Ticket ticket) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _TicketProgressSheet(ticket: ticket),
+    );
+    if (saved == true && mounted) {
+      _snack(context.l10n.ticketProgressSaved);
+      await _load(silent: true);
+    }
+  }
+
+  Future<void> _openEditSheet(Ticket ticket) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _TicketEditSheet(ticket: ticket),
+    );
+    if (saved == true && mounted) {
+      _snack(context.l10n.ticketEdited);
+      await _load(silent: true);
+    }
+  }
+
+  Future<void> _openCostSheet(Ticket ticket) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _TicketCostSheet(ticket: ticket),
+    );
+    if (saved == true && mounted) {
+      _snack(context.l10n.ticketCostSaved);
       await _load();
-    } on ApiException catch (e) {
-      _snack(e.message);
     }
   }
 
@@ -149,15 +214,15 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         heroTag: 'maintenance-fab',
         backgroundColor: DiraColors.brick,
         foregroundColor: DiraColors.creamCard,
+        tooltip: l10n.newReport,
         onPressed: () => Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const NewTicketScreen()))
-            .then((_) => _load()),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.newReport),
+            .then((_) => _load(silent: true)),
+        child: const Icon(Icons.add),
       ),
       body: _loading
           ? const Center(
@@ -165,206 +230,1266 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
             )
           : _error != null
           ? Center(child: Text(_error!))
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: DiraColors.brick,
-              child: _tickets.isEmpty
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(24, 48, 24, 110),
-                      children: [
-                        Center(
-                          child: Column(
-                            children: [
-                              CircleAvatar(
-                                radius: 36,
-                                backgroundColor:
-                                    DiraColors.brick.withValues(alpha: 0.12),
-                                child: const Icon(
-                                  Icons.home_repair_service_outlined,
-                                  size: 34,
-                                  color: DiraColors.brick,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              Text(
-                                l10n.noTicketsYet,
-                                textAlign: TextAlign.center,
-                                style: heading(fontSize: 18),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l10n.noTicketsHint,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: DiraColors.inkSoft,
-                                  fontSize: 14,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
+          : _buildTicketList(context, isVaad: isVaad, locale: locale),
+    );
+  }
+
+  Future<void> _openTicketDetail(Ticket ticket) async {
+    final session = context.read<SessionController>();
+    final isVaad = session.user?.isVaad ?? false;
+    final canEdit =
+        isVaad ||
+        (session.user?.id != null && session.user!.id == ticket.reportedBy);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _TicketDetailSheet(
+        ticketId: ticket.id,
+        initial: _displayTicket(ticket),
+        isVaad: isVaad,
+        canEdit: canEdit,
+        resolveTicket: (id) {
+          final t = _tickets.where((x) => x.id == id).firstOrNull;
+          return t == null ? null : _displayTicket(t);
+        },
+        isSaving: (id) => _statusSaving.contains(id),
+        onSetStatus: _setStatus,
+        onDispatch: _approveAndDispatch,
+        onCost: _openCostSheet,
+        onProgress: _openProgressSheet,
+        onEdit: _openEditSheet,
+        onRefresh: () => _load(silent: true),
+      ),
+    );
+    if (mounted) await _load(silent: true);
+  }
+
+  Widget _buildTicketList(
+    BuildContext context, {
+    required bool isVaad,
+    required String locale,
+  }) {
+    final l10n = context.l10n;
+    final pending = context.watch<TicketsController>().pending;
+    final pendingIds =
+        pending.map((p) => p.createdId).whereType<String>().toSet();
+    final tickets =
+        _tickets.where((t) => !pendingIds.contains(t.id)).toList();
+    final empty = pending.isEmpty && tickets.isEmpty;
+
+    return RefreshIndicator(
+      onRefresh: () => _load(),
+      color: DiraColors.brick,
+      child: empty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(24, 48, 24, 110),
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor:
+                            DiraColors.brick.withValues(alpha: 0.12),
+                        child: const Icon(
+                          Icons.home_repair_service_outlined,
+                          size: 34,
+                          color: DiraColors.brick,
                         ),
-                      ],
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _tickets.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) {
-                        final t = _tickets[i];
-                        return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  t.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              _StatusChip(status: t.status),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            t.description,
-                            style: const TextStyle(color: DiraColors.inkSoft),
-                          ),
-                          if (t.location != null) ...[
-                            const SizedBox(height: 6),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.place_outlined,
-                                  size: 15,
-                                  color: DiraColors.inkSoft,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  t.location!,
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
-                                    color: DiraColors.inkSoft,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (t.imageUrl != null) ...[
-                            const SizedBox(height: 10),
-                            GestureDetector(
-                              onTap: () => showDialog(
-                                context: context,
-                                builder: (_) => Dialog(
-                                  backgroundColor: Colors.transparent,
-                                  child: InteractiveViewer(
-                                    child: Image.network(t.imageUrl!),
-                                  ),
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  t.imageUrl!,
-                                  height: 140,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          Text(
-                            '${t.reporterName ?? l10n.resident} · '
-                            '${DateFormat('d MMM yyyy', locale).format(t.createdAt.toLocal())}'
-                            '${t.vendorName != null ? ' · ${l10n.agentTo(t.vendorName!)}' : ''}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: DiraColors.inkSoft,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: DiraColors.sage,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            padding: const EdgeInsets.all(12),
-                            child: TicketTimeline(ticket: t),
-                          ),
-                          if (isVaad) ...[
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                if (t.status == 'open')
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () => _approveAndDispatch(t),
-                                      icon: const Icon(
-                                        Icons.smart_toy,
-                                        size: 18,
-                                      ),
-                                      label: Text(l10n.approveAndDispatch),
-                                    ),
-                                  ),
-                                if (t.status == 'in_progress')
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => _markResolved(t),
-                                      icon: const Icon(Icons.check),
-                                      label: Text(l10n.markResolved),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ],
                       ),
-                    ),
+                      const SizedBox(height: 18),
+                      Text(
+                        l10n.noTicketsYet,
+                        textAlign: TextAlign.center,
+                        style: heading(fontSize: 18),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.noTicketsHint,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: DiraColors.inkSoft,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+              itemCount: pending.length + tickets.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, i) {
+                if (i < pending.length) {
+                  return Card(
+                    child: PendingTicketCard(pending: pending[i]),
                   );
-                },
-              ),
+                }
+                final t = tickets[i - pending.length];
+                final display = _displayTicket(t);
+                return _TicketListTile(
+                  ticket: display,
+                  locale: locale,
+                  onTap: () => _openTicketDetail(t),
+                );
+              },
             ),
     );
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
+class _TicketListTile extends StatelessWidget {
+  final Ticket ticket;
+  final String locale;
+  final VoidCallback onTap;
+
+  const _TicketListTile({
+    required this.ticket,
+    required this.locale,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final (color, label) = switch (status) {
-      'open' => (DiraColors.gold, l10n.statusOpen),
-      'approved' => (DiraColors.terracotta, l10n.statusApproved),
-      'in_progress' => (DiraColors.sage, l10n.statusInProgress),
-      'resolved' => (DiraColors.sageDark, l10n.statusResolved),
-      _ => (DiraColors.inkSoft, status),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
+    final hasImage = ticket.imageUrls.isNotEmpty;
+    final progress = ticket.progressNote?.trim();
+    final hasProgress = progress != null && progress.isNotEmpty;
+    final cost = ticket.costAmount;
+    final created = DateFormat('d.M.yy', locale).format(ticket.createdAt.toLocal());
+    final fixDate = ticket.fixDate;
+    final fixLabel = fixDate == null
+        ? null
+        : DateFormat('d.M.yy', locale).format(fixDate.toLocal());
+
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CategoryGlyph.forTicket(
+                categoryId: ticket.category,
+                title: ticket.title,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ticket.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.ticketCreatedOn(created),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DiraColors.inkSoft,
+                      ),
+                    ),
+                    if (fixLabel != null || cost != null) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (fixLabel != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: DiraColors.sagePale,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.event_outlined,
+                                    size: 13,
+                                    color: DiraColors.sageDark,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l10n.ticketExpectedBy(fixLabel),
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: DiraColors.sageDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (cost != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  NumberFormat.currency(
+                                    symbol: '₪',
+                                    decimalDigits: 0,
+                                  ).format(cost),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: DiraColors.brick,
+                                  ),
+                                ),
+                                if (ticket.receiptUrl != null) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.receipt_outlined,
+                                    size: 14,
+                                    color: DiraColors.brick,
+                                  ),
+                                ],
+                              ],
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    StatusPill.ticket(
+                      context,
+                      ticket.displayStatus,
+                      compact: true,
+                    ),
+                    if (hasProgress) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        progress,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          height: 1.25,
+                          fontWeight: FontWeight.w600,
+                          color: DiraColors.sageDark,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (hasImage) ...[
+                const SizedBox(width: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: TicketPhoto(
+                      url: ticket.imageUrls.first,
+                      height: 56,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: color,
+    );
+  }
+}
+
+class _TicketDetailSheet extends StatefulWidget {
+  final String ticketId;
+  final Ticket initial;
+  final bool isVaad;
+  final bool canEdit;
+  final Ticket? Function(String id) resolveTicket;
+  final bool Function(String id) isSaving;
+  final Future<void> Function(Ticket ticket, String status) onSetStatus;
+  final Future<void> Function(Ticket ticket) onDispatch;
+  final Future<void> Function(Ticket ticket) onCost;
+  final Future<void> Function(Ticket ticket) onProgress;
+  final Future<void> Function(Ticket ticket) onEdit;
+  final Future<void> Function() onRefresh;
+
+  const _TicketDetailSheet({
+    required this.ticketId,
+    required this.initial,
+    required this.isVaad,
+    required this.canEdit,
+    required this.resolveTicket,
+    required this.isSaving,
+    required this.onSetStatus,
+    required this.onDispatch,
+    required this.onCost,
+    required this.onProgress,
+    required this.onEdit,
+    required this.onRefresh,
+  });
+
+  @override
+  State<_TicketDetailSheet> createState() => _TicketDetailSheetState();
+}
+
+class _TicketDetailSheetState extends State<_TicketDetailSheet> {
+  late Ticket _ticket = widget.initial;
+  StreamSubscription<String>? _sub;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = realtime.listen({'tickets', 'ticket_events'}, _syncFromParent);
+    _poll = Timer.periodic(const Duration(seconds: 3), (_) async {
+      await widget.onRefresh();
+      _syncFromParent();
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  void _syncFromParent() {
+    final next = widget.resolveTicket(widget.ticketId);
+    if (next != null && mounted) {
+      setState(() => _ticket = next);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final saving = widget.isSaving(_ticket.id);
+    final status = _ticket.displayStatus;
+    final maxH = MediaQuery.sizeOf(context).height * 0.92;
+
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            10,
+            20,
+            MediaQuery.viewInsetsOf(context).bottom + 24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: DiraColors.ink.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CategoryGlyph.forTicket(
+                    categoryId: _ticket.category,
+                    title: _ticket.title,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _ticket.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            height: 1.25,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        StatusPill.ticket(context, status),
+                      ],
+                    ),
+                  ),
+                  if (widget.canEdit)
+                    IconButton(
+                      tooltip: l10n.ticketEdit,
+                      onPressed: () async {
+                        await widget.onEdit(_ticket);
+                        await widget.onRefresh();
+                        _syncFromParent();
+                      },
+                      icon: const Icon(Icons.edit_outlined),
+                      color: DiraColors.brick,
+                    ),
+                ],
+              ),
+              if (_ticket.description.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _ticket.description,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    height: 1.4,
+                    color: DiraColors.inkSoft,
+                  ),
+                ),
+              ],
+              if (_ticket.location != null) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.place_outlined,
+                      size: 16,
+                      color: DiraColors.inkSoft,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _ticket.location!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: DiraColors.inkSoft,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (_ticket.imageUrls.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                TicketPhotoCarousel(urls: _ticket.imageUrls, height: 220),
+              ],
+              const SizedBox(height: 10),
+              Text(
+                '${_ticket.reporterName ?? l10n.resident} · '
+                '${DateFormat('d MMM yyyy', locale).format(_ticket.createdAt.toLocal())}'
+                '${_ticket.vendorName != null ? ' · ${l10n.agentTo(_ticket.vendorName!)}' : ''}',
+                style: const TextStyle(fontSize: 12.5, color: DiraColors.inkSoft),
+              ),
+              // Cost + receipt visible to every resident once Vaad records them.
+              if (_ticket.costAmount != null || _ticket.receiptUrl != null) ...[
+                const SizedBox(height: 12),
+                _TicketCostRow(ticket: _ticket),
+              ],
+              const SizedBox(height: 14),
+              Container(
+                decoration: BoxDecoration(
+                  color: DiraColors.sage,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    TicketTimeline(
+                      ticket: _ticket,
+                      saving: saving,
+                      onStageTap: widget.isVaad
+                          ? (s) async {
+                              final future = widget.onSetStatus(_ticket, s);
+                              await Future<void>.delayed(Duration.zero);
+                              _syncFromParent();
+                              await future;
+                              await widget.onRefresh();
+                              _syncFromParent();
+                            }
+                          : null,
+                    ),
+                    if (widget.isVaad) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.touch_app_outlined,
+                            size: 14,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              l10n.ticketTapStatusHint,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.75),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (widget.isVaad) ...[
+                const SizedBox(height: 14),
+                if (status == 'open') ...[
+                  ElevatedButton.icon(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            await widget.onDispatch(_ticket);
+                            _syncFromParent();
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DiraColors.goldDark,
+                      foregroundColor: DiraColors.creamCard,
+                    ),
+                    icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                    label: Text(
+                      '${l10n.approveAndDispatch} · ${l10n.comingSoon}',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            await widget.onSetStatus(_ticket, 'in_progress');
+                            await widget.onRefresh();
+                            _syncFromParent();
+                          },
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: Text(l10n.statusInProgress),
+                  ),
+                ],
+                if (status == 'in_progress') ...[
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await widget.onProgress(_ticket);
+                      await widget.onRefresh();
+                      _syncFromParent();
+                    },
+                    icon: const Icon(Icons.update),
+                    label: Text(l10n.ticketUpdateProgress),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            await widget.onSetStatus(_ticket, 'resolved');
+                            await widget.onRefresh();
+                            _syncFromParent();
+                          },
+                    icon: const Icon(Icons.check),
+                    label: Text(l10n.markResolved),
+                  ),
+                ],
+                if (status == 'resolved')
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await widget.onCost(_ticket);
+                      await widget.onRefresh();
+                      _syncFromParent();
+                    },
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: Text(
+                      _ticket.costAmount == null
+                          ? l10n.ticketAddRepairCost
+                          : l10n.ticketEditRepairCost,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketEditSheet extends StatefulWidget {
+  final Ticket ticket;
+  const _TicketEditSheet({required this.ticket});
+
+  @override
+  State<_TicketEditSheet> createState() => _TicketEditSheetState();
+}
+
+class _ExistingTicketPhoto {
+  final String path;
+  final String url;
+  const _ExistingTicketPhoto({required this.path, required this.url});
+}
+
+class _TicketEditSheetState extends State<_TicketEditSheet> {
+  late final _title = TextEditingController(text: widget.ticket.title);
+  late final _description =
+      TextEditingController(text: widget.ticket.description);
+  late final _location =
+      TextEditingController(text: widget.ticket.location ?? '');
+  late TicketCategory _category = TicketCategory.byId(widget.ticket.category);
+  late final List<_ExistingTicketPhoto> _keptPhotos;
+  final List<PickedAttachment> _newPhotos = [];
+  bool _busy = false;
+  String? _error;
+
+  static const _maxPhotos = 8;
+
+  @override
+  void initState() {
+    super.initState();
+    final paths = widget.ticket.imagePaths;
+    final urls = widget.ticket.imageUrls;
+    final n = paths.length > urls.length ? paths.length : urls.length;
+    _keptPhotos = [
+      for (var i = 0; i < n; i++)
+        if (i < paths.length && paths[i].isNotEmpty)
+          _ExistingTicketPhoto(
+            path: paths[i],
+            url: i < urls.length ? urls[i] : '',
+          ),
+    ];
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    _location.dispose();
+    super.dispose();
+  }
+
+  int get _photoCount => _keptPhotos.length + _newPhotos.length;
+
+  Future<void> _pickPhotos() async {
+    if (_photoCount >= _maxPhotos) return;
+    final picked = await pickAttachments(context, multiple: true);
+    if (picked.isEmpty) return;
+    setState(() {
+      _newPhotos.addAll(picked);
+      final overflow = _photoCount - _maxPhotos;
+      if (overflow > 0) {
+        _newPhotos.removeRange(_newPhotos.length - overflow, _newPhotos.length);
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final title = _title.text.trim();
+    if (title.length < 3) {
+      setState(() => _error = context.l10n.whatHappened);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final paths = <String>[for (final p in _keptPhotos) p.path];
+      for (final photo in _newPhotos) {
+        final res = await api.uploadFile(
+          '/api/tickets/upload',
+          bytes: photo.bytes,
+          filename: photo.name,
+        );
+        final path = res['imagePath'] as String?;
+        if (path != null && path.isNotEmpty) paths.add(path);
+      }
+      final loc = _location.text.trim();
+      await api.patch('/api/tickets/${widget.ticket.id}', {
+        'title': title,
+        'description': _description.text.trim(),
+        'category': _category.id,
+        'location': loc.isEmpty ? null : loc,
+        'imagePaths': paths,
+      });
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _busy = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  Widget _photoThumb({required Widget child, required VoidCallback onRemove}) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(width: 80, height: 80, child: child),
+        ),
+        Positioned(
+          top: 2,
+          left: 2,
+          child: InkWell(
+            onTap: onRemove,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(2),
+              child: const Icon(Icons.close, size: 14, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final canAdd = _photoCount < _maxPhotos;
+    final thumbCount = _photoCount + (canAdd ? 1 : 0);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.ticketEdit, style: heading(fontSize: 20)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _title,
+              decoration: InputDecoration(labelText: l10n.whatHappened),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _description,
+              maxLines: 3,
+              decoration: InputDecoration(labelText: l10n.details),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _location,
+              decoration: InputDecoration(labelText: l10n.ticketLocationLabel),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final cat in TicketCategory.all)
+                  ChoiceChip(
+                    avatar: Icon(cat.icon, size: 16, color: cat.color),
+                    label: Text(cat.label(l10n)),
+                    selected: _category.id == cat.id,
+                    onSelected: (v) {
+                      if (v) setState(() => _category = cat);
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_photoCount == 0)
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _pickPhotos,
+                icon: const Icon(Icons.add_a_photo_outlined),
+                label: Text(l10n.addMorePhotos),
+              )
+            else
+              SizedBox(
+                height: 80,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: thumbCount,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, i) {
+                    if (canAdd && i == _photoCount) {
+                      return InkWell(
+                        onTap: _busy ? null : _pickPhotos,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: DiraColors.creamDeep),
+                            color: DiraColors.creamCard,
+                          ),
+                          child: const Icon(
+                            Icons.add_a_photo_outlined,
+                            color: DiraColors.brick,
+                          ),
+                        ),
+                      );
+                    }
+                    if (i < _keptPhotos.length) {
+                      final photo = _keptPhotos[i];
+                      return _photoThumb(
+                        onRemove: () =>
+                            setState(() => _keptPhotos.removeAt(i)),
+                        child: photo.url.isEmpty
+                            ? const ColoredBox(
+                                color: DiraColors.creamCard,
+                                child: Icon(Icons.image_outlined),
+                              )
+                            : TicketPhoto(
+                                url: photo.url,
+                                height: 80,
+                                fit: BoxFit.cover,
+                              ),
+                      );
+                    }
+                    final ni = i - _keptPhotos.length;
+                    return _photoThumb(
+                      onRemove: () => setState(() => _newPhotos.removeAt(ni)),
+                      child: Image.memory(
+                        _newPhotos[ni].bytes,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? l10n.pleaseWait : l10n.save),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: DiraColors.brick),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketProgressSheet extends StatefulWidget {
+  final Ticket ticket;
+  const _TicketProgressSheet({required this.ticket});
+
+  @override
+  State<_TicketProgressSheet> createState() => _TicketProgressSheetState();
+}
+
+class _TicketProgressSheetState extends State<_TicketProgressSheet> {
+  late final _note = TextEditingController(
+    text: widget.ticket.progressNote ?? '',
+  );
+  late DateTime? _fixDate;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fixDate = widget.ticket.fixDate;
+  }
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fixDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) setState(() => _fixDate = picked);
+  }
+
+  Future<void> _save() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final note = _note.text.trim();
+      await api.patch('/api/tickets/${widget.ticket.id}', {
+        'status': 'in_progress',
+        'progressNote': note.isEmpty ? null : note,
+        'fixDate': _fixDate == null
+            ? null
+            : DateFormat('yyyy-MM-dd').format(_fixDate!),
+      });
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final chips = [
+      l10n.ticketProgressOpenedProvider,
+      l10n.ticketProgressPartsOrdered,
+      l10n.ticketProgressScheduled,
+    ];
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.ticketUpdateProgress, style: heading(fontSize: 20)),
+            const SizedBox(height: 8),
+            Text(
+              l10n.ticketProgressNoteHint,
+              style: const TextStyle(color: DiraColors.inkSoft, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final chip in chips)
+                  ActionChip(
+                    label: Text(chip, style: const TextStyle(fontSize: 12.5)),
+                    onPressed: () => setState(() => _note.text = chip),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _note,
+              maxLines: 3,
+              decoration: InputDecoration(labelText: l10n.ticketProgressNote),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.ticketFixDateLabel),
+              subtitle: Text(
+                _fixDate == null
+                    ? '—'
+                    : DateFormat('d MMM yyyy', locale).format(_fixDate!),
+              ),
+              trailing: IconButton(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_month_outlined),
+              ),
+              onTap: _pickDate,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? l10n.pleaseWait : l10n.save),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: DiraColors.brick),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketCostRow extends StatelessWidget {
+  final Ticket ticket;
+  const _TicketCostRow({required this.ticket});
+
+  Future<void> _openReceipt(BuildContext context) async {
+    final url = ticket.receiptUrl;
+    if (url == null) return;
+    // Prefer path from proxy URL when present.
+    final uri = Uri.tryParse(url);
+    final path = uri?.queryParameters['path'];
+    final bucket = uri?.queryParameters['bucket'] ?? 'receipts';
+    if (path != null && path.isNotEmpty) {
+      await openVaultFile(
+        context,
+        bucket: bucket,
+        path: path,
+        title: context.l10n.viewReceipt,
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black87,
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.close, color: Colors.white),
+              ),
+            ),
+            Flexible(
+              child: TicketPhoto(url: url, height: 420, fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final amount = ticket.costAmount;
+    final formatted = amount == null
+        ? null
+        : NumberFormat.currency(symbol: '₪', decimalDigits: 0).format(amount);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: DiraColors.creamCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DiraColors.creamDeep),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.payments_outlined,
+            size: 18,
+            color: DiraColors.brick,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              formatted ?? l10n.ticketRepairCost,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+          ),
+          if (ticket.receiptUrl != null)
+            InkWell(
+              onTap: () => _openReceipt(context),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.receipt_outlined,
+                    size: 16,
+                    color: DiraColors.brick,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    l10n.viewReceipt,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: DiraColors.brick,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TicketCostSheet extends StatefulWidget {
+  final Ticket ticket;
+  const _TicketCostSheet({required this.ticket});
+
+  @override
+  State<_TicketCostSheet> createState() => _TicketCostSheetState();
+}
+
+class _TicketCostSheetState extends State<_TicketCostSheet> {
+  late final _amount = TextEditingController(
+    text: widget.ticket.costAmount == null
+        ? ''
+        : widget.ticket.costAmount!.truncateToDouble() == widget.ticket.costAmount
+            ? widget.ticket.costAmount!.toStringAsFixed(0)
+            : widget.ticket.costAmount!.toStringAsFixed(2),
+  );
+  PickedAttachment? _receipt;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickReceipt() async {
+    final picked = await pickAttachments(context, allowPdf: true);
+    final file = picked.firstOrNull;
+    if (file != null) setState(() => _receipt = file);
+  }
+
+  Future<void> _save() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final parsed = double.tryParse(_amount.text.trim().replaceAll(',', ''));
+    if (parsed == null || parsed < 0) {
+      setState(() => _error = context.l10n.ticketRepairCostHint);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      String? receiptPath;
+      final receipt = _receipt;
+      if (receipt != null) {
+        final res = await api.uploadFile(
+          '/api/expenses/upload',
+          bytes: receipt.bytes,
+          filename: receipt.name,
+        );
+        receiptPath = res['receiptPath'] as String?;
+      }
+      await api.patch('/api/tickets/${widget.ticket.id}', {
+        'costAmount': parsed,
+        if (receiptPath != null) 'receiptPath': receiptPath,
+      });
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.ticketRepairCost, style: heading(fontSize: 20)),
+            const SizedBox(height: 6),
+            Text(
+              l10n.ticketRepairCostHint,
+              style: const TextStyle(color: DiraColors.inkSoft, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _amount,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(
+                labelText: l10n.amount,
+                prefixText: '₪ ',
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _pickReceipt,
+              icon: Icon(
+                _receipt == null
+                    ? Icons.attach_file_rounded
+                    : Icons.check_circle,
+                size: 18,
+                color: _receipt == null
+                    ? DiraColors.brick
+                    : DiraColors.sageDark,
+              ),
+              label: Text(
+                _receipt?.name ??
+                    (widget.ticket.receiptUrl != null
+                        ? l10n.receiptAttached
+                        : l10n.attachReceipt),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? l10n.pleaseWait : l10n.save),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: DiraColors.brick),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -386,8 +1511,8 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
   /// Selected location key: a common-area key, 'floor', 'other', or null.
   String? _locationKey;
   int _floor = 1;
-  PickedAttachment? _photo;
-  bool _busy = false;
+  TicketCategory _category = TicketCategory.other;
+  final List<PickedAttachment> _photos = [];
   String? _error;
 
   static const _commonAreas = <(String, IconData)>[
@@ -424,40 +1549,42 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
   }
 
   /// Camera or photo library, via the shared source sheet.
-  Future<void> _pickPhoto() async {
-    final picked = await pickAttachments(context);
-    if (picked.isNotEmpty) setState(() => _photo = picked.first);
+  Future<void> _pickPhotos() async {
+    final picked = await pickAttachments(context, multiple: true);
+    if (picked.isEmpty) return;
+    setState(() {
+      _photos.addAll(picked);
+      if (_photos.length > 8) {
+        _photos.removeRange(8, _photos.length);
+      }
+    });
   }
 
   Future<void> _submit() async {
     FocusManager.instance.primaryFocus?.unfocus();
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      String? imagePath;
-      final photo = _photo;
-      if (photo != null) {
-        final res = await api.uploadFile(
-          '/api/tickets/upload',
-          bytes: photo.bytes,
-          filename: photo.name,
-        );
-        imagePath = res['imagePath'] as String?;
-      }
-      await api.post('/api/tickets', {
-        'title': _title.text.trim(),
-        'description': _description.text.trim(),
-        if (_locationText != null) 'location': _locationText,
-        'imagePath': ?imagePath,
-      });
-      if (mounted) Navigator.of(context).pop();
-    } on ApiException catch (e) {
-      setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _busy = false);
+    final title = _title.text.trim();
+    if (title.length < 3) {
+      setState(() => _error = context.l10n.whatHappened);
+      return;
     }
+
+    final session = context.read<SessionController>();
+    final draft = TicketDraft(
+      title: title,
+      description: _description.text.trim(),
+      category: _category.id,
+      location: _locationText,
+      photos: [
+        for (final p in _photos)
+          TicketPhotoDraft(bytes: p.bytes, name: p.name),
+      ],
+      reporterName: session.user?.fullName,
+    );
+
+    // Pop immediately; background upload + create shows as optimistic row.
+    final inbox = context.read<TicketsController>();
+    Navigator.of(context).pop();
+    unawaited(inbox.submit(draft));
   }
 
   @override
@@ -468,6 +1595,37 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          Text(
+            l10n.ticketCategoryLabel,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final cat in TicketCategory.all)
+                ChoiceChip(
+                  avatar: Icon(
+                    cat.icon,
+                    size: 17,
+                    color: _category.id == cat.id
+                        ? cat.color
+                        : DiraColors.inkSoft,
+                  ),
+                  label: Text(cat.label(l10n)),
+                  selected: _category.id == cat.id,
+                  selectedColor: cat.color.withValues(alpha: 0.18),
+                  onSelected: (v) {
+                    if (v) setState(() => _category = cat);
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
           TextField(
             controller: _title,
             onChanged: (_) => setState(() {}),
@@ -585,52 +1743,78 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
             ),
           ],
           const SizedBox(height: 20),
-          if (_photo == null)
+          if (_photos.isEmpty)
             OutlinedButton.icon(
-              onPressed: _pickPhoto,
+              onPressed: _pickPhotos,
               icon: const Icon(Icons.add_a_photo_outlined),
-              label: Text(l10n.addPhoto),
+              label: Text(l10n.addMorePhotos),
             )
-          else
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.memory(
-                    _photo!.bytes,
-                    width: 72,
-                    height: 72,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _photo!.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: DiraColors.inkSoft,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: l10n.removePhoto,
-                  onPressed: () => setState(() => _photo = null),
-                  icon: const Icon(Icons.close, color: DiraColors.brick),
-                ),
-              ],
+          else ...[
+            SizedBox(
+              height: 80,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _photos.length + (_photos.length < 8 ? 1 : 0),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  if (i == _photos.length) {
+                    return InkWell(
+                      onTap: _pickPhotos,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: DiraColors.creamDeep),
+                          color: DiraColors.creamCard,
+                        ),
+                        child: const Icon(
+                          Icons.add_a_photo_outlined,
+                          color: DiraColors.brick,
+                        ),
+                      ),
+                    );
+                  }
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          _photos[i].bytes,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 2,
+                        left: 2,
+                        child: InkWell(
+                          onTap: () => setState(() => _photos.removeAt(i)),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            child: const Icon(
+                              Icons.close,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
+          ],
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed:
-                _busy ||
-                    _title.text.trim().length < 3 ||
-                    _description.text.trim().length < 3
-                ? null
-                : _submit,
-            child: Text(_busy ? l10n.submitting : l10n.submitReport),
+            onPressed: _title.text.trim().length < 3 ? null : _submit,
+            child: Text(l10n.submitReport),
           ),
           if (_error != null)
             Padding(
@@ -642,552 +1826,6 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
             ),
         ],
       ),
-    );
-  }
-}
-
-/// Vaad-only: configure the Claude agents per vendor contract.
-class VendorAgentsScreen extends StatefulWidget {
-  const VendorAgentsScreen({super.key});
-
-  @override
-  State<VendorAgentsScreen> createState() => _VendorAgentsScreenState();
-}
-
-class _VendorAgentsScreenState extends State<VendorAgentsScreen> {
-  List<VendorAgent> _vendors = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final data = await api.get('/api/vendor-agents');
-    if (!mounted) return;
-    setState(() {
-      _vendors = ((data['vendorAgents'] ?? []) as List)
-          .map((v) => VendorAgent.fromJson(v))
-          .toList();
-      _loading = false;
-    });
-  }
-
-  Future<void> _addVendor() async {
-    final payload = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => const _VendorAgentDialog(),
-    );
-    if (payload == null) return;
-
-    try {
-      await api.post('/api/vendor-agents', payload);
-      await _load();
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    }
-  }
-
-  Future<void> _editVendor(VendorAgent vendor) async {
-    final payload = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => _VendorAgentDialog(initial: vendor),
-    );
-    if (payload == null) return;
-
-    try {
-      await api.patch('/api/vendor-agents/${vendor.id}', payload);
-      await _load();
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    }
-  }
-
-  Future<void> _deleteVendor(VendorAgent vendor) async {
-    final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteVendorTitle),
-        content: Text(l10n.deleteVendorConfirm(vendor.vendorName)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: DiraColors.brick),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    try {
-      await api.delete('/api/vendor-agents/${vendor.id}');
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(context.l10n.vendorDeleted)));
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.vendorAiAgents)),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'vendors-fab',
-        backgroundColor: DiraColors.brick,
-        foregroundColor: DiraColors.creamCard,
-        onPressed: _addVendor,
-        child: const Icon(Icons.add),
-      ),
-      body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: DiraColors.brick),
-            )
-          : _vendors.isEmpty
-          ? _EmptyAgentsState(onAdd: _addVendor)
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: _vendors
-                  .map(
-                    (v) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Card(
-                        child: ListTile(
-                          onTap: () => _editVendor(v),
-                          leading: const Icon(
-                            Icons.smart_toy,
-                            color: DiraColors.brick,
-                          ),
-                          title: Text(v.vendorName),
-                          subtitle: Text(
-                            [
-                              v.serviceType,
-                              if (v.vendorEmail != null) v.vendorEmail!,
-                              if (v.vendorPhone != null) v.vendorPhone!,
-                            ].join(' · '),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ...v.preferredChannels.map(
-                                (c) => Padding(
-                                  padding: const EdgeInsetsDirectional.only(
-                                    end: 4,
-                                  ),
-                                  child: Icon(
-                                    switch (c) {
-                                      'email' => Icons.alternate_email,
-                                      'whatsapp' => Icons.chat_rounded,
-                                      _ => Icons.sms_rounded,
-                                    },
-                                    size: 18,
-                                    color: DiraColors.sageDark,
-                                  ),
-                                ),
-                              ),
-                              PopupMenuButton<String>(
-                                icon: const Icon(
-                                  Icons.more_vert,
-                                  color: DiraColors.inkSoft,
-                                ),
-                                onSelected: (action) => action == 'edit'
-                                    ? _editVendor(v)
-                                    : _deleteVendor(v),
-                                itemBuilder: (ctx) => [
-                                  PopupMenuItem(
-                                    value: 'edit',
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.edit_outlined,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(ctx.l10n.edit),
-                                      ],
-                                    ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.delete_outline,
-                                          size: 18,
-                                          color: DiraColors.brick,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          ctx.l10n.delete,
-                                          style: const TextStyle(
-                                            color: DiraColors.brick,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-    );
-  }
-}
-
-/// Friendly first-run state explaining what vendor AI agents do.
-class _EmptyAgentsState extends StatelessWidget {
-  final VoidCallback onAdd;
-  const _EmptyAgentsState({required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: const BoxDecoration(
-                color: DiraColors.terracottaSoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.smart_toy_rounded,
-                size: 48,
-                color: DiraColors.brickDark,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              l10n.vendorAgentsEmptyTitle,
-              textAlign: TextAlign.center,
-              style: heading(fontSize: 22),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              l10n.vendorAgentsEmptyBody,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: DiraColors.inkSoft,
-                fontSize: 14,
-                height: 1.55,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // How it works, in three steps.
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _EmptyStep(
-                      number: '1',
-                      text: l10n.vendorAgentsStep1,
-                    ),
-                    const SizedBox(height: 10),
-                    _EmptyStep(
-                      number: '2',
-                      text: l10n.vendorAgentsStep2,
-                    ),
-                    const SizedBox(height: 10),
-                    _EmptyStep(
-                      number: '3',
-                      text: l10n.vendorAgentsStep3,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addFirstVendor),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyStep extends StatelessWidget {
-  final String number;
-  final String text;
-  const _EmptyStep({required this.number, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 13,
-          backgroundColor: DiraColors.sagePale,
-          child: Text(
-            number,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: DiraColors.sageDark,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 13, height: 1.4),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Vendor-agent create/edit form. The contact section is the contract with
-/// the AI agent: the channels picked here are the only ways it may open a
-/// ticket with the vendor, so each picked channel requires its detail.
-class _VendorAgentDialog extends StatefulWidget {
-  /// When set, the dialog edits this agent instead of creating a new one.
-  final VendorAgent? initial;
-  const _VendorAgentDialog({this.initial});
-
-  @override
-  State<_VendorAgentDialog> createState() => _VendorAgentDialogState();
-}
-
-class _VendorAgentDialogState extends State<_VendorAgentDialog> {
-  late final _name = TextEditingController(
-    text: widget.initial?.vendorName ?? '',
-  );
-  late final _service = TextEditingController(
-    text: widget.initial?.serviceType ?? '',
-  );
-  late final _email = TextEditingController(
-    text: widget.initial?.vendorEmail ?? '',
-  );
-  late final _contract = TextEditingController(
-    text: widget.initial?.contractDetails ?? '',
-  );
-  late final _instructions = TextEditingController(
-    text: widget.initial?.aiInstructions ?? '',
-  );
-  late String _phoneE164 = widget.initial?.vendorPhone ?? '';
-  late final Set<String> _channels = widget.initial != null
-      ? {...widget.initial!.preferredChannels}
-      : {'email'};
-  String? _error;
-
-  String? _validate(AppLocalizations l10n) {
-    if (_channels.isEmpty) return l10n.errSelectChannel;
-    if (_channels.contains('email') && _email.text.trim().isEmpty) {
-      return l10n.errEmailRequired;
-    }
-    if ((_channels.contains('sms') || _channels.contains('whatsapp')) &&
-        !PhoneField.isValid(_phoneE164)) {
-      return l10n.errPhoneRequired;
-    }
-    return null;
-  }
-
-  void _save() {
-    final l10n = context.l10n;
-    final error = _validate(l10n);
-    if (error != null) {
-      setState(() => _error = error);
-      return;
-    }
-    Navigator.pop(context, <String, dynamic>{
-      'vendorName': _name.text.trim(),
-      'serviceType': _service.text.trim(),
-      if (_email.text.trim().isNotEmpty) 'vendorEmail': _email.text.trim(),
-      if (_phoneE164.isNotEmpty) 'vendorPhone': _phoneE164,
-      'preferredChannels': _channels.toList(),
-      if (_contract.text.trim().isNotEmpty)
-        'contractDetails': _contract.text.trim(),
-      if (_instructions.text.trim().isNotEmpty)
-        'aiInstructions': _instructions.text.trim(),
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final channels = [
-      ('email', l10n.channelEmail, Icons.alternate_email),
-      ('sms', l10n.channelSms, Icons.sms_rounded),
-      ('whatsapp', l10n.channelWhatsapp, Icons.chat_rounded),
-    ];
-    final formReady =
-        _name.text.trim().length >= 2 && _service.text.trim().length >= 2;
-
-    return AlertDialog(
-      title: Text(
-        widget.initial == null ? l10n.newVendorAgent : l10n.editVendorAgent,
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _name,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: l10n.vendorName,
-                hintText: l10n.vendorNameHint,
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _service,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: l10n.serviceType,
-                hintText: l10n.serviceTypeHint,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              l10n.vendorContactSection,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.vendorContactHint,
-              style: const TextStyle(fontSize: 12, color: DiraColors.inkSoft),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              children: channels
-                  .map(
-                    (c) => FilterChip(
-                      avatar: Icon(
-                        c.$3,
-                        size: 16,
-                        color: _channels.contains(c.$1)
-                            ? Colors.white
-                            : DiraColors.sageDark,
-                      ),
-                      label: Text(c.$2),
-                      selected: _channels.contains(c.$1),
-                      selectedColor: DiraColors.sageDark,
-                      checkmarkColor: Colors.white,
-                      labelStyle: TextStyle(
-                        color: _channels.contains(c.$1)
-                            ? Colors.white
-                            : DiraColors.ink,
-                        fontSize: 12.5,
-                      ),
-                      onSelected: (on) => setState(() {
-                        _error = null;
-                        if (on) {
-                          _channels.add(c.$1);
-                        } else {
-                          _channels.remove(c.$1);
-                        }
-                      }),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 10),
-            if (_channels.contains('email')) ...[
-              TextField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                textDirection: TextDirection.ltr,
-                onChanged: (_) => setState(() => _error = null),
-                decoration: InputDecoration(labelText: l10n.vendorEmailLabel),
-              ),
-              const SizedBox(height: 10),
-            ],
-            if (_channels.contains('sms') ||
-                _channels.contains('whatsapp')) ...[
-              PhoneField(
-                label: l10n.vendorPhoneLabel,
-                initialValue: widget.initial?.vendorPhone,
-                onChanged: (v) => setState(() {
-                  _phoneE164 = v;
-                  _error = null;
-                }),
-              ),
-              const SizedBox(height: 10),
-            ],
-            TextField(
-              controller: _contract,
-              decoration: InputDecoration(labelText: l10n.contractOptional),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _instructions,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: l10n.aiInstructionsOptional,
-              ),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(
-                    color: DiraColors.brick,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancel),
-        ),
-        ElevatedButton(
-          onPressed: formReady ? _save : null,
-          child: Text(l10n.save),
-        ),
-      ],
     );
   }
 }

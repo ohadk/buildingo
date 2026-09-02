@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @myTickets.
   ///
   /// In en, this message translates to:
-  /// **'My Tickets'**
+  /// **'Service calls'**
   String get myTickets;
 
   /// No description provided for @noOpenTickets.
@@ -343,6 +343,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No open tickets — all quiet in the building.'**
   String get noOpenTickets;
+
+  /// No description provided for @homeTicketsClearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All quiet'**
+  String get homeTicketsClearTitle;
+
+  /// No description provided for @homeTicketsClearBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No open service calls right now. Anything new will show up here.'**
+  String get homeTicketsClearBody;
 
   /// No description provided for @noTicketsYet.
   ///
@@ -359,8 +371,212 @@ abstract class AppLocalizations {
   /// No description provided for @communityBoard.
   ///
   /// In en, this message translates to:
-  /// **'Community Board'**
+  /// **'Building board'**
   String get communityBoard;
+
+  /// No description provided for @seeDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get seeDetails;
+
+  /// No description provided for @viewAllCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'All service calls'**
+  String get viewAllCalls;
+
+  /// No description provided for @viewAllBoardMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'All messages'**
+  String get viewAllBoardMessages;
+
+  /// No description provided for @allBoardMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'All board messages'**
+  String get allBoardMessages;
+
+  /// No description provided for @boardPublishedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Published {date}'**
+  String boardPublishedOn(String date);
+
+  /// No description provided for @noCurrentBoardMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages for this week'**
+  String get noCurrentBoardMessages;
+
+  /// No description provided for @paymentsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All payments, clear and organized.'**
+  String get paymentsSubtitle;
+
+  /// No description provided for @buildingBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Building balance'**
+  String get buildingBalance;
+
+  /// No description provided for @balanceAsOf.
+  ///
+  /// In en, this message translates to:
+  /// **'As of {date}'**
+  String balanceAsOf(String date);
+
+  /// No description provided for @buildingIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Total income'**
+  String get buildingIncome;
+
+  /// No description provided for @buildingExpensesTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total expenses'**
+  String get buildingExpensesTotal;
+
+  /// No description provided for @monthlyCommitteeFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly committee fees'**
+  String get monthlyCommitteeFees;
+
+  /// No description provided for @paymentsAutoUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments update automatically'**
+  String get paymentsAutoUpdated;
+
+  /// No description provided for @residentsDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Residents directory'**
+  String get residentsDirectory;
+
+  /// No description provided for @apartmentsCountN.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} apartments'**
+  String apartmentsCountN(String n);
+
+  /// No description provided for @vaadTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Committee tools'**
+  String get vaadTools;
+
+  /// No description provided for @toolGuests.
+  ///
+  /// In en, this message translates to:
+  /// **'Guests'**
+  String get toolGuests;
+
+  /// No description provided for @toolSurveys.
+  ///
+  /// In en, this message translates to:
+  /// **'Surveys'**
+  String get toolSurveys;
+
+  /// No description provided for @toolMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get toolMessage;
+
+  /// No description provided for @ticketCatLeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Leak'**
+  String get ticketCatLeak;
+
+  /// No description provided for @ticketCatElevator.
+  ///
+  /// In en, this message translates to:
+  /// **'Elevator'**
+  String get ticketCatElevator;
+
+  /// No description provided for @ticketCatCleaning.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleaning'**
+  String get ticketCatCleaning;
+
+  /// No description provided for @ticketCatLights.
+  ///
+  /// In en, this message translates to:
+  /// **'Lights'**
+  String get ticketCatLights;
+
+  /// No description provided for @ticketCatElectric.
+  ///
+  /// In en, this message translates to:
+  /// **'Electrical'**
+  String get ticketCatElectric;
+
+  /// No description provided for @ticketCatDoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Door / intercom'**
+  String get ticketCatDoor;
+
+  /// No description provided for @ticketCatOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get ticketCatOther;
+
+  /// No description provided for @ticketCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'What kind of fault?'**
+  String get ticketCategoryLabel;
+
+  /// No description provided for @ticketCreatedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Created on {date}'**
+  String ticketCreatedOn(String date);
+
+  /// No description provided for @ticketUploadingPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading photo…'**
+  String get ticketUploadingPhoto;
+
+  /// No description provided for @ticketCreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending report…'**
+  String get ticketCreating;
+
+  /// No description provided for @ticketCreateDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Report sent'**
+  String get ticketCreateDone;
+
+  /// No description provided for @ticketCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send report'**
+  String get ticketCreateFailed;
+
+  /// No description provided for @ticketRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get ticketRetry;
+
+  /// No description provided for @ticketDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get ticketDismiss;
 
   /// No description provided for @fromTheVaad.
   ///
@@ -437,25 +653,25 @@ abstract class AppLocalizations {
   /// No description provided for @statusOpen.
   ///
   /// In en, this message translates to:
-  /// **'Open'**
+  /// **'New'**
   String get statusOpen;
 
   /// No description provided for @statusApproved.
   ///
   /// In en, this message translates to:
-  /// **'Approved'**
+  /// **'In progress'**
   String get statusApproved;
 
   /// No description provided for @statusInProgress.
   ///
   /// In en, this message translates to:
-  /// **'In Progress'**
+  /// **'In progress'**
   String get statusInProgress;
 
   /// No description provided for @statusResolved.
   ///
   /// In en, this message translates to:
-  /// **'Resolved'**
+  /// **'Done'**
   String get statusResolved;
 
   /// No description provided for @approveAndDispatch.
@@ -467,8 +683,122 @@ abstract class AppLocalizations {
   /// No description provided for @markResolved.
   ///
   /// In en, this message translates to:
-  /// **'Mark Resolved'**
+  /// **'Mark Done'**
   String get markResolved;
+
+  /// No description provided for @ticketTapStatusHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a stage to update status'**
+  String get ticketTapStatusHint;
+
+  /// No description provided for @ticketRepairCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair cost'**
+  String get ticketRepairCost;
+
+  /// No description provided for @ticketRepairCostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'How much did this fix cost?'**
+  String get ticketRepairCostHint;
+
+  /// No description provided for @ticketAddRepairCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Add repair cost'**
+  String get ticketAddRepairCost;
+
+  /// No description provided for @ticketEditRepairCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Update cost & receipt'**
+  String get ticketEditRepairCost;
+
+  /// No description provided for @ticketCostSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair cost saved'**
+  String get ticketCostSaved;
+
+  /// No description provided for @ticketCostAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'₪{amount}'**
+  String ticketCostAmount(String amount);
+
+  /// No description provided for @ticketEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit ticket'**
+  String get ticketEdit;
+
+  /// No description provided for @ticketEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket updated'**
+  String get ticketEdited;
+
+  /// No description provided for @ticketUpdateProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Update progress'**
+  String get ticketUpdateProgress;
+
+  /// No description provided for @ticketProgressSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress updated'**
+  String get ticketProgressSaved;
+
+  /// No description provided for @ticketProgressNote.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s happening?'**
+  String get ticketProgressNote;
+
+  /// No description provided for @ticketProgressNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Opened with provider, parts ordered…'**
+  String get ticketProgressNoteHint;
+
+  /// No description provided for @ticketFixDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected fix date'**
+  String get ticketFixDateLabel;
+
+  /// No description provided for @ticketFixDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix date: {date}'**
+  String ticketFixDate(String date);
+
+  /// No description provided for @ticketExpectedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected {date}'**
+  String ticketExpectedBy(String date);
+
+  /// No description provided for @ticketProgressOpenedProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened with provider'**
+  String get ticketProgressOpenedProvider;
+
+  /// No description provided for @ticketProgressPartsOrdered.
+  ///
+  /// In en, this message translates to:
+  /// **'Parts ordered'**
+  String get ticketProgressPartsOrdered;
+
+  /// No description provided for @ticketProgressScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix scheduled'**
+  String get ticketProgressScheduled;
 
   /// No description provided for @reportAFault.
   ///
@@ -491,7 +821,7 @@ abstract class AppLocalizations {
   /// No description provided for @details.
   ///
   /// In en, this message translates to:
-  /// **'Details'**
+  /// **'Details (optional)'**
   String get details;
 
   /// No description provided for @detailsHint.
@@ -499,6 +829,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When did it start? Where exactly?'**
   String get detailsHint;
+
+  /// No description provided for @addMorePhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photos'**
+  String get addMorePhotos;
 
   /// No description provided for @submitting.
   ///
@@ -779,7 +1115,7 @@ abstract class AppLocalizations {
   /// No description provided for @directoryTitle.
   ///
   /// In en, this message translates to:
-  /// **'Directory & Parking'**
+  /// **'Residents directory'**
   String get directoryTitle;
 
   /// No description provided for @floorN.
@@ -805,6 +1141,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No parking assigned'**
   String get noParking;
+
+  /// No description provided for @directoryResidentSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Since {date}'**
+  String directoryResidentSince(String date);
 
   /// No description provided for @inviteResident.
   ///
@@ -1358,6 +1700,113 @@ abstract class AppLocalizations {
   /// **'Per floor'**
   String get apartmentsPerFloor;
 
+  /// No description provided for @numberOfApartments.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of apartments'**
+  String get numberOfApartments;
+
+  /// No description provided for @numberOfFloors.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of floors'**
+  String get numberOfFloors;
+
+  /// No description provided for @typicalFloorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'On a typical floor'**
+  String get typicalFloorLabel;
+
+  /// No description provided for @baseFloorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'First floor'**
+  String get baseFloorLabel;
+
+  /// No description provided for @firstApartmentShortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'First apartment'**
+  String get firstApartmentShortLabel;
+
+  /// No description provided for @structureStepSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the typical floor, then fix only the exceptions.'**
+  String get structureStepSubtitle;
+
+  /// No description provided for @floorsRangeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Floors will run from {from} to {to} · apartments numbered {aptFrom}–{aptTo}'**
+  String floorsRangeSummary(
+    String from,
+    String to,
+    String aptFrom,
+    String aptTo,
+  );
+
+  /// No description provided for @floorDivisionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Floor breakdown'**
+  String get floorDivisionTitle;
+
+  /// No description provided for @resetExceptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset {count} exceptions'**
+  String resetExceptions(String count);
+
+  /// No description provided for @floorBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'fl.{floor}'**
+  String floorBadge(String floor);
+
+  /// No description provided for @floorBadgeGround.
+  ///
+  /// In en, this message translates to:
+  /// **'G'**
+  String get floorBadgeGround;
+
+  /// No description provided for @floorAptsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} apartments'**
+  String floorAptsCount(String count);
+
+  /// No description provided for @floorAptsRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Apts {from}–{to}'**
+  String floorAptsRange(String from, String to);
+
+  /// No description provided for @exceptionBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Exception'**
+  String get exceptionBadge;
+
+  /// No description provided for @mappingTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total in mapping'**
+  String get mappingTotalLabel;
+
+  /// No description provided for @mappingTotalMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'{apts} apartments · {floors} floors'**
+  String mappingTotalMeta(String apts, String floors);
+
+  /// No description provided for @floorPlanMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Floor counts must add up to the total apartments'**
+  String get floorPlanMismatch;
+
   /// No description provided for @feeMethodLabel.
   ///
   /// In en, this message translates to:
@@ -1382,11 +1831,713 @@ abstract class AppLocalizations {
   /// **'Monthly amount (₪)'**
   String get monthlyAmount;
 
+  /// No description provided for @feeFixedMonthlyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Apartment fee · monthly'**
+  String get feeFixedMonthlyLabel;
+
+  /// No description provided for @feePerApartmentUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'per apt'**
+  String get feePerApartmentUnit;
+
   /// No description provided for @pricePerSqmLabel.
   ///
   /// In en, this message translates to:
   /// **'Price per m² (₪)'**
   String get pricePerSqmLabel;
+
+  /// No description provided for @updateVaadFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Vaad fee settings'**
+  String get updateVaadFee;
+
+  /// No description provided for @buildingSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Building settings'**
+  String get buildingSettings;
+
+  /// No description provided for @joinPolicySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Join policy'**
+  String get joinPolicySection;
+
+  /// No description provided for @createBuildingStepYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Your details'**
+  String get createBuildingStepYou;
+
+  /// No description provided for @createBuildingStepPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Building address'**
+  String get createBuildingStepPlace;
+
+  /// No description provided for @createBuildingStepEntrances.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrances & elevators'**
+  String get createBuildingStepEntrances;
+
+  /// No description provided for @createBuildingStepStructure.
+  ///
+  /// In en, this message translates to:
+  /// **'Floors & apartments'**
+  String get createBuildingStepStructure;
+
+  /// No description provided for @createBuildingStepFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Committee fees'**
+  String get createBuildingStepFees;
+
+  /// No description provided for @createBuildingStepMyApartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Your apartment'**
+  String get createBuildingStepMyApartment;
+
+  /// No description provided for @createBuildingStepServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular services'**
+  String get createBuildingStepServices;
+
+  /// No description provided for @createBuildingStepBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank balance'**
+  String get createBuildingStepBalance;
+
+  /// No description provided for @createBuildingStepSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary & confirm'**
+  String get createBuildingStepSummary;
+
+  /// No description provided for @createBuildingYouSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'These details are shown to residents as the committee contact.'**
+  String get createBuildingYouSubtitle;
+
+  /// No description provided for @createBuildingYouAptLaterNote.
+  ///
+  /// In en, this message translates to:
+  /// **'On the apartment step you’ll set your unit — number, occupants, and documents — like any resident.'**
+  String get createBuildingYouAptLaterNote;
+
+  /// No description provided for @createBuildingMyAptSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your unit details. We’ll create the apartment and assign you to it as Vaad.'**
+  String get createBuildingMyAptSubtitle;
+
+  /// No description provided for @createBuildingPlaceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One address for protocols, receipts, and invites.'**
+  String get createBuildingPlaceSubtitle;
+
+  /// No description provided for @createBuildingEntrancesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrance codes and elevators for your building.'**
+  String get createBuildingEntrancesSubtitle;
+
+  /// No description provided for @createBuildingFeesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set how monthly committee fees are calculated.'**
+  String get createBuildingFeesSubtitle;
+
+  /// No description provided for @createBuildingServicesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set recurring services for the building calendar. You can change these later.'**
+  String get createBuildingServicesSubtitle;
+
+  /// No description provided for @createBuildingSummarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review everything before creating the building.'**
+  String get createBuildingSummarySubtitle;
+
+  /// No description provided for @serviceCleaningStairs.
+  ///
+  /// In en, this message translates to:
+  /// **'Stairwell cleaning'**
+  String get serviceCleaningStairs;
+
+  /// No description provided for @serviceGarbage.
+  ///
+  /// In en, this message translates to:
+  /// **'Trash removal'**
+  String get serviceGarbage;
+
+  /// No description provided for @serviceGardening.
+  ///
+  /// In en, this message translates to:
+  /// **'Gardening'**
+  String get serviceGardening;
+
+  /// No description provided for @servicePest.
+  ///
+  /// In en, this message translates to:
+  /// **'Pest control'**
+  String get servicePest;
+
+  /// No description provided for @serviceWaterTank.
+  ///
+  /// In en, this message translates to:
+  /// **'Water tank cleaning'**
+  String get serviceWaterTank;
+
+  /// No description provided for @serviceFrequencyWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get serviceFrequencyWeekly;
+
+  /// No description provided for @serviceFrequencyBiweekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Biweekly'**
+  String get serviceFrequencyBiweekly;
+
+  /// No description provided for @serviceFrequencyMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get serviceFrequencyMonthly;
+
+  /// No description provided for @serviceFrequencyQuarterly.
+  ///
+  /// In en, this message translates to:
+  /// **'Quarterly'**
+  String get serviceFrequencyQuarterly;
+
+  /// No description provided for @serviceFrequencyYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get serviceFrequencyYearly;
+
+  /// No description provided for @serviceCostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'₪ Cost'**
+  String get serviceCostHint;
+
+  /// No description provided for @serviceProviderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider name'**
+  String get serviceProviderHint;
+
+  /// No description provided for @serviceAddCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Add custom service'**
+  String get serviceAddCustom;
+
+  /// No description provided for @serviceCustomTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Service name'**
+  String get serviceCustomTitle;
+
+  /// No description provided for @serviceSkipLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip — you can add later'**
+  String get serviceSkipLater;
+
+  /// No description provided for @serviceEstimatedMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated monthly expense · ₪{amount}'**
+  String serviceEstimatedMonthly(String amount);
+
+  /// No description provided for @serviceBalanceAfterFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining after collection · ₪{amount}'**
+  String serviceBalanceAfterFees(String amount);
+
+  /// No description provided for @serviceCalendarNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled services appear on the building calendar with reminders for the committee.'**
+  String get serviceCalendarNote;
+
+  /// No description provided for @serviceDayOfMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Day of month'**
+  String get serviceDayOfMonth;
+
+  /// No description provided for @serviceOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off — tap to set schedule'**
+  String get serviceOffHint;
+
+  /// No description provided for @serviceDaySun.
+  ///
+  /// In en, this message translates to:
+  /// **'S'**
+  String get serviceDaySun;
+
+  /// No description provided for @serviceDayMon.
+  ///
+  /// In en, this message translates to:
+  /// **'M'**
+  String get serviceDayMon;
+
+  /// No description provided for @serviceDayTue.
+  ///
+  /// In en, this message translates to:
+  /// **'T'**
+  String get serviceDayTue;
+
+  /// No description provided for @serviceDayWed.
+  ///
+  /// In en, this message translates to:
+  /// **'W'**
+  String get serviceDayWed;
+
+  /// No description provided for @serviceDayThu.
+  ///
+  /// In en, this message translates to:
+  /// **'T'**
+  String get serviceDayThu;
+
+  /// No description provided for @serviceDayFri.
+  ///
+  /// In en, this message translates to:
+  /// **'F'**
+  String get serviceDayFri;
+
+  /// No description provided for @serviceDaySat.
+  ///
+  /// In en, this message translates to:
+  /// **'S'**
+  String get serviceDaySat;
+
+  /// No description provided for @summaryServicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular services'**
+  String get summaryServicesTitle;
+
+  /// No description provided for @summaryServicesNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None selected'**
+  String get summaryServicesNone;
+
+  /// No description provided for @verifiedPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified phone'**
+  String get verifiedPhoneLabel;
+
+  /// No description provided for @myApartmentNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Apartment number'**
+  String get myApartmentNumber;
+
+  /// No description provided for @committeeApartmentNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This apartment will be marked as the committee apartment in the directory.'**
+  String get committeeApartmentNote;
+
+  /// No description provided for @vaadAptClaimTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your apartment'**
+  String get vaadAptClaimTitle;
+
+  /// No description provided for @vaadAptClaimSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your unit from the mapped apartments. We’ll create every unit in the building and assign you to this one as Vaad.'**
+  String get vaadAptClaimSubtitle;
+
+  /// No description provided for @vaadAptRangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbers in this plan: {from}–{to}'**
+  String vaadAptRangeHint(String from, String to);
+
+  /// No description provided for @vaadAptOutOfPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'That apartment number is not in the floor plan you set'**
+  String get vaadAptOutOfPlan;
+
+  /// No description provided for @vaadAptSqmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional — building typical is {typical} m²'**
+  String vaadAptSqmHint(String typical);
+
+  /// No description provided for @countryIsrael.
+  ///
+  /// In en, this message translates to:
+  /// **'Israel'**
+  String get countryIsrael;
+
+  /// No description provided for @countryUsa.
+  ///
+  /// In en, this message translates to:
+  /// **'USA'**
+  String get countryUsa;
+
+  /// No description provided for @countryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get countryOther;
+
+  /// No description provided for @districtOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'District / region (optional)'**
+  String get districtOptional;
+
+  /// No description provided for @useMyLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Use my location'**
+  String get useMyLocation;
+
+  /// No description provided for @locatingAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding your address…'**
+  String get locatingAddress;
+
+  /// No description provided for @locationFilledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested from your current location — confirm city and street from the list.'**
+  String get locationFilledHint;
+
+  /// No description provided for @locationOutsideIsrael.
+  ///
+  /// In en, this message translates to:
+  /// **'Location isn’t in Israel. Country stays Israel — fill the address manually, or switch country.'**
+  String get locationOutsideIsrael;
+
+  /// No description provided for @locationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t read your location. You can fill the address manually.'**
+  String get locationUnavailable;
+
+  /// No description provided for @entrancesCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrances'**
+  String get entrancesCountLabel;
+
+  /// No description provided for @elevatorsCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Elevators'**
+  String get elevatorsCountLabel;
+
+  /// No description provided for @entranceCodesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrance codes'**
+  String get entranceCodesTitle;
+
+  /// No description provided for @entranceCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Code (optional)'**
+  String get entranceCodeHint;
+
+  /// No description provided for @entranceCodesPrivacyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrance codes are visible only to residents of this building.'**
+  String get entranceCodesPrivacyNote;
+
+  /// No description provided for @typicalApartmentSqmLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Typical apartment size (m²)'**
+  String get typicalApartmentSqmLabel;
+
+  /// No description provided for @feePreviewSize.
+  ///
+  /// In en, this message translates to:
+  /// **'{sqm} m² apartment'**
+  String feePreviewSize(String sqm);
+
+  /// No description provided for @feePreviewTypical.
+  ///
+  /// In en, this message translates to:
+  /// **'Typical · {sqm} m²'**
+  String feePreviewTypical(String sqm);
+
+  /// No description provided for @feeTemporaryNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Until each apartment has its size set, billing uses the typical size.'**
+  String get feeTemporaryNote;
+
+  /// No description provided for @billingDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing day of month'**
+  String get billingDayLabel;
+
+  /// No description provided for @billingDaySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing day: {day}'**
+  String billingDaySummary(String day);
+
+  /// No description provided for @expectedMonthlyCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected monthly collection'**
+  String get expectedMonthlyCollection;
+
+  /// No description provided for @sqmUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'m²'**
+  String get sqmUnit;
+
+  /// No description provided for @summaryContactTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get summaryContactTitle;
+
+  /// No description provided for @summaryAddressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get summaryAddressTitle;
+
+  /// No description provided for @summaryBuildingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Building'**
+  String get summaryBuildingTitle;
+
+  /// No description provided for @summaryFloorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Floors'**
+  String get summaryFloorsTitle;
+
+  /// No description provided for @summaryFeesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fees'**
+  String get summaryFeesTitle;
+
+  /// No description provided for @summaryEntrancesLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{entrances} entrances · {elevators} elevators'**
+  String summaryEntrancesLine(String entrances, String elevators);
+
+  /// No description provided for @apartmentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Apt {n}'**
+  String apartmentLabel(String n);
+
+  /// No description provided for @createBuildingNextWithApts.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue · {n} apartments'**
+  String createBuildingNextWithApts(String n);
+
+  /// No description provided for @openingBalanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Building cash balance'**
+  String get openingBalanceTitle;
+
+  /// No description provided for @openingBalanceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'How much money is currently in the building bank account or cash box? This is the starting balance in the app — paid dues add up, expenses subtract. You can leave 0 and update later.'**
+  String get openingBalanceBody;
+
+  /// No description provided for @openingBalanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current cash balance (₪)'**
+  String get openingBalanceLabel;
+
+  /// No description provided for @openingBalanceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional — leave 0 for now.'**
+  String get openingBalanceHint;
+
+  /// No description provided for @openingBalanceSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Start from zero'**
+  String get openingBalanceSkip;
+
+  /// No description provided for @openingBalanceRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening balance'**
+  String get openingBalanceRow;
+
+  /// No description provided for @createBuildingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get createBuildingNext;
+
+  /// No description provided for @createBuildingBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get createBuildingBack;
+
+  /// No description provided for @createBuildingStepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String createBuildingStepOf(String current, String total);
+
+  /// No description provided for @comingSoonSection.
+  ///
+  /// In en, this message translates to:
+  /// **'More configuration'**
+  String get comingSoonSection;
+
+  /// No description provided for @shareAppSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Buildingo'**
+  String get shareAppSection;
+
+  /// No description provided for @shareAppTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share the app'**
+  String get shareAppTitle;
+
+  /// No description provided for @shareAppSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite other buildings via WhatsApp'**
+  String get shareAppSubtitle;
+
+  /// No description provided for @shareAppMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey! We run our building with Buildingo — dues, residents, and maintenance in one app. Download here: {link}'**
+  String shareAppMessage(String link);
+
+  /// No description provided for @comingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Soon'**
+  String get comingSoon;
+
+  /// No description provided for @entranceCodesSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrance codes (front / back)'**
+  String get entranceCodesSoon;
+
+  /// No description provided for @garbageScheduleSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Garbage collection schedule'**
+  String get garbageScheduleSoon;
+
+  /// No description provided for @cleaningScheduleSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleaning schedule'**
+  String get cleaningScheduleSoon;
+
+  /// No description provided for @saveFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & notify residents'**
+  String get saveFee;
+
+  /// No description provided for @vaadFeeSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Fee updated — residents were notified'**
+  String get vaadFeeSaved;
+
+  /// No description provided for @apartmentSizeSqm.
+  ///
+  /// In en, this message translates to:
+  /// **'Apartment size (m²)'**
+  String get apartmentSizeSqm;
+
+  /// No description provided for @apartmentSizeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Apartment size from Arnona bill is required'**
+  String get apartmentSizeRequired;
+
+  /// No description provided for @monthlyFeePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Your monthly Vaad fee: {amount}'**
+  String monthlyFeePreview(String amount);
+
+  /// No description provided for @monthlyFeePreviewPerSqm.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount}/mo ({sqm} m² × {rate}/m², rounded up)'**
+  String monthlyFeePreviewPerSqm(String amount, String sqm, String rate);
+
+  /// No description provided for @existingApartmentSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Known apartment size: {sqm} m²'**
+  String existingApartmentSize(String sqm);
+
+  /// No description provided for @sqmExtracted.
+  ///
+  /// In en, this message translates to:
+  /// **'Size read from your Arnona bill'**
+  String get sqmExtracted;
+
+  /// No description provided for @sqmEnterManually.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read size — enter it manually below'**
+  String get sqmEnterManually;
+
+  /// No description provided for @yourMonthlyVaadFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly Vaad fee'**
+  String get yourMonthlyVaadFee;
 
   /// No description provided for @myApartmentOptional.
   ///
@@ -1676,6 +2827,66 @@ abstract class AppLocalizations {
   /// **'Building schedule'**
   String get buildingSchedule;
 
+  /// No description provided for @whatsappConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp'**
+  String get whatsappConnect;
+
+  /// No description provided for @whatsappConnectBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a WhatsApp number for this building, then link the residents group. Buildingo will listen for fault reports in that group and open tickets automatically. You can also message tenants over WhatsApp.'**
+  String get whatsappConnectBody;
+
+  /// No description provided for @whatsappNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp (WAHA) is not configured on the server yet.'**
+  String get whatsappNotConfigured;
+
+  /// No description provided for @whatsappConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp connected'**
+  String get whatsappConnected;
+
+  /// No description provided for @whatsappNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp not connected'**
+  String get whatsappNotConnected;
+
+  /// No description provided for @whatsappStartSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Start WhatsApp connection'**
+  String get whatsappStartSession;
+
+  /// No description provided for @whatsappScanQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan this QR with WhatsApp → Linked devices'**
+  String get whatsappScanQr;
+
+  /// No description provided for @whatsappPickGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the building WhatsApp group'**
+  String get whatsappPickGroup;
+
+  /// No description provided for @whatsappGroupLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Building group linked'**
+  String get whatsappGroupLinked;
+
+  /// No description provided for @whatsappLoadGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Load groups'**
+  String get whatsappLoadGroups;
+
   /// No description provided for @comingUp.
   ///
   /// In en, this message translates to:
@@ -1729,6 +2940,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add garbage collection days, cleaning times and one-off pickups so everyone in the building knows what\'s coming.'**
   String get scheduleEmptyBody;
+
+  /// No description provided for @scheduleDayEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on this day'**
+  String get scheduleDayEmptyTitle;
+
+  /// No description provided for @scheduleDayEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No building events scheduled for this day.'**
+  String get scheduleDayEmptyBody;
+
+  /// No description provided for @scheduleDayEmptyBodyVaad.
+  ///
+  /// In en, this message translates to:
+  /// **'No events yet — tap + to add something for this day.'**
+  String get scheduleDayEmptyBodyVaad;
+
+  /// No description provided for @announcementDateOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Date on calendar (optional)'**
+  String get announcementDateOptional;
+
+  /// No description provided for @announcementDateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a date to show this on the building calendar'**
+  String get announcementDateHint;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
 
   /// No description provided for @scheduleWeekly.
   ///
@@ -1928,6 +3175,54 @@ abstract class AppLocalizations {
   /// **'The agent opens the ticket with the vendor and keeps you posted'**
   String get vendorAgentsStep3;
 
+  /// No description provided for @agentsComingSoonBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming in the next version'**
+  String get agentsComingSoonBadge;
+
+  /// No description provided for @agentsComingSoonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI agents for your vendors'**
+  String get agentsComingSoonTitle;
+
+  /// No description provided for @agentsComingSoonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Soon, Buildingo will contact elevator, plumbing, and cleaning vendors for you — open the service call, follow up, and keep residents in the loop.'**
+  String get agentsComingSoonBody;
+
+  /// No description provided for @agentsComingSoonFeature1.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach vendors by email, SMS, or WhatsApp'**
+  String get agentsComingSoonFeature1;
+
+  /// No description provided for @agentsComingSoonFeature2.
+  ///
+  /// In en, this message translates to:
+  /// **'One tap after you approve a resident fault'**
+  String get agentsComingSoonFeature2;
+
+  /// No description provided for @agentsComingSoonFeature3.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic updates back to the building board'**
+  String get agentsComingSoonFeature3;
+
+  /// No description provided for @agentsComingSoonFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'Available in the next Buildingo release — stay tuned.'**
+  String get agentsComingSoonFootnote;
+
+  /// No description provided for @agentDispatchComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'AI vendor dispatch arrives in the next version. For now, move the ticket to In progress and handle the vendor yourself.'**
+  String get agentDispatchComingSoon;
+
   /// No description provided for @addFirstVendor.
   ///
   /// In en, this message translates to:
@@ -2012,6 +3307,36 @@ abstract class AppLocalizations {
   /// **'Choose a city first'**
   String get pickCityFirst;
 
+  /// No description provided for @pickStreetFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a street first'**
+  String get pickStreetFirst;
+
+  /// No description provided for @streetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Street'**
+  String get streetLabel;
+
+  /// No description provided for @houseNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'House number'**
+  String get houseNumberLabel;
+
+  /// No description provided for @pickFromGovList.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick from the official list'**
+  String get pickFromGovList;
+
+  /// No description provided for @govAddressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'City and street come from the Israel government registry so every building uses the same spelling.'**
+  String get govAddressHint;
+
   /// No description provided for @askVaadInviteHint.
   ///
   /// In en, this message translates to:
@@ -2047,6 +3372,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Parking (optional)'**
   String get parkingOptional;
+
+  /// No description provided for @parkingSpotsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking spots (optional)'**
+  String get parkingSpotsLabel;
+
+  /// No description provided for @parkingSpotHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. B-12'**
+  String get parkingSpotHint;
+
+  /// No description provided for @addParkingSpot.
+  ///
+  /// In en, this message translates to:
+  /// **'Add another parking spot'**
+  String get addParkingSpot;
 
   /// No description provided for @attachDocOptional.
   ///
@@ -2141,7 +3484,7 @@ abstract class AppLocalizations {
   /// No description provided for @financesTitle.
   ///
   /// In en, this message translates to:
-  /// **'Finances'**
+  /// **'Payments'**
   String get financesTitle;
 
   /// No description provided for @expensesTab.
@@ -2167,6 +3510,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'With debt only'**
   String get onlyWithDebt;
+
+  /// No description provided for @searchPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by apartment, name or phone'**
+  String get searchPayments;
+
+  /// No description provided for @noPaymentSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No apartments match your search'**
+  String get noPaymentSearchResults;
 
   /// No description provided for @collapseAll.
   ///
@@ -2311,6 +3666,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View receipt'**
   String get viewReceipt;
+
+  /// No description provided for @paymentReceiptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment receipt · {month} {year}'**
+  String paymentReceiptTitle(String month, String year);
+
+  /// No description provided for @paymentReceiptsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment receipts'**
+  String get paymentReceiptsSection;
 
   /// No description provided for @expenseSaved.
   ///
@@ -2831,8 +4198,56 @@ abstract class AppLocalizations {
   /// No description provided for @attachReceiptHint.
   ///
   /// In en, this message translates to:
-  /// **'Long-press a paid month to attach a receipt'**
+  /// **'Long-press a paid month to attach a receipt. A receipt icon stays clickable even if the month is unpaid.'**
   String get attachReceiptHint;
+
+  /// No description provided for @confirmUnmarkPaymentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as not paid?'**
+  String get confirmUnmarkPaymentTitle;
+
+  /// No description provided for @confirmUnmarkPaymentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark {who} as not paid for {month} {year}?'**
+  String confirmUnmarkPaymentBody(String who, String month, String year);
+
+  /// No description provided for @paymentHasReceiptNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This month has a receipt attached.'**
+  String get paymentHasReceiptNote;
+
+  /// No description provided for @keepPaymentReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the receipt'**
+  String get keepPaymentReceipt;
+
+  /// No description provided for @removePaymentReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the receipt'**
+  String get removePaymentReceipt;
+
+  /// No description provided for @confirmMarkUnpaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark unpaid'**
+  String get confirmMarkUnpaid;
+
+  /// No description provided for @markPaymentPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as paid'**
+  String get markPaymentPaid;
+
+  /// No description provided for @receiptOnUnpaidHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt on file'**
+  String get receiptOnUnpaidHint;
 
   /// No description provided for @takePhoto.
   ///

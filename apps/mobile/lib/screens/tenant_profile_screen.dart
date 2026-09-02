@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 import '../core/api_client.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/parking_spots_field.dart';
 
 /// Tenant profile form shown after a building was found (by search or by
 /// join code). Everything here lands on the Vaad's approval card:
@@ -22,12 +26,16 @@ class TenantProfileScreen extends StatefulWidget {
   /// The building's policy: documents are mandatory when true.
   final bool requireDocs;
 
+  /// fixed | per_sqm — drives sqm collection and fee preview.
+  final String feeMethod;
+
   const TenantProfileScreen({
     super.key,
     required this.buildingName,
     this.buildingId,
     this.joinCode,
     this.requireDocs = false,
+    this.feeMethod = 'fixed',
   }) : assert(buildingId != null || joinCode != null);
 
   @override
@@ -40,11 +48,21 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
   final _apartment = TextEditingController();
   final _floor = TextEditingController();
   final _occupants = TextEditingController(text: '1');
-  final _parking = TextEditingController();
+  final _sqm = TextEditingController();
+  List<String> _parkingSpots = [];
   PlatformFile? _arnonaDoc;
   PlatformFile? _residenceDoc;
   bool _busy = false;
+  bool _extractingSqm = false;
   String? _error;
+  Timer? _aptDebounce;
+
+  double? _knownSqm;
+  double? _monthlyFeePreview;
+  double? _pricePerSqm;
+  bool _requiresSqmInput = false;
+
+  bool get _perSqm => widget.feeMethod == 'per_sqm';
 
   @override
   void initState() {
@@ -52,13 +70,77 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     final user = context.read<SessionController>().user;
     _name.text = user?.fullName ?? '';
     _email.text = user?.email ?? '';
+    _apartment.addListener(_onApartmentChanged);
   }
 
-  bool get _valid =>
-      _name.text.trim().length >= 2 &&
-      int.tryParse(_apartment.text.trim()) != null &&
-      (_email.text.trim().isEmpty || _email.text.contains('@')) &&
-      (!widget.requireDocs || (_arnonaDoc != null && _residenceDoc != null));
+  @override
+  void dispose() {
+    _aptDebounce?.cancel();
+    _apartment.removeListener(_onApartmentChanged);
+    _name.dispose();
+    _email.dispose();
+    _apartment.dispose();
+    _floor.dispose();
+    _occupants.dispose();
+    _sqm.dispose();
+    super.dispose();
+  }
+
+  void _onApartmentChanged() {
+    _aptDebounce?.cancel();
+    _aptDebounce = Timer(const Duration(milliseconds: 400), _fetchFeePreview);
+  }
+
+  Future<void> _fetchFeePreview() async {
+    final buildingId = widget.buildingId;
+    final apt = int.tryParse(_apartment.text.trim());
+    if (buildingId == null || apt == null) {
+      setState(() {
+        _knownSqm = null;
+        _monthlyFeePreview = null;
+        _requiresSqmInput = _perSqm;
+      });
+      return;
+    }
+    try {
+      final res = await api.get(
+        '/api/buildings/$buildingId/apartment-fee-preview?apartmentNumber=$apt',
+      );
+      if (!mounted) return;
+      setState(() {
+        _knownSqm = (res['sizeSqm'] as num?)?.toDouble();
+        _monthlyFeePreview = (res['monthlyFee'] as num?)?.toDouble();
+        _pricePerSqm = (res['pricePerSqm'] as num?)?.toDouble();
+        _requiresSqmInput = res['requiresSqmInput'] == true;
+        if (_knownSqm != null) {
+          _sqm.text = _knownSqm!.toStringAsFixed(
+            _knownSqm! == _knownSqm!.roundToDouble() ? 0 : 1,
+          );
+        }
+      });
+    } on ApiException {
+      // Preview is best-effort during typing.
+    }
+  }
+
+  double? get _effectiveSqm {
+    if (_knownSqm != null) return _knownSqm;
+    return double.tryParse(_sqm.text.trim());
+  }
+
+  bool get _valid {
+    final base =
+        _name.text.trim().length >= 2 &&
+        int.tryParse(_apartment.text.trim()) != null &&
+        (_email.text.trim().isEmpty || _email.text.contains('@')) &&
+        (!widget.requireDocs || (_arnonaDoc != null && _residenceDoc != null));
+    if (!_perSqm || !_requiresSqmInput) return base;
+    if (_knownSqm != null) return base;
+    return base &&
+        _arnonaDoc != null &&
+        _effectiveSqm != null &&
+        _effectiveSqm! > 0;
+  }
 
   Future<void> _pickDoc(void Function(PlatformFile) assign) async {
     final result = await FilePicker.pickFiles(
@@ -79,6 +161,39 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     return res['docPath'] as String?;
   }
 
+  Future<void> _extractSqmFromArnona(String docPath) async {
+    setState(() => _extractingSqm = true);
+    try {
+      final res = await api.post('/api/join-requests/extract-sqm', {
+        'docPath': docPath,
+      });
+      final sqm = (res['sizeSqm'] as num?)?.toDouble();
+      if (sqm != null && mounted) {
+        setState(() {
+          _sqm.text = sqm.toStringAsFixed(sqm == sqm.roundToDouble() ? 0 : 1);
+          if (_pricePerSqm != null) {
+            _monthlyFeePreview = (sqm * _pricePerSqm!).ceilToDouble();
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.sqmExtracted)),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.sqmEnterManually)),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _extractingSqm = false);
+    }
+  }
+
   Future<void> _submit() async {
     final session = context.read<SessionController>();
     setState(() {
@@ -89,11 +204,18 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
       final arnonaDocPath = await _upload(_arnonaDoc);
       final docPath = await _upload(_residenceDoc);
 
+      if (_requiresSqmInput &&
+          _knownSqm == null &&
+          arnonaDocPath != null &&
+          _sqm.text.trim().isEmpty) {
+        await _extractSqmFromArnona(arnonaDocPath);
+      }
+
       final apartmentNumber = int.parse(_apartment.text.trim());
       final email = _email.text.trim();
       final floor = int.tryParse(_floor.text.trim());
       final occupants = int.tryParse(_occupants.text.trim());
-      final parking = _parking.text.trim();
+      final sizeSqm = _knownSqm ?? double.tryParse(_sqm.text.trim());
 
       if (widget.buildingId != null) {
         await session.requestJoin(
@@ -103,9 +225,10 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           email: email,
           numOccupants: occupants,
           floor: floor,
-          parkingSpot: parking,
+          parkingSpots: _parkingSpots,
           docPath: docPath,
           arnonaDocPath: arnonaDocPath,
+          sizeSqm: sizeSqm,
         );
       } else {
         await session.joinWithCode(
@@ -115,9 +238,10 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           email: email,
           numOccupants: occupants,
           floor: floor,
-          parkingSpot: parking,
+          parkingSpots: _parkingSpots,
           docPath: docPath,
           arnonaDocPath: arnonaDocPath,
+          sizeSqm: sizeSqm,
         );
       }
       if (mounted) {
@@ -131,6 +255,98 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _onArnonaPicked() async {
+    await _pickDoc((f) => _arnonaDoc = f);
+    if (_arnonaDoc == null || _knownSqm != null) return;
+    setState(() => _busy = true);
+    try {
+      final path = await _upload(_arnonaDoc);
+      if (path != null) await _extractSqmFromArnona(path);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _feePreviewCard(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    if (!_perSqm && _monthlyFeePreview == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: DiraColors.sagePale,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_knownSqm != null) ...[
+            Text(
+              l10n.existingApartmentSize(
+                _knownSqm!.toStringAsFixed(
+                  _knownSqm! == _knownSqm!.roundToDouble() ? 0 : 1,
+                ),
+              ),
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: DiraColors.sageDark,
+              ),
+            ),
+            if (_monthlyFeePreview != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                l10n.monthlyFeePreview(currency.format(_monthlyFeePreview)),
+                style: const TextStyle(fontSize: 13.5),
+              ),
+            ],
+          ] else if (_requiresSqmInput) ...[
+            Text(
+              l10n.apartmentSizeRequired,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: DiraColors.brickDark,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _sqm,
+              enabled: !_busy && !_extractingSqm,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) {
+                final sqm = double.tryParse(_sqm.text.trim());
+                setState(() {
+                  if (sqm != null && _pricePerSqm != null) {
+                    _monthlyFeePreview = (sqm * _pricePerSqm!).ceilToDouble();
+                  }
+                });
+              },
+              decoration: InputDecoration(
+                labelText: l10n.apartmentSizeSqm,
+                suffixText: locale == 'he' ? 'מ"ר' : 'm²',
+                isDense: true,
+              ),
+            ),
+            if (_monthlyFeePreview != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.monthlyFeePreviewPerSqm(
+                  currency.format(_monthlyFeePreview),
+                  _effectiveSqm?.toStringAsFixed(0) ?? '',
+                  currency.format(_pricePerSqm ?? 0),
+                ),
+                style: const TextStyle(fontSize: 12.5, color: DiraColors.inkSoft),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -214,6 +430,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          _feePreviewCard(context),
           Row(
             children: [
               Expanded(
@@ -226,21 +443,17 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _parking,
-                  decoration: InputDecoration(
-                    labelText: l10n.parkingOptional,
-                  ),
-                ),
-              ),
             ],
           ),
+          const SizedBox(height: 12),
+          ParkingSpotsField(
+            onChanged: (spots) => setState(() => _parkingSpots = spots),
+          ),
           const SizedBox(height: 20),
-          // --- Documents ---------------------------------------------
           Text(
-            widget.requireDocs ? l10n.docsSectionRequired : l10n.docsSection,
+            widget.requireDocs || _requiresSqmInput
+                ? l10n.docsSectionRequired
+                : l10n.docsSection,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: DiraColors.brickDark,
@@ -260,10 +473,15 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
             file: _arnonaDoc,
             label: l10n.attachArnona,
             hint: l10n.arnonaHint,
-            required: widget.requireDocs,
-            busy: _busy,
-            onPick: () => _pickDoc((f) => _arnonaDoc = f),
+            required: widget.requireDocs || _requiresSqmInput,
+            busy: _busy || _extractingSqm,
+            onPick: _onArnonaPicked,
           ),
+          if (_extractingSqm)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: LinearProgressIndicator(color: DiraColors.brick),
+            ),
           const SizedBox(height: 10),
           _DocButton(
             file: _residenceDoc,

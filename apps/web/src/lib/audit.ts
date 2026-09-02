@@ -7,6 +7,7 @@ export type AuditAction =
   | "ticket_created"
   | "ticket_dispatched"
   | "ticket_status_changed"
+  | "ticket_cost_recorded"
   | "meeting_created"
   | "meeting_closed"
   | "vote_cast"
@@ -22,7 +23,10 @@ export type AuditAction =
   | "vendor_deleted"
   | "building_created"
   | "vaad_invited"
-  | "tenant_transferred";
+  | "tenant_transferred"
+  | "fee_updated"
+  | "whatsapp_group_linked"
+  | "whatsapp_session_started";
 
 export interface AuditEntry {
   buildingId: string | null;

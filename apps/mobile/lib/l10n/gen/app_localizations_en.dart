@@ -133,10 +133,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assemblies => 'Assemblies';
 
   @override
-  String get myTickets => 'My Tickets';
+  String get myTickets => 'Service calls';
 
   @override
   String get noOpenTickets => 'No open tickets — all quiet in the building.';
+
+  @override
+  String get homeTicketsClearTitle => 'All quiet';
+
+  @override
+  String get homeTicketsClearBody =>
+      'No open service calls right now. Anything new will show up here.';
 
   @override
   String get noTicketsYet => 'No tickets yet';
@@ -145,7 +152,117 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noTicketsHint => 'Tap + below to report a fault in the building.';
 
   @override
-  String get communityBoard => 'Community Board';
+  String get communityBoard => 'Building board';
+
+  @override
+  String get seeDetails => 'Details';
+
+  @override
+  String get viewAllCalls => 'All service calls';
+
+  @override
+  String get viewAllBoardMessages => 'All messages';
+
+  @override
+  String get allBoardMessages => 'All board messages';
+
+  @override
+  String boardPublishedOn(String date) {
+    return 'Published $date';
+  }
+
+  @override
+  String get noCurrentBoardMessages => 'No messages for this week';
+
+  @override
+  String get paymentsSubtitle => 'All payments, clear and organized.';
+
+  @override
+  String get buildingBalance => 'Building balance';
+
+  @override
+  String balanceAsOf(String date) {
+    return 'As of $date';
+  }
+
+  @override
+  String get buildingIncome => 'Total income';
+
+  @override
+  String get buildingExpensesTotal => 'Total expenses';
+
+  @override
+  String get monthlyCommitteeFees => 'Monthly committee fees';
+
+  @override
+  String get paymentsAutoUpdated => 'Payments update automatically';
+
+  @override
+  String get residentsDirectory => 'Residents directory';
+
+  @override
+  String apartmentsCountN(String n) {
+    return '$n apartments';
+  }
+
+  @override
+  String get vaadTools => 'Committee tools';
+
+  @override
+  String get toolGuests => 'Guests';
+
+  @override
+  String get toolSurveys => 'Surveys';
+
+  @override
+  String get toolMessage => 'Message';
+
+  @override
+  String get ticketCatLeak => 'Leak';
+
+  @override
+  String get ticketCatElevator => 'Elevator';
+
+  @override
+  String get ticketCatCleaning => 'Cleaning';
+
+  @override
+  String get ticketCatLights => 'Lights';
+
+  @override
+  String get ticketCatElectric => 'Electrical';
+
+  @override
+  String get ticketCatDoor => 'Door / intercom';
+
+  @override
+  String get ticketCatOther => 'Other';
+
+  @override
+  String get ticketCategoryLabel => 'What kind of fault?';
+
+  @override
+  String ticketCreatedOn(String date) {
+    return 'Created on $date';
+  }
+
+  @override
+  String get ticketUploadingPhoto => 'Uploading photo…';
+
+  @override
+  String get ticketCreating => 'Sending report…';
+
+  @override
+  String get ticketCreateDone => 'Report sent';
+
+  @override
+  String get ticketCreateFailed => 'Couldn’t send report';
+
+  @override
+  String get ticketRetry => 'Retry';
+
+  @override
+  String get ticketDismiss => 'Dismiss';
 
   @override
   String get fromTheVaad => 'New message from the Vaad';
@@ -191,22 +308,86 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get statusOpen => 'Open';
+  String get statusOpen => 'New';
 
   @override
-  String get statusApproved => 'Approved';
+  String get statusApproved => 'In progress';
 
   @override
-  String get statusInProgress => 'In Progress';
+  String get statusInProgress => 'In progress';
 
   @override
-  String get statusResolved => 'Resolved';
+  String get statusResolved => 'Done';
 
   @override
   String get approveAndDispatch => 'Approve & Dispatch Agent';
 
   @override
-  String get markResolved => 'Mark Resolved';
+  String get markResolved => 'Mark Done';
+
+  @override
+  String get ticketTapStatusHint => 'Tap a stage to update status';
+
+  @override
+  String get ticketRepairCost => 'Repair cost';
+
+  @override
+  String get ticketRepairCostHint => 'How much did this fix cost?';
+
+  @override
+  String get ticketAddRepairCost => 'Add repair cost';
+
+  @override
+  String get ticketEditRepairCost => 'Update cost & receipt';
+
+  @override
+  String get ticketCostSaved => 'Repair cost saved';
+
+  @override
+  String ticketCostAmount(String amount) {
+    return '₪$amount';
+  }
+
+  @override
+  String get ticketEdit => 'Edit ticket';
+
+  @override
+  String get ticketEdited => 'Ticket updated';
+
+  @override
+  String get ticketUpdateProgress => 'Update progress';
+
+  @override
+  String get ticketProgressSaved => 'Progress updated';
+
+  @override
+  String get ticketProgressNote => 'What\'s happening?';
+
+  @override
+  String get ticketProgressNoteHint =>
+      'e.g. Opened with provider, parts ordered…';
+
+  @override
+  String get ticketFixDateLabel => 'Expected fix date';
+
+  @override
+  String ticketFixDate(String date) {
+    return 'Fix date: $date';
+  }
+
+  @override
+  String ticketExpectedBy(String date) {
+    return 'Expected $date';
+  }
+
+  @override
+  String get ticketProgressOpenedProvider => 'Opened with provider';
+
+  @override
+  String get ticketProgressPartsOrdered => 'Parts ordered';
+
+  @override
+  String get ticketProgressScheduled => 'Fix scheduled';
 
   @override
   String get reportAFault => 'Report a Fault';
@@ -218,10 +399,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faultHint => 'e.g. Elevator stuck on floor 3';
 
   @override
-  String get details => 'Details';
+  String get details => 'Details (optional)';
 
   @override
   String get detailsHint => 'When did it start? Where exactly?';
+
+  @override
+  String get addMorePhotos => 'Add photos';
 
   @override
   String get submitting => 'Submitting…';
@@ -373,7 +557,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get directoryTitle => 'Directory & Parking';
+  String get directoryTitle => 'Residents directory';
 
   @override
   String floorN(String n) {
@@ -390,6 +574,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noParking => 'No parking assigned';
+
+  @override
+  String directoryResidentSince(String date) {
+    return 'Since $date';
+  }
 
   @override
   String get inviteResident => 'Invite resident';
@@ -681,6 +870,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apartmentsPerFloor => 'Per floor';
 
   @override
+  String get numberOfApartments => 'Number of apartments';
+
+  @override
+  String get numberOfFloors => 'Number of floors';
+
+  @override
+  String get typicalFloorLabel => 'On a typical floor';
+
+  @override
+  String get baseFloorLabel => 'First floor';
+
+  @override
+  String get firstApartmentShortLabel => 'First apartment';
+
+  @override
+  String get structureStepSubtitle =>
+      'Set the typical floor, then fix only the exceptions.';
+
+  @override
+  String floorsRangeSummary(
+    String from,
+    String to,
+    String aptFrom,
+    String aptTo,
+  ) {
+    return 'Floors will run from $from to $to · apartments numbered $aptFrom–$aptTo';
+  }
+
+  @override
+  String get floorDivisionTitle => 'Floor breakdown';
+
+  @override
+  String resetExceptions(String count) {
+    return 'Reset $count exceptions';
+  }
+
+  @override
+  String floorBadge(String floor) {
+    return 'fl.$floor';
+  }
+
+  @override
+  String get floorBadgeGround => 'G';
+
+  @override
+  String floorAptsCount(String count) {
+    return '$count apartments';
+  }
+
+  @override
+  String floorAptsRange(String from, String to) {
+    return 'Apts $from–$to';
+  }
+
+  @override
+  String get exceptionBadge => 'Exception';
+
+  @override
+  String get mappingTotalLabel => 'Total in mapping';
+
+  @override
+  String mappingTotalMeta(String apts, String floors) {
+    return '$apts apartments · $floors floors';
+  }
+
+  @override
+  String get floorPlanMismatch =>
+      'Floor counts must add up to the total apartments';
+
+  @override
   String get feeMethodLabel => 'Vaad fee';
 
   @override
@@ -693,7 +952,408 @@ class AppLocalizationsEn extends AppLocalizations {
   String get monthlyAmount => 'Monthly amount (₪)';
 
   @override
+  String get feeFixedMonthlyLabel => 'Apartment fee · monthly';
+
+  @override
+  String get feePerApartmentUnit => 'per apt';
+
+  @override
   String get pricePerSqmLabel => 'Price per m² (₪)';
+
+  @override
+  String get updateVaadFee => 'Vaad fee settings';
+
+  @override
+  String get buildingSettings => 'Building settings';
+
+  @override
+  String get joinPolicySection => 'Join policy';
+
+  @override
+  String get createBuildingStepYou => 'Your details';
+
+  @override
+  String get createBuildingStepPlace => 'Building address';
+
+  @override
+  String get createBuildingStepEntrances => 'Entrances & elevators';
+
+  @override
+  String get createBuildingStepStructure => 'Floors & apartments';
+
+  @override
+  String get createBuildingStepFees => 'Committee fees';
+
+  @override
+  String get createBuildingStepMyApartment => 'Your apartment';
+
+  @override
+  String get createBuildingStepServices => 'Regular services';
+
+  @override
+  String get createBuildingStepBalance => 'Bank balance';
+
+  @override
+  String get createBuildingStepSummary => 'Summary & confirm';
+
+  @override
+  String get createBuildingYouSubtitle =>
+      'These details are shown to residents as the committee contact.';
+
+  @override
+  String get createBuildingYouAptLaterNote =>
+      'On the apartment step you’ll set your unit — number, occupants, and documents — like any resident.';
+
+  @override
+  String get createBuildingMyAptSubtitle =>
+      'Enter your unit details. We’ll create the apartment and assign you to it as Vaad.';
+
+  @override
+  String get createBuildingPlaceSubtitle =>
+      'One address for protocols, receipts, and invites.';
+
+  @override
+  String get createBuildingEntrancesSubtitle =>
+      'Entrance codes and elevators for your building.';
+
+  @override
+  String get createBuildingFeesSubtitle =>
+      'Set how monthly committee fees are calculated.';
+
+  @override
+  String get createBuildingServicesSubtitle =>
+      'Set recurring services for the building calendar. You can change these later.';
+
+  @override
+  String get createBuildingSummarySubtitle =>
+      'Review everything before creating the building.';
+
+  @override
+  String get serviceCleaningStairs => 'Stairwell cleaning';
+
+  @override
+  String get serviceGarbage => 'Trash removal';
+
+  @override
+  String get serviceGardening => 'Gardening';
+
+  @override
+  String get servicePest => 'Pest control';
+
+  @override
+  String get serviceWaterTank => 'Water tank cleaning';
+
+  @override
+  String get serviceFrequencyWeekly => 'Weekly';
+
+  @override
+  String get serviceFrequencyBiweekly => 'Biweekly';
+
+  @override
+  String get serviceFrequencyMonthly => 'Monthly';
+
+  @override
+  String get serviceFrequencyQuarterly => 'Quarterly';
+
+  @override
+  String get serviceFrequencyYearly => 'Yearly';
+
+  @override
+  String get serviceCostHint => '₪ Cost';
+
+  @override
+  String get serviceProviderHint => 'Provider name';
+
+  @override
+  String get serviceAddCustom => 'Add custom service';
+
+  @override
+  String get serviceCustomTitle => 'Service name';
+
+  @override
+  String get serviceSkipLater => 'Skip — you can add later';
+
+  @override
+  String serviceEstimatedMonthly(String amount) {
+    return 'Estimated monthly expense · ₪$amount';
+  }
+
+  @override
+  String serviceBalanceAfterFees(String amount) {
+    return 'Remaining after collection · ₪$amount';
+  }
+
+  @override
+  String get serviceCalendarNote =>
+      'Enabled services appear on the building calendar with reminders for the committee.';
+
+  @override
+  String get serviceDayOfMonth => 'Day of month';
+
+  @override
+  String get serviceOffHint => 'Off — tap to set schedule';
+
+  @override
+  String get serviceDaySun => 'S';
+
+  @override
+  String get serviceDayMon => 'M';
+
+  @override
+  String get serviceDayTue => 'T';
+
+  @override
+  String get serviceDayWed => 'W';
+
+  @override
+  String get serviceDayThu => 'T';
+
+  @override
+  String get serviceDayFri => 'F';
+
+  @override
+  String get serviceDaySat => 'S';
+
+  @override
+  String get summaryServicesTitle => 'Regular services';
+
+  @override
+  String get summaryServicesNone => 'None selected';
+
+  @override
+  String get verifiedPhoneLabel => 'Verified phone';
+
+  @override
+  String get myApartmentNumber => 'Apartment number';
+
+  @override
+  String get committeeApartmentNote =>
+      'This apartment will be marked as the committee apartment in the directory.';
+
+  @override
+  String get vaadAptClaimTitle => 'Your apartment';
+
+  @override
+  String get vaadAptClaimSubtitle =>
+      'Pick your unit from the mapped apartments. We’ll create every unit in the building and assign you to this one as Vaad.';
+
+  @override
+  String vaadAptRangeHint(String from, String to) {
+    return 'Numbers in this plan: $from–$to';
+  }
+
+  @override
+  String get vaadAptOutOfPlan =>
+      'That apartment number is not in the floor plan you set';
+
+  @override
+  String vaadAptSqmHint(String typical) {
+    return 'Optional — building typical is $typical m²';
+  }
+
+  @override
+  String get countryIsrael => 'Israel';
+
+  @override
+  String get countryUsa => 'USA';
+
+  @override
+  String get countryOther => 'Other';
+
+  @override
+  String get districtOptional => 'District / region (optional)';
+
+  @override
+  String get useMyLocation => 'Use my location';
+
+  @override
+  String get locatingAddress => 'Finding your address…';
+
+  @override
+  String get locationFilledHint =>
+      'Suggested from your current location — confirm city and street from the list.';
+
+  @override
+  String get locationOutsideIsrael =>
+      'Location isn’t in Israel. Country stays Israel — fill the address manually, or switch country.';
+
+  @override
+  String get locationUnavailable =>
+      'Couldn’t read your location. You can fill the address manually.';
+
+  @override
+  String get entrancesCountLabel => 'Entrances';
+
+  @override
+  String get elevatorsCountLabel => 'Elevators';
+
+  @override
+  String get entranceCodesTitle => 'Entrance codes';
+
+  @override
+  String get entranceCodeHint => 'Code (optional)';
+
+  @override
+  String get entranceCodesPrivacyNote =>
+      'Entrance codes are visible only to residents of this building.';
+
+  @override
+  String get typicalApartmentSqmLabel => 'Typical apartment size (m²)';
+
+  @override
+  String feePreviewSize(String sqm) {
+    return '$sqm m² apartment';
+  }
+
+  @override
+  String feePreviewTypical(String sqm) {
+    return 'Typical · $sqm m²';
+  }
+
+  @override
+  String get feeTemporaryNote =>
+      'Until each apartment has its size set, billing uses the typical size.';
+
+  @override
+  String get billingDayLabel => 'Billing day of month';
+
+  @override
+  String billingDaySummary(String day) {
+    return 'Billing day: $day';
+  }
+
+  @override
+  String get expectedMonthlyCollection => 'Expected monthly collection';
+
+  @override
+  String get sqmUnit => 'm²';
+
+  @override
+  String get summaryContactTitle => 'Contact';
+
+  @override
+  String get summaryAddressTitle => 'Address';
+
+  @override
+  String get summaryBuildingTitle => 'Building';
+
+  @override
+  String get summaryFloorsTitle => 'Floors';
+
+  @override
+  String get summaryFeesTitle => 'Fees';
+
+  @override
+  String summaryEntrancesLine(String entrances, String elevators) {
+    return '$entrances entrances · $elevators elevators';
+  }
+
+  @override
+  String apartmentLabel(String n) {
+    return 'Apt $n';
+  }
+
+  @override
+  String createBuildingNextWithApts(String n) {
+    return 'Continue · $n apartments';
+  }
+
+  @override
+  String get openingBalanceTitle => 'Building cash balance';
+
+  @override
+  String get openingBalanceBody =>
+      'How much money is currently in the building bank account or cash box? This is the starting balance in the app — paid dues add up, expenses subtract. You can leave 0 and update later.';
+
+  @override
+  String get openingBalanceLabel => 'Current cash balance (₪)';
+
+  @override
+  String get openingBalanceHint => 'Optional — leave 0 for now.';
+
+  @override
+  String get openingBalanceSkip => 'Start from zero';
+
+  @override
+  String get openingBalanceRow => 'Opening balance';
+
+  @override
+  String get createBuildingNext => 'Continue';
+
+  @override
+  String get createBuildingBack => 'Back';
+
+  @override
+  String createBuildingStepOf(String current, String total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get comingSoonSection => 'More configuration';
+
+  @override
+  String get shareAppSection => 'Share Buildingo';
+
+  @override
+  String get shareAppTitle => 'Share the app';
+
+  @override
+  String get shareAppSubtitle => 'Invite other buildings via WhatsApp';
+
+  @override
+  String shareAppMessage(String link) {
+    return 'Hey! We run our building with Buildingo — dues, residents, and maintenance in one app. Download here: $link';
+  }
+
+  @override
+  String get comingSoon => 'Soon';
+
+  @override
+  String get entranceCodesSoon => 'Entrance codes (front / back)';
+
+  @override
+  String get garbageScheduleSoon => 'Garbage collection schedule';
+
+  @override
+  String get cleaningScheduleSoon => 'Cleaning schedule';
+
+  @override
+  String get saveFee => 'Save & notify residents';
+
+  @override
+  String get vaadFeeSaved => 'Fee updated — residents were notified';
+
+  @override
+  String get apartmentSizeSqm => 'Apartment size (m²)';
+
+  @override
+  String get apartmentSizeRequired =>
+      'Apartment size from Arnona bill is required';
+
+  @override
+  String monthlyFeePreview(String amount) {
+    return 'Your monthly Vaad fee: $amount';
+  }
+
+  @override
+  String monthlyFeePreviewPerSqm(String amount, String sqm, String rate) {
+    return '$amount/mo ($sqm m² × $rate/m², rounded up)';
+  }
+
+  @override
+  String existingApartmentSize(String sqm) {
+    return 'Known apartment size: $sqm m²';
+  }
+
+  @override
+  String get sqmExtracted => 'Size read from your Arnona bill';
+
+  @override
+  String get sqmEnterManually =>
+      'Could not read size — enter it manually below';
+
+  @override
+  String get yourMonthlyVaadFee => 'Monthly Vaad fee';
 
   @override
   String get myApartmentOptional => 'My apartment number (optional)';
@@ -871,6 +1531,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get buildingSchedule => 'Building schedule';
 
   @override
+  String get whatsappConnect => 'WhatsApp';
+
+  @override
+  String get whatsappConnectBody =>
+      'Connect a WhatsApp number for this building, then link the residents group. Buildingo will listen for fault reports in that group and open tickets automatically. You can also message tenants over WhatsApp.';
+
+  @override
+  String get whatsappNotConfigured =>
+      'WhatsApp (WAHA) is not configured on the server yet.';
+
+  @override
+  String get whatsappConnected => 'WhatsApp connected';
+
+  @override
+  String get whatsappNotConnected => 'WhatsApp not connected';
+
+  @override
+  String get whatsappStartSession => 'Start WhatsApp connection';
+
+  @override
+  String get whatsappScanQr => 'Scan this QR with WhatsApp → Linked devices';
+
+  @override
+  String get whatsappPickGroup => 'Choose the building WhatsApp group';
+
+  @override
+  String get whatsappGroupLinked => 'Building group linked';
+
+  @override
+  String get whatsappLoadGroups => 'Load groups';
+
+  @override
   String get comingUp => 'Coming up';
 
   @override
@@ -897,6 +1589,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scheduleEmptyBody =>
       'Add garbage collection days, cleaning times and one-off pickups so everyone in the building knows what\'s coming.';
+
+  @override
+  String get scheduleDayEmptyTitle => 'Nothing on this day';
+
+  @override
+  String get scheduleDayEmptyBody =>
+      'No building events scheduled for this day.';
+
+  @override
+  String get scheduleDayEmptyBodyVaad =>
+      'No events yet — tap + to add something for this day.';
+
+  @override
+  String get announcementDateOptional => 'Date on calendar (optional)';
+
+  @override
+  String get announcementDateHint =>
+      'Add a date to show this on the building calendar';
+
+  @override
+  String get clear => 'Clear';
 
   @override
   String get scheduleWeekly => 'Weekly';
@@ -1003,6 +1716,36 @@ class AppLocalizationsEn extends AppLocalizations {
       'The agent opens the ticket with the vendor and keeps you posted';
 
   @override
+  String get agentsComingSoonBadge => 'Coming in the next version';
+
+  @override
+  String get agentsComingSoonTitle => 'AI agents for your vendors';
+
+  @override
+  String get agentsComingSoonBody =>
+      'Soon, Buildingo will contact elevator, plumbing, and cleaning vendors for you — open the service call, follow up, and keep residents in the loop.';
+
+  @override
+  String get agentsComingSoonFeature1 =>
+      'Reach vendors by email, SMS, or WhatsApp';
+
+  @override
+  String get agentsComingSoonFeature2 =>
+      'One tap after you approve a resident fault';
+
+  @override
+  String get agentsComingSoonFeature3 =>
+      'Automatic updates back to the building board';
+
+  @override
+  String get agentsComingSoonFootnote =>
+      'Available in the next Buildingo release — stay tuned.';
+
+  @override
+  String get agentDispatchComingSoon =>
+      'AI vendor dispatch arrives in the next version. For now, move the ticket to In progress and handle the vendor yourself.';
+
+  @override
   String get addFirstVendor => 'Add your first vendor';
 
   @override
@@ -1049,6 +1792,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pickCityFirst => 'Choose a city first';
 
   @override
+  String get pickStreetFirst => 'Choose a street first';
+
+  @override
+  String get streetLabel => 'Street';
+
+  @override
+  String get houseNumberLabel => 'House number';
+
+  @override
+  String get pickFromGovList => 'Pick from the official list';
+
+  @override
+  String get govAddressHint =>
+      'City and street come from the Israel government registry so every building uses the same spelling.';
+
+  @override
   String get askVaadInviteHint =>
       'Can\'t find your building? Ask your Vaad to send you a personal invite or the building\'s join link.';
 
@@ -1067,6 +1826,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parkingOptional => 'Parking (optional)';
+
+  @override
+  String get parkingSpotsLabel => 'Parking spots (optional)';
+
+  @override
+  String get parkingSpotHint => 'e.g. B-12';
+
+  @override
+  String get addParkingSpot => 'Add another parking spot';
 
   @override
   String get attachDocOptional => 'Attach a document (optional)';
@@ -1118,7 +1886,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get joinRequestPending => 'Join request awaiting approval';
 
   @override
-  String get financesTitle => 'Finances';
+  String get financesTitle => 'Payments';
 
   @override
   String get expensesTab => 'Expenses';
@@ -1133,6 +1901,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onlyWithDebt => 'With debt only';
+
+  @override
+  String get searchPayments => 'Search by apartment, name or phone';
+
+  @override
+  String get noPaymentSearchResults => 'No apartments match your search';
 
   @override
   String get collapseAll => 'Collapse all';
@@ -1213,6 +1987,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewReceipt => 'View receipt';
+
+  @override
+  String paymentReceiptTitle(String month, String year) {
+    return 'Payment receipt · $month $year';
+  }
+
+  @override
+  String get paymentReceiptsSection => 'Payment receipts';
 
   @override
   String get expenseSaved => 'Expense recorded';
@@ -1514,7 +2296,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'A receipt can only be attached to a paid month';
 
   @override
-  String get attachReceiptHint => 'Long-press a paid month to attach a receipt';
+  String get attachReceiptHint =>
+      'Long-press a paid month to attach a receipt. A receipt icon stays clickable even if the month is unpaid.';
+
+  @override
+  String get confirmUnmarkPaymentTitle => 'Mark as not paid?';
+
+  @override
+  String confirmUnmarkPaymentBody(String who, String month, String year) {
+    return 'Mark $who as not paid for $month $year?';
+  }
+
+  @override
+  String get paymentHasReceiptNote => 'This month has a receipt attached.';
+
+  @override
+  String get keepPaymentReceipt => 'Keep the receipt';
+
+  @override
+  String get removePaymentReceipt => 'Remove the receipt';
+
+  @override
+  String get confirmMarkUnpaid => 'Mark unpaid';
+
+  @override
+  String get markPaymentPaid => 'Mark as paid';
+
+  @override
+  String get receiptOnUnpaidHint => 'Receipt on file';
 
   @override
   String get takePhoto => 'Take a photo';

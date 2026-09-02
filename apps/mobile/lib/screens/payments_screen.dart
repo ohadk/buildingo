@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../core/api_client.dart';
 import '../core/models.dart';
 import '../core/realtime.dart';
@@ -11,6 +10,10 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import '../widgets/attachment_picker.dart';
+import '../widgets/status_pill.dart';
+import '../widgets/vault_file_viewer.dart';
+
+enum _UnpaidReceiptAction { view, markPaid }
 
 /// Finances tab: two sub-tabs — the payment matrix (or the tenant's own
 /// dues) and the building expense ledger.
@@ -25,6 +28,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   List<Payment> _payments = [];
   List<Expense> _expenses = [];
   List<DirectoryEntry> _apartments = [];
+  /// Building-wide paid dues (from /api/expenses summary).
+  double _buildingIncome = 0;
+  double _buildingExpensesTotal = 0;
+  double _openingBalance = 0;
   bool _loading = true;
 
   /// Matrix filters: year (default current), half-year window so all
@@ -36,6 +43,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   int _expMonth = DateTime.now().month;
   int _half = DateTime.now().month <= 6 ? 0 : 1;
   bool _onlyWithDebt = false;
+  String _query = '';
 
   /// Floor collapse state; unset floors default to "expanded when the
   /// floor has debt".
@@ -72,6 +80,17 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         _expenses = ((results[1]['expenses'] ?? []) as List)
             .map((e) => Expense.fromJson(e))
             .toList();
+        final summary = results[1]['summary'] as Map<String, dynamic>?;
+        _openingBalance =
+            (summary?['openingBalance'] as num?)?.toDouble() ?? 0;
+        _buildingIncome =
+            (summary?['totalIncome'] as num?)?.toDouble() ??
+            _payments
+                .where((p) => p.status == 'paid')
+                .fold(0.0, (s, p) => s + p.amount);
+        _buildingExpensesTotal =
+            (summary?['totalExpenses'] as num?)?.toDouble() ??
+            _expenses.fold(0.0, (s, e) => s + e.amount);
         if (isVaad) {
           _apartments =
               ((results[2]['directory'] ?? []) as List)
@@ -121,6 +140,29 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   String _cellKey(String apartmentId, int year, int month) =>
       '$apartmentId|$year-$month';
 
+  bool _apartmentMatchesQuery(DirectoryEntry a, String q) {
+    if (q.isEmpty) return true;
+    if ('${a.apartmentNumber}' == q || '${a.apartmentNumber}'.contains(q)) {
+      return true;
+    }
+    final parking = a.parkingSpot?.toLowerCase();
+    if (parking != null && parking.contains(q)) return true;
+    return a.residents.any(
+      (r) =>
+          r.name.toLowerCase().contains(q) ||
+          r.phone.toLowerCase().contains(q),
+    );
+  }
+
+  List<DirectoryEntry> _visibleApartments(Map<String, double> debts) {
+    final q = _query.trim().toLowerCase();
+    return [
+      for (final a in _apartments)
+        if (_apartmentMatchesQuery(a, q))
+          if (!_onlyWithDebt || (debts[a.apartmentId] ?? 0) > 0) a,
+    ];
+  }
+
   Map<String, Payment> get _cellIndex => {
     for (final p in _payments)
       if (p.apartmentId != null) _cellKey(p.apartmentId!, p.year, p.month): p,
@@ -138,11 +180,203 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   /// Optimistic toggle: flip the cell instantly, sync with the server in
   /// the background and roll back (with an error message) on failure.
+  /// Unmarking paid → unpaid asks for confirmation (and receipt keep/remove).
   Future<void> _toggleCell(DirectoryEntry apt, DateTime month) async {
     final previous =
         _cellIndex[_cellKey(apt.apartmentId, month.year, month.month)];
-    final newStatus = previous?.status == 'paid' ? 'pending' : 'paid';
+    final currentlyPaid = previous?.status == 'paid';
 
+    // Unpaid month that still has a receipt: choose view vs mark paid.
+    if (!currentlyPaid && (previous?.hasReceipt ?? false)) {
+      final action = await _unpaidReceiptActions(previous!);
+      if (action == _UnpaidReceiptAction.view) {
+        await _openPaymentReceipt(previous);
+      } else if (action == _UnpaidReceiptAction.markPaid) {
+        await _applyPaymentStatus(apt, month, previous, status: 'paid');
+      }
+      return;
+    }
+
+    if (currentlyPaid) {
+      final decision = await _confirmUnmarkPayment(apt, month, previous!);
+      if (decision == null) return;
+      await _applyPaymentStatus(
+        apt,
+        month,
+        previous,
+        status: 'pending',
+        clearReceipt: decision.removeReceipt,
+      );
+      return;
+    }
+
+    await _applyPaymentStatus(apt, month, previous, status: 'paid');
+  }
+
+  String _apartmentWhoLabel(DirectoryEntry apt) {
+    final names = apt.residents
+        .map((r) => r.name.trim())
+        .where((n) => n.isNotEmpty)
+        .toList();
+    if (names.isNotEmpty) return names.join(', ');
+    return context.l10n.apartmentShort('${apt.apartmentNumber}');
+  }
+
+  /// Returns null if cancelled; otherwise whether to remove the receipt.
+  Future<({bool removeReceipt})?> _confirmUnmarkPayment(
+    DirectoryEntry apt,
+    DateTime month,
+    Payment payment,
+  ) async {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final monthName = DateFormat('MMMM', locale).format(month);
+    final who = _apartmentWhoLabel(apt);
+    final hasReceipt = payment.hasReceipt;
+    var removeReceipt = false;
+
+    return showDialog<({bool removeReceipt})>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              title: Text(l10n.confirmUnmarkPaymentTitle),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.confirmUnmarkPaymentBody(
+                      who,
+                      monthName,
+                      '${month.year}',
+                    ),
+                  ),
+                  if (hasReceipt) ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      l10n.paymentHasReceiptNote,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: DiraColors.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<bool>(
+                      segments: [
+                        ButtonSegment(
+                          value: false,
+                          label: Text(l10n.keepPaymentReceipt),
+                          icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text(l10n.removePaymentReceipt),
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                        ),
+                      ],
+                      selected: {removeReceipt},
+                      onSelectionChanged: (s) =>
+                          setLocal(() => removeReceipt = s.first),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _openPaymentReceipt(payment),
+                      icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                      label: Text(l10n.viewReceipt),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancel),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(ctx, (removeReceipt: removeReceipt)),
+                  child: Text(l10n.confirmMarkUnpaid),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<_UnpaidReceiptAction?> _unpaidReceiptActions(Payment payment) {
+    final l10n = context.l10n;
+    return showModalBottomSheet<_UnpaidReceiptAction>(
+      context: context,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.receiptOnUnpaidHint,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: DiraColors.brick,
+                ),
+                title: Text(l10n.viewReceipt),
+                onTap: () => Navigator.pop(ctx, _UnpaidReceiptAction.view),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.check_circle_outline,
+                  color: DiraColors.sageDark,
+                ),
+                title: Text(l10n.markPaymentPaid),
+                onTap: () => Navigator.pop(ctx, _UnpaidReceiptAction.markPaid),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPaymentReceipt(Payment payment) async {
+    final path = payment.receiptPath;
+    if (path == null || path.isEmpty) {
+      _snack(context.l10n.cantOpenDocument);
+      return;
+    }
+    final locale = Localizations.localeOf(context).languageCode;
+    final monthName =
+        DateFormat('MMMM', locale).format(DateTime(payment.year, payment.month));
+    await openVaultFile(
+      context,
+      bucket: 'receipts',
+      path: path,
+      title: context.l10n.paymentReceiptTitle(monthName, '${payment.year}'),
+      asPopup: true,
+    );
+  }
+
+  Future<void> _applyPaymentStatus(
+    DirectoryEntry apt,
+    DateTime month,
+    Payment? previous, {
+    required String status,
+    bool clearReceipt = false,
+  }) async {
+    final keepReceipt = !clearReceipt && (previous?.hasReceipt ?? false);
     setState(() {
       _replaceCell(
         apt.apartmentId,
@@ -153,8 +387,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           month: month.month,
           year: month.year,
           amount: previous?.amount ?? 0,
-          status: newStatus,
+          status: status,
           apartmentNumber: apt.apartmentNumber,
+          receiptPath: keepReceipt ? previous?.receiptPath : null,
+          receiptUrl: keepReceipt ? previous?.receiptUrl : null,
+          paymentDate: status == 'paid' ? DateTime.now() : null,
         ),
       );
     });
@@ -164,14 +401,32 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         'apartmentId': apt.apartmentId,
         'month': month.month,
         'year': month.year,
-        'status': newStatus,
+        'status': status,
+        if (clearReceipt) 'receiptPath': null,
       });
       if (!mounted) return;
+      final payment = Payment.fromJson(res['payment']);
+      // PATCH response may omit receipt_url; preserve local URLs when kept.
       setState(
         () => _replaceCell(
           apt.apartmentId,
           month,
-          Payment.fromJson(res['payment']),
+          Payment(
+            id: payment.id,
+            apartmentId: payment.apartmentId,
+            month: payment.month,
+            year: payment.year,
+            amount: payment.amount,
+            status: payment.status,
+            apartmentNumber: payment.apartmentNumber,
+            paymentDate: payment.paymentDate,
+            receiptPath: clearReceipt
+                ? null
+                : (payment.receiptPath ?? previous?.receiptPath),
+            receiptUrl: clearReceipt
+                ? null
+                : (payment.receiptUrl ?? previous?.receiptUrl),
+          ),
         ),
       );
     } on ApiException catch (e) {
@@ -307,6 +562,84 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  double get _buildingBalance =>
+      _openingBalance + _buildingIncome - _buildingExpensesTotal;
+
+  Widget _buildingStatusCard(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
+    final asOf = DateFormat('d MMMM yyyy', locale).format(DateTime.now());
+    final balance = _buildingBalance;
+    final balanceColor =
+        balance >= 0 ? DiraColors.sageDark : DiraColors.brick;
+
+    Widget row(String label, String value, {Color? valueColor}) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 13, color: DiraColors.inkSoft),
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: valueColor ?? DiraColors.ink,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        color: DiraColors.creamDeep,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.buildingBalance,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: DiraColors.inkSoft,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            currency.format(balance),
+            style: heading(fontSize: 32, color: balanceColor),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.balanceAsOf(asOf),
+            style: const TextStyle(fontSize: 12, color: DiraColors.inkSoft),
+          ),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: DiraColors.creamCard),
+          if (_openingBalance != 0)
+            row(l10n.openingBalanceRow, currency.format(_openingBalance)),
+          row(l10n.buildingIncome, currency.format(_buildingIncome)),
+          row(
+            l10n.buildingExpensesTotal,
+            currency.format(_buildingExpensesTotal),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isVaad = context.watch<SessionController>().user?.isVaad ?? false;
@@ -372,9 +705,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     final debts = {
       for (final a in _apartments) a.apartmentId: _debtOf(a.apartmentId),
     };
-    final visible = _onlyWithDebt
-        ? _apartments.where((a) => (debts[a.apartmentId] ?? 0) > 0).toList()
-        : _apartments;
+    final visible = _visibleApartments(debts);
+    final searching = _query.trim().isNotEmpty;
 
     // Group by floor, ascending.
     final floors = <int, List<DirectoryEntry>>{};
@@ -401,6 +733,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildingStatusCard(context),
+          const SizedBox(height: 14),
           Text(
             l10n.collectionSummary(
               '${_apartments.length}',
@@ -408,6 +742,42 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               currency.format(totalDebt),
             ),
             style: const TextStyle(fontSize: 12.5, color: DiraColors.inkSoft),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            onChanged: (v) => setState(() => _query = v),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: l10n.searchPayments,
+              hintStyle: const TextStyle(
+                fontSize: 13.5,
+                color: DiraColors.inkSoft,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                size: 20,
+                color: DiraColors.inkSoft,
+              ),
+              isDense: true,
+              filled: true,
+              fillColor: DiraColors.creamCard,
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: const BorderSide(color: DiraColors.creamDeep),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: const BorderSide(color: DiraColors.creamDeep),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: const BorderSide(
+                  color: DiraColors.brick,
+                  width: 1.4,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           // Filters: period dropdowns (year, half) + apartment filter chips.
@@ -469,13 +839,23 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 ),
               ),
             )
+          else if (visible.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  l10n.noPaymentSearchResults,
+                  style: const TextStyle(color: DiraColors.inkSoft),
+                ),
+              ),
+            )
           else
             Card(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                 child: Column(
                   children: [
-                    _matrixHeader(context, months),
+                    _matrixHeader(context, months, visible),
                     const SizedBox(height: 6),
                     ...sortedFloors.map((floor) {
                       final apts = floors[floor]!;
@@ -483,7 +863,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                         0.0,
                         (s, a) => s + (debts[a.apartmentId] ?? 0),
                       );
-                      final expanded = _expandedOverride[floor] ?? false;
+                      final expanded = searching
+                          ? true
+                          : (_expandedOverride[floor] ?? false);
                       return _FloorSection(
                         floor: floor,
                         apartments: apts,
@@ -523,12 +905,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   /// Header row: "דירה" | month labels with a mark-all button | "חוב".
-  Widget _matrixHeader(BuildContext context, List<DateTime> months) {
+  Widget _matrixHeader(
+    BuildContext context,
+    List<DateTime> months,
+    List<DirectoryEntry> visible,
+  ) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).languageCode;
-    final visible = _onlyWithDebt
-        ? _apartments.where((a) => _debtOf(a.apartmentId) > 0).toList()
-        : _apartments;
     return Row(
       children: [
         SizedBox(
@@ -593,7 +976,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).languageCode;
     final currency = NumberFormat.currency(symbol: '₪', decimalDigits: 0);
-    final now = DateTime.now();
 
     // Open debt counts only months whose due date has arrived.
     final totalDue = _payments
@@ -602,83 +984,58 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
     final yearPayments = _payments.where((p) => p.year == _year).toList()
       ..sort((a, b) => b.month.compareTo(a.month));
-    final dueThisYear = yearPayments.where(_isDue).length;
-    final paidThisYear = yearPayments
-        .where((p) => p.status == 'paid')
-        .length;
     final hasDebt = totalDue > 0;
 
     return RefreshIndicator(
       onRefresh: _load,
       color: DiraColors.brick,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
         children: [
-          // Hero: open debt (brick) or all-settled (green) + year progress.
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: hasDebt ? DiraColors.brickDark : DiraColors.sageDeep,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      hasDebt
-                          ? Icons.error_outline_rounded
-                          : Icons.check_circle_outline_rounded,
-                      size: 18,
-                      color: Colors.white.withValues(alpha: 0.85),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      hasDebt ? l10n.youOwe : l10n.noDebt,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  hasDebt ? currency.format(totalDue) : l10n.allSettled,
-                  style: heading(fontSize: 28, color: Colors.white),
-                ),
-                const SizedBox(height: 14),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: dueThisYear == 0
-                        ? 1
-                        : (paidThisYear / dueThisYear).clamp(0.0, 1.0),
-                    minHeight: 6,
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    color: DiraColors.gold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.monthsPaidOfYear(
-                    '$paidThisYear',
-                    '$dueThisYear',
-                    '$_year',
-                  ),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+          Text(
+            l10n.paymentsSubtitle,
+            style: const TextStyle(fontSize: 13.5, color: DiraColors.inkSoft),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
+          if (hasDebt) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+              decoration: BoxDecoration(
+                color: DiraColors.terracottaSoft,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.youOwe,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: DiraColors.brickDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    currency.format(totalDue),
+                    style: heading(fontSize: 32, color: DiraColors.brick),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          _buildingStatusCard(context),
+          const SizedBox(height: 20),
           Row(
             children: [
+              Expanded(
+                child: Text(
+                  l10n.monthlyCommitteeFees,
+                  style: heading(fontSize: 17),
+                ),
+              ),
               _DropdownChip<int>(
                 label: '$_year',
                 value: _year,
@@ -698,93 +1055,34 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: DiraColors.inkSoft),
               ),
-            ),
-          ...yearPayments.map((p) {
-            final paid = p.status == 'paid';
-            final due = _isDue(p);
-            final future =
-                !due &&
-                (p.year > now.year ||
-                    (p.year == now.year && p.month > now.month));
-            final (Color avatarBg, Color avatarFg, IconData icon) = paid
-                ? (DiraColors.sageLight, DiraColors.sageDark, Icons.check)
-                : future
-                ? (
-                    DiraColors.creamDeep,
-                    DiraColors.inkSoft,
-                    Icons.schedule_rounded,
-                  )
-                : (
-                    DiraColors.terracottaSoft,
-                    DiraColors.brickDark,
-                    Icons.priority_high_rounded,
-                  );
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Card(
-                child: ListTile(
-                  contentPadding: const EdgeInsetsDirectional.only(
-                    start: 14,
-                    end: 8,
-                    top: 2,
-                    bottom: 2,
-                  ),
-                  leading: CircleAvatar(
-                    backgroundColor: avatarBg,
-                    child: Icon(icon, size: 18, color: avatarFg),
-                  ),
-                  title: Text(
-                    DateFormat(
-                      'MMMM yyyy',
-                      locale,
-                    ).format(DateTime(p.year, p.month)),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.5,
-                    ),
-                  ),
-                  subtitle: Text(
-                    [
-                      currency.format(p.amount),
-                      if (paid && p.paymentDate != null)
-                        l10n.paidOnDate(
-                          DateFormat(
-                            'd/M/yyyy',
-                            locale,
-                          ).format(p.paymentDate!),
-                        ),
-                    ].join(' · '),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: p.receiptUrl != null
-                      ? TextButton.icon(
-                          onPressed: () => launchUrl(
-                            Uri.parse(p.receiptUrl!),
-                            mode: LaunchMode.externalApplication,
-                          ),
-                          icon: const Icon(Icons.receipt_long_rounded, size: 17),
-                          label: Text(
-                            l10n.receiptShort,
-                            style: const TextStyle(fontSize: 12.5),
-                          ),
-                        )
-                      : !paid && due
-                      ? Padding(
-                          padding: const EdgeInsetsDirectional.only(end: 8),
-                          child: Text(
-                            l10n.statusUnpaid,
-                            style: const TextStyle(
-                              color: DiraColors.brick,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11.5,
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
+            )
+          else
+            Container(
+              decoration: BoxDecoration(
+                color: DiraColors.creamCard,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: DiraColors.creamDeep),
               ),
-            );
-          }),
+              child: Column(
+                children: [
+                  for (var i = 0; i < yearPayments.length; i++) ...[
+                    if (i > 0)
+                      const Divider(height: 1, color: DiraColors.creamDeep),
+                    _TenantPaymentRow(
+                      payment: yearPayments[i],
+                      currency: currency,
+                      locale: locale,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.paymentsAutoUpdated,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11.5, color: DiraColors.inkSoft),
+          ),
           const SizedBox(height: 90),
         ],
       ),
@@ -1159,19 +1457,31 @@ class _MatrixCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Two visual states only: paid (green check) or empty. A tiny
-    // receipt glyph marks paid months that have a receipt attached.
+    // Paid = green. Unpaid with a kept receipt = soft brick outline +
+    // receipt icon (still tappable via the cell action sheet). Empty = blank.
     final paid = payment?.status == 'paid';
-    final bg = paid ? DiraColors.sageLight : DiraColors.creamDeep;
-    final child = paid
-        ? payment?.receiptUrl != null
-              ? const Icon(
-                  Icons.receipt_long_rounded,
-                  size: 14,
-                  color: DiraColors.sageDark,
-                )
-              : const Icon(Icons.check, size: 15, color: DiraColors.sageDark)
-        : const SizedBox.shrink();
+    final hasReceipt = payment?.hasReceipt ?? false;
+
+    final Color bg;
+    final Widget child;
+    if (paid) {
+      bg = DiraColors.sageLight;
+      child = Icon(
+        hasReceipt ? Icons.receipt_long_rounded : Icons.check,
+        size: hasReceipt ? 14 : 15,
+        color: DiraColors.sageDark,
+      );
+    } else if (hasReceipt) {
+      bg = DiraColors.terracottaSoft;
+      child = const Icon(
+        Icons.receipt_long_rounded,
+        size: 14,
+        color: DiraColors.brickDark,
+      );
+    } else {
+      bg = DiraColors.creamDeep;
+      child = const SizedBox.shrink();
+    }
 
     return InkWell(
       onTap: onTap,
@@ -1182,6 +1492,9 @@ class _MatrixCell extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(11),
+          border: hasReceipt && !paid
+              ? Border.all(color: DiraColors.brick.withValues(alpha: 0.35))
+              : null,
         ),
         child: Center(child: child),
       ),
@@ -1287,6 +1600,8 @@ class _Legend extends StatelessWidget {
         dot(DiraColors.sageLight, l10n.statusPaid),
         const SizedBox(width: 8),
         dot(DiraColors.creamDeep, l10n.statusUnpaid),
+        const SizedBox(width: 8),
+        dot(DiraColors.terracottaSoft, l10n.receiptShort),
       ],
     );
   }
@@ -1343,13 +1658,20 @@ class _ExpenseCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (e.receiptUrl != null) ...[
+                    if (e.hasReceipt) ...[
                       const SizedBox(height: 4),
                       InkWell(
-                        onTap: () => launchUrl(
-                          Uri.parse(e.receiptUrl!),
-                          mode: LaunchMode.externalApplication,
-                        ),
+                        onTap: () {
+                          final path = e.receiptPath;
+                          if (path == null || path.isEmpty) return;
+                          openVaultFile(
+                            context,
+                            bucket: 'receipts',
+                            path: path,
+                            title: e.title,
+                            asPopup: true,
+                          );
+                        },
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -1601,6 +1923,119 @@ class _SummaryCard extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Light payment row matching the marketing payments list.
+class _TenantPaymentRow extends StatelessWidget {
+  final Payment payment;
+  final NumberFormat currency;
+  final String locale;
+
+  const _TenantPaymentRow({
+    required this.payment,
+    required this.currency,
+    required this.locale,
+  });
+
+  Future<void> _openReceipt(BuildContext context) async {
+    final path = payment.receiptPath;
+    if (path == null || path.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.cantOpenDocument)),
+        );
+      }
+      return;
+    }
+    final monthName =
+        DateFormat('MMMM', locale).format(DateTime(payment.year, payment.month));
+    await openVaultFile(
+      context,
+      bucket: 'receipts',
+      path: path,
+      title: context.l10n.paymentReceiptTitle(monthName, '${payment.year}'),
+      asPopup: true,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final paid = payment.status == 'paid';
+    final hasReceipt = payment.hasReceipt;
+    return InkWell(
+      onTap: hasReceipt ? () => _openReceipt(context) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat(
+                      'MMMM yyyy',
+                      locale,
+                    ).format(DateTime(payment.year, payment.month)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      currency.format(payment.amount),
+                      if (paid && payment.paymentDate != null)
+                        l10n.paidOnDate(
+                          DateFormat(
+                            'd/M/yyyy',
+                            locale,
+                          ).format(payment.paymentDate!),
+                        ),
+                    ].join(' · '),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: DiraColors.inkSoft,
+                    ),
+                  ),
+                  if (hasReceipt) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.receipt_long_rounded,
+                          size: 14,
+                          color: DiraColors.brick,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          l10n.viewReceipt,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: DiraColors.brick,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            StatusPill.payment(context, paid: paid),
+            const SizedBox(width: 6),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: hasReceipt ? DiraColors.brick : DiraColors.inkSoft,
             ),
           ],
         ),

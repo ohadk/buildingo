@@ -7,6 +7,8 @@ import {
   withErrorHandling,
 } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { monthlyFeeAmount } from "@/lib/fees";
+import { decryptJoinRequestRow, decryptUserRow, userPiiStorageFields } from "@/lib/pii";
 import type { AppUser } from "@/lib/types";
 
 /** Attaches a short-lived signed URL for the profile picture, if any. */
@@ -49,12 +51,21 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
           .maybeSingle(),
   ]);
 
+  let monthlyFeePreview: number | null = null;
+  if (building.data && apartment.data) {
+    monthlyFeePreview = monthlyFeeAmount(building.data, {
+      monthly_fee: Number(apartment.data.monthly_fee ?? 0),
+      size_sqm: apartment.data.size_sqm != null ? Number(apartment.data.size_sqm) : null,
+    });
+  }
+
   return NextResponse.json({
     user: await withAvatarUrl(user),
     building: building.data,
     apartment: apartment.data,
     joinRequest: joinRequest.data,
     blockedReason,
+    monthlyFeePreview,
   });
 });
 
@@ -70,8 +81,12 @@ export const PATCH = withErrorHandling(async (req: NextRequest) => {
   const body = patchSchema.parse(await req.json());
 
   const updates: Record<string, unknown> = {};
-  if (body.fullName !== undefined) updates.full_name = body.fullName.trim();
-  if (body.email !== undefined) updates.email = body.email;
+  if (body.fullName !== undefined) {
+    Object.assign(updates, userPiiStorageFields({ fullName: body.fullName.trim() }));
+  }
+  if (body.email !== undefined) {
+    Object.assign(updates, userPiiStorageFields({ email: body.email }));
+  }
   if (body.numOccupants !== undefined) updates.num_occupants = body.numOccupants;
   if (Object.keys(updates).length === 0) {
     throw new ApiError(400, "Nothing to update");
@@ -85,5 +100,5 @@ export const PATCH = withErrorHandling(async (req: NextRequest) => {
     .single();
   if (error) throw new ApiError(500, error.message);
 
-  return NextResponse.json({ user: await withAvatarUrl(updated) });
+  return NextResponse.json({ user: await withAvatarUrl(decryptUserRow(updated)) });
 });

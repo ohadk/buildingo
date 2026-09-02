@@ -1,25 +1,39 @@
 import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'api_client.dart';
 
-/// Supabase project connection for Realtime. The publishable (anon) key is
-/// designed to ship inside client apps; row access is still protected by
-/// RLS and our API. Provide it with:
-///   flutter run --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-/// or paste it as the defaultValue below.
+/// Supabase project URL (Realtime).
 const supabaseUrl = 'https://wcybxiwnewryvazqpxzg.supabase.co';
-const supabasePublishableKey = String.fromEnvironment(
+
+/// Optional compile-time override. Prefer fetching from `/api/config` so
+/// dual-sim / CI don't need a dart-define.
+const supabasePublishableKeyDefine = String.fromEnvironment(
   'SUPABASE_PUBLISHABLE_KEY',
   defaultValue: '',
 );
 
-bool get realtimeEnabled => supabasePublishableKey.isNotEmpty;
+String _publishableKey = supabasePublishableKeyDefine;
 
+bool get realtimeEnabled => _publishableKey.isNotEmpty;
+
+/// Loads the publishable key from the API (or keeps the dart-define), then
+/// initializes Supabase Realtime. Safe to call multiple times.
 Future<void> initRealtime() async {
+  if (_publishableKey.isEmpty) {
+    try {
+      final cfg = await api.get('/api/config');
+      final key = cfg['supabasePublishableKey']?.toString() ?? '';
+      if (key.isNotEmpty) _publishableKey = key;
+    } catch (_) {
+      // API down or key not configured — polling fallback still works.
+    }
+  }
   if (!realtimeEnabled) return;
+  if (Supabase.instance.isInitialized) return;
   await Supabase.initialize(
     url: supabaseUrl,
-    publishableKey: supabasePublishableKey,
+    publishableKey: _publishableKey,
   );
 }
 
@@ -47,19 +61,24 @@ class BuildingRealtime {
         .where((t) => tables.contains(t))
         .listen((_) {
           debounce?.cancel();
-          debounce = Timer(const Duration(milliseconds: 400), onChange);
+          debounce = Timer(const Duration(milliseconds: 200), onChange);
         });
     sub.onDone(() => debounce?.cancel());
     return sub;
   }
 
   /// Points the listener at the user's building (or detaches when null).
-  void setBuilding(String? buildingId) {
-    if (!realtimeEnabled || buildingId == _buildingId) return;
-    _channel?.unsubscribe();
+  Future<void> setBuilding(String? buildingId) async {
+    if (buildingId == _buildingId && _channel != null) return;
+    await _channel?.unsubscribe();
     _channel = null;
     _buildingId = buildingId;
     if (buildingId == null) return;
+
+    if (!realtimeEnabled) {
+      await initRealtime();
+    }
+    if (!realtimeEnabled) return;
 
     _channel = Supabase.instance.client
         .channel('building:$buildingId')

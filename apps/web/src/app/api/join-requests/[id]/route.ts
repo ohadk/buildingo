@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
 import { assertBuildingCapacity } from "@/lib/billing";
+import { decryptJoinRequestRow, userPiiStorageFields } from "@/lib/pii";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { activateTenancy } from "@/lib/tenancy";
 
@@ -27,6 +28,7 @@ export const PATCH = withErrorHandling(
       .maybeSingle();
     if (error) throw new ApiError(500, error.message);
     if (!request) throw new ApiError(404, "Join request not found");
+    const decrypted = decryptJoinRequestRow(request);
     if (user.role !== "super_admin" && request.building_id !== user.building_id) {
       throw new ApiError(403, "This request belongs to another building");
     }
@@ -48,12 +50,12 @@ export const PATCH = withErrorHandling(
         entityType: "join_request",
         entityId: id,
         details: {
-          name: request.full_name ?? "",
+          name: decrypted.full_name ?? "",
           apartment: request.apartment_number,
         },
       });
 
-      return NextResponse.json({ joinRequest: updated });
+      return NextResponse.json({ joinRequest: decryptJoinRequestRow(updated) });
     }
 
     // Approve: capacity may have filled up since the request was made —
@@ -68,7 +70,7 @@ export const PATCH = withErrorHandling(
     if (request.apartment_number) {
       const { data: apartment } = await db
         .from("apartments")
-        .select("id, floor, parking_spot")
+        .select("id, floor, parking_spots")
         .eq("building_id", request.building_id)
         .eq("apartment_number", request.apartment_number)
         .maybeSingle();
@@ -76,8 +78,13 @@ export const PATCH = withErrorHandling(
       apartmentId = apartment.id;
       const aptPatch: Record<string, unknown> = {};
       if (request.floor != null) aptPatch.floor = request.floor;
-      if (request.parking_spot && !apartment.parking_spot) {
-        aptPatch.parking_spot = request.parking_spot;
+      const requestSpots = (request.parking_spots as string[] | null) ?? [];
+      const existingSpots = (apartment.parking_spots as string[] | null) ?? [];
+      if (requestSpots.length && existingSpots.length === 0) {
+        aptPatch.parking_spots = requestSpots;
+      }
+      if (request.size_sqm != null) {
+        aptPatch.size_sqm = request.size_sqm;
       }
       if (Object.keys(aptPatch).length > 0) {
         await db.from("apartments").update(aptPatch).eq("id", apartment.id);
@@ -90,8 +97,10 @@ export const PATCH = withErrorHandling(
         role: "tenant",
         building_id: request.building_id,
         apartment_id: apartmentId,
-        ...(request.full_name ? { full_name: request.full_name } : {}),
-        ...(request.email ? { email: request.email } : {}),
+        ...userPiiStorageFields({
+          fullName: decrypted.full_name ?? undefined,
+          email: decrypted.email ?? undefined,
+        }),
         ...(request.num_occupants != null
           ? { num_occupants: request.num_occupants }
           : {}),
@@ -104,7 +113,7 @@ export const PATCH = withErrorHandling(
         id: request.user_id,
         building_id: request.building_id,
         apartment_id: apartmentId,
-        full_name: request.full_name,
+        full_name: decrypted.full_name,
         num_occupants: request.num_occupants,
       });
     }
@@ -124,11 +133,11 @@ export const PATCH = withErrorHandling(
       entityType: "user",
       entityId: request.user_id,
       details: {
-        name: request.full_name ?? "",
+        name: decrypted.full_name ?? "",
         apartment: request.apartment_number,
       },
     });
 
-    return NextResponse.json({ joinRequest: updated });
+    return NextResponse.json({ joinRequest: decryptJoinRequestRow(updated) });
   },
 );

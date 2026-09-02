@@ -14,8 +14,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String _phoneE164 = '';
-  final _codeController = TextEditingController();
+  /// Optional dual-sim / manual-test prefills (`--dart-define=TEST_PHONE=+972…`).
+  static const _testPhone = String.fromEnvironment('TEST_PHONE');
+  static const _testOtp = String.fromEnvironment('TEST_OTP');
+
+  String _phoneE164 = _testPhone;
+  final _codeController = TextEditingController(
+    text: _testOtp.isEmpty ? '' : _testOtp,
+  );
   String? _verificationId;
   bool _busy = false;
   String? _error;
@@ -281,7 +287,10 @@ class _LoginScreenState extends State<LoginScreen> {
       style: const TextStyle(color: DiraColors.inkSoft, fontSize: 14),
     ),
     const SizedBox(height: 20),
-    PhoneField(onChanged: (v) => setState(() => _phoneE164 = v)),
+    PhoneField(
+      initialValue: _testPhone.isEmpty ? null : _testPhone,
+      onChanged: (v) => setState(() => _phoneE164 = v),
+    ),
     const SizedBox(height: 20),
     _primaryButton(
       label: l10n.sendCode,

@@ -16,7 +16,11 @@ class ScheduleUi {
     'garbage' => Icons.delete_outline_rounded,
     'cleaning' => Icons.cleaning_services_outlined,
     'bulk_waste' => Icons.inventory_2_outlined,
+    'gardening' => Icons.yard_outlined,
+    'pest' => Icons.bug_report_outlined,
+    'water_tank' => Icons.water_drop_outlined,
     'meeting' => Icons.groups_outlined,
+    'announcement' => Icons.campaign_outlined,
     _ => Icons.event_note_outlined,
   };
 
@@ -24,7 +28,11 @@ class ScheduleUi {
     'garbage' => DiraColors.sageDark,
     'cleaning' => DiraColors.goldDark,
     'bulk_waste' => DiraColors.brick,
+    'gardening' => DiraColors.sage,
+    'pest' => DiraColors.brickDark,
+    'water_tank' => DiraColors.sageMist,
     'meeting' => DiraColors.brickDark,
+    'announcement' => DiraColors.goldDark,
     _ => DiraColors.inkSoft,
   };
 
@@ -33,7 +41,11 @@ class ScheduleUi {
         'garbage' => l10n.scheduleGarbage,
         'cleaning' => l10n.scheduleCleaning,
         'bulk_waste' => l10n.scheduleBulkWaste,
+        'gardening' => l10n.serviceGardening,
+        'pest' => l10n.servicePest,
+        'water_tank' => l10n.serviceWaterTank,
         'meeting' => l10n.residentsAssembly,
+        'announcement' => l10n.announcementTag,
         _ => l10n.scheduleOther,
       };
 
@@ -43,6 +55,8 @@ class ScheduleUi {
         'weekly' => l10n.scheduleWeekly,
         'biweekly' => l10n.scheduleBiweekly,
         'monthly' => l10n.scheduleMonthly,
+        'quarterly' => l10n.serviceFrequencyQuarterly,
+        'yearly' => l10n.serviceFrequencyYearly,
         _ => l10n.scheduleOnce,
       };
 
@@ -82,6 +96,18 @@ class ScheduleUi {
     if (diff == 1) return l10n.scheduleTomorrow;
     return DateFormat('EEEE, d MMM', locale).format(date);
   }
+
+  /// Sunday-start week (common for IL).
+  static DateTime startOfWeek(DateTime d) {
+    final day = DateTime(d.year, d.month, d.day);
+    return day.subtract(Duration(days: day.weekday % 7));
+  }
+
+  static DateTime endOfWeek(DateTime d) =>
+      startOfWeek(d).add(const Duration(days: 6));
+
+  static bool sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 /// Compact row used on the home screen and the full schedule list.
@@ -140,7 +166,11 @@ class ScheduleEventTile extends StatelessWidget {
                       when,
                       ?timeLabel,
                       if (occurrence.isMeeting) l10n.residentsAssembly,
-                      if (!occurrence.isMeeting && occurrence.recurrence != 'once')
+                      if (occurrence.eventType == 'announcement')
+                        l10n.announcementTag,
+                      if (!occurrence.isMeeting &&
+                          occurrence.eventType != 'announcement' &&
+                          occurrence.recurrence != 'once')
                         ScheduleUi.recurrenceLabel(l10n, occurrence.recurrence),
                     ].join(' · '),
                     style: const TextStyle(
@@ -179,6 +209,7 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   late DateTime _month;
+  late DateTime _selectedDay;
   List<ScheduleOccurrence> _occurrences = [];
   bool _loading = true;
   String? _error;
@@ -188,9 +219,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
+    _selectedDay = DateTime(now.year, now.month, now.day);
     _month = DateTime(now.year, now.month);
     _load();
-    _realtimeSub = realtime.listen({'schedule_events', 'meetings'}, _load);
+    _realtimeSub = realtime.listen(
+      {'schedule_events', 'meetings', 'announcements'},
+      _load,
+    );
   }
 
   @override
@@ -201,8 +236,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   DateTime get _rangeStart => DateTime(_month.year, _month.month, 1);
 
-  DateTime get _rangeEnd =>
-      DateTime(_month.year, _month.month + 1, 0); // last day of month
+  DateTime get _rangeEnd => DateTime(_month.year, _month.month + 1, 0);
+
+  Set<String> get _daysWithEvents => {
+        for (final o in _occurrences)
+          DateFormat('yyyy-MM-dd').format(o.occurrenceDate),
+      };
+
+  List<ScheduleOccurrence> get _dayEvents {
+    return _occurrences
+        .where((o) => ScheduleUi.sameDay(o.occurrenceDate, _selectedDay))
+        .toList();
+  }
 
   Future<void> _load() async {
     final fmt = DateFormat('yyyy-MM-dd');
@@ -213,7 +258,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (!mounted) return;
       setState(() {
         _occurrences = ((res['occurrences'] ?? []) as List)
-            .map((e) => ScheduleOccurrence.fromJson(e))
+            .map((e) => ScheduleOccurrence.fromJson(e as Map<String, dynamic>))
             .toList();
         _loading = false;
         _error = null;
@@ -235,8 +280,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _shiftMonth(int delta) {
+    final next = DateTime(_month.year, _month.month + delta);
     setState(() {
-      _month = DateTime(_month.year, _month.month + delta);
+      _month = next;
+      // Keep selection inside the visible month when possible.
+      final last = DateTime(next.year, next.month + 1, 0).day;
+      final day = _selectedDay.day.clamp(1, last);
+      _selectedDay = DateTime(next.year, next.month, day);
       _loading = true;
     });
     _load();
@@ -250,7 +300,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => const _ScheduleComposerSheet(),
+      builder: (_) => _ScheduleComposerSheet(initialDate: _selectedDay),
     );
     if (saved == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -266,13 +316,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final locale = Localizations.localeOf(context).languageCode;
     final isVaad = context.watch<SessionController>().user?.isVaad ?? false;
     final monthLabel = DateFormat('MMMM yyyy', locale).format(_month);
-
-    final groups = <String, List<ScheduleOccurrence>>{};
-    for (final o in _occurrences) {
-      final key = DateFormat('yyyy-MM-dd').format(o.occurrenceDate);
-      groups.putIfAbsent(key, () => []).add(o);
-    }
-    final keys = groups.keys.toList()..sort();
+    final dayEvents = _dayEvents;
+    final dayLabel = ScheduleUi.relativeDayLabel(l10n, _selectedDay, locale);
 
     return Scaffold(
       appBar: AppBar(
@@ -291,143 +336,302 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               child: const Icon(Icons.add, size: 28),
             )
           : null,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-            child: Row(
+      body: _error != null && !_loading
+          ? ListView(
               children: [
-                IconButton(
-                  onPressed: () => _shiftMonth(-1),
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                Expanded(
-                  child: Text(
-                    monthLabel,
-                    textAlign: TextAlign.center,
-                    style: heading(fontSize: 18),
+                Padding(
+                  padding: const EdgeInsets.all(36),
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor:
+                            DiraColors.goldLight.withValues(alpha: 0.6),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          size: 34,
+                          color: DiraColors.goldDark,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: DiraColors.inkSoft,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _shiftMonth(1),
-                  icon: const Icon(Icons.chevron_right),
+              ],
+            )
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => _shiftMonth(-1),
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Expanded(
+                        child: Text(
+                          monthLabel,
+                          textAlign: TextAlign.center,
+                          style: heading(fontSize: 18),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _shiftMonth(1),
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: _MonthCalendarGrid(
+                    month: _month,
+                    selectedDay: _selectedDay,
+                    markedDays: _daysWithEvents,
+                    onSelect: (d) => setState(() {
+                      _selectedDay = d;
+                      if (d.month != _month.month || d.year != _month.year) {
+                        _month = DateTime(d.year, d.month);
+                        _loading = true;
+                        _load();
+                      }
+                    }),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(dayLabel, style: heading(fontSize: 16)),
+                  ),
+                ),
+                Expanded(
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: DiraColors.brick,
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          color: DiraColors.brick,
+                          child: dayEvents.isEmpty
+                              ? ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    24,
+                                    12,
+                                    24,
+                                    100,
+                                  ),
+                                  children: [
+                                    const SizedBox(height: 24),
+                                    CircleAvatar(
+                                      radius: 34,
+                                      backgroundColor: DiraColors.sage
+                                          .withValues(alpha: 0.3),
+                                      child: const Icon(
+                                        Icons.event_available_outlined,
+                                        size: 32,
+                                        color: DiraColors.sageDark,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      l10n.scheduleDayEmptyTitle,
+                                      textAlign: TextAlign.center,
+                                      style: heading(fontSize: 18),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      isVaad
+                                          ? l10n.scheduleDayEmptyBodyVaad
+                                          : l10n.scheduleDayEmptyBody,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: DiraColors.inkSoft,
+                                        height: 1.45,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    100,
+                                  ),
+                                  itemCount: dayEvents.length,
+                                  itemBuilder: (_, i) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: ScheduleEventTile(
+                                      occurrence: dayEvents[i],
+                                      showRelativeDay: false,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Compact month grid with event dots (Sunday → Saturday).
+class _MonthCalendarGrid extends StatelessWidget {
+  final DateTime month;
+  final DateTime selectedDay;
+  final Set<String> markedDays;
+  final ValueChanged<DateTime> onSelect;
+
+  const _MonthCalendarGrid({
+    required this.month,
+    required this.selectedDay,
+    required this.markedDays,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final first = DateTime(month.year, month.month, 1);
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final leading = first.weekday % 7; // Sun=0
+    final today = DateTime.now();
+    final cells = leading + daysInMonth;
+    final rows = ((cells + 6) / 7).floor();
+
+    final weekdayLabels = [
+      l10n.sunday,
+      l10n.monday,
+      l10n.tuesday,
+      l10n.wednesday,
+      l10n.thursday,
+      l10n.friday,
+      l10n.saturday,
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: DiraColors.creamCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DiraColors.ink.withValues(alpha: 0.06)),
+      ),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              for (final label in weekdayLabels)
+                Expanded(
+                  child: Text(
+                    label.isEmpty ? '' : String.fromCharCode(label.runes.first),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: DiraColors.inkSoft,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (var r = 0; r < rows; r++)
+            Row(
+              children: [
+                for (var c = 0; c < 7; c++)
+                  Expanded(
+                    child: _dayCell(
+                      index: r * 7 + c,
+                      leading: leading,
+                      daysInMonth: daysInMonth,
+                      today: today,
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dayCell({
+    required int index,
+    required int leading,
+    required int daysInMonth,
+    required DateTime today,
+  }) {
+    final dayNum = index - leading + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) {
+      return const SizedBox(height: 42);
+    }
+    final date = DateTime(month.year, month.month, dayNum);
+    final key = DateFormat('yyyy-MM-dd').format(date);
+    final selected = ScheduleUi.sameDay(date, selectedDay);
+    final isToday = ScheduleUi.sameDay(date, today);
+    final hasEvents = markedDays.contains(key);
+
+    return Padding(
+      padding: const EdgeInsets.all(2),
+      child: Material(
+        color: selected
+            ? DiraColors.brick
+            : isToday
+                ? DiraColors.terracottaSoft
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => onSelect(date),
+          child: SizedBox(
+            height: 42,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$dayNum',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: selected ? DiraColors.creamCard : DiraColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: hasEvents
+                        ? (selected ? DiraColors.creamCard : DiraColors.brick)
+                        : Colors.transparent,
+                  ),
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: DiraColors.brick),
-                  )
-                : _error != null
-                ? ListView(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(36),
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor:
-                                  DiraColors.goldLight.withValues(alpha: 0.6),
-                              child: const Icon(
-                                Icons.info_outline_rounded,
-                                size: 34,
-                                color: DiraColors.goldDark,
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: DiraColors.inkSoft,
-                                height: 1.45,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  )
-                : _occurrences.isEmpty
-                ? ListView(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(36),
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor:
-                                  DiraColors.sage.withValues(alpha: 0.35),
-                              child: const Icon(
-                                Icons.calendar_month_rounded,
-                                size: 34,
-                                color: DiraColors.sageDark,
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              l10n.scheduleEmptyTitle,
-                              textAlign: TextAlign.center,
-                              style: heading(fontSize: 20),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              l10n.scheduleEmptyBody,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: DiraColors.inkSoft,
-                                height: 1.45,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  )
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    color: DiraColors.brick,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      children: [
-                        for (final key in keys) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            child: Text(
-                              ScheduleUi.relativeDayLabel(
-                                l10n,
-                                DateTime.parse(key),
-                                locale,
-                              ),
-                              style: heading(fontSize: 15),
-                            ),
-                          ),
-                          ...groups[key]!.map(
-                            (o) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: ScheduleEventTile(
-                                occurrence: o,
-                                showRelativeDay: false,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _ScheduleComposerSheet extends StatefulWidget {
-  const _ScheduleComposerSheet();
+  final DateTime? initialDate;
+  const _ScheduleComposerSheet({this.initialDate});
 
   @override
   State<_ScheduleComposerSheet> createState() => _ScheduleComposerSheetState();
@@ -435,15 +639,24 @@ class _ScheduleComposerSheet extends StatefulWidget {
 
 class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
   String _eventType = 'garbage';
-  String _recurrence = 'weekly';
+  String _recurrence = 'once';
   int _dayOfWeek = DateTime.now().weekday % 7; // JS-style 0=Sun
   int _dayOfMonth = DateTime.now().day;
-  DateTime _specificDate = DateTime.now();
+  late DateTime _specificDate;
   TimeOfDay? _time;
   final _title = TextEditingController();
   final _notes = TextEditingController();
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final seed = widget.initialDate ?? DateTime.now();
+    _specificDate = DateTime(seed.year, seed.month, seed.day);
+    _dayOfWeek = _specificDate.weekday % 7;
+    _dayOfMonth = _specificDate.day;
+  }
 
   @override
   void dispose() {

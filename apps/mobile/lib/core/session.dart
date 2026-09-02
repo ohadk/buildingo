@@ -13,6 +13,7 @@ class SessionController extends ChangeNotifier {
   Building? building;
   Apartment? apartment;
   JoinRequest? joinRequest;
+  double? monthlyFeePreview;
 
   /// Non-null when the building lost access: 'trial_expired' | 'blocked'.
   String? blockedReason;
@@ -34,6 +35,8 @@ class SessionController extends ChangeNotifier {
         if (inviteCode != null && inviteCode.isNotEmpty)
           'inviteCode': inviteCode,
       });
+      // Warm the public share origin (join links) from server config.
+      await ApiClient.resolvePublicWebUrl();
       await refreshMe();
     } catch (e) {
       error = e.toString();
@@ -55,8 +58,9 @@ class SessionController extends ChangeNotifier {
     joinRequest = data['joinRequest'] != null
         ? JoinRequest.fromJson(data['joinRequest'])
         : null;
+    monthlyFeePreview = (data['monthlyFeePreview'] as num?)?.toDouble();
     blockedReason = data['blockedReason'];
-    realtime.setBuilding(blockedReason == null ? building?.id : null);
+    await realtime.setBuilding(blockedReason == null ? building?.id : null);
     notifyListeners();
   }
 
@@ -78,9 +82,10 @@ class SessionController extends ChangeNotifier {
     String? email,
     int? numOccupants,
     int? floor,
-    String? parkingSpot,
+    List<String>? parkingSpots,
     String? docPath,
     String? arnonaDocPath,
+    double? sizeSqm,
   }) async {
     await api.post('/api/join', {
       'code': code,
@@ -89,10 +94,11 @@ class SessionController extends ChangeNotifier {
       if (email != null && email.isNotEmpty) 'email': email,
       'numOccupants': ?numOccupants,
       'floor': ?floor,
-      if (parkingSpot != null && parkingSpot.isNotEmpty)
-        'parkingSpot': parkingSpot,
+      if (parkingSpots != null && parkingSpots.isNotEmpty)
+        'parkingSpots': parkingSpots,
       'docPath': ?docPath,
       'arnonaDocPath': ?arnonaDocPath,
+      'sizeSqm': ?sizeSqm,
     });
     await refreshMe();
   }
@@ -106,9 +112,10 @@ class SessionController extends ChangeNotifier {
     String? email,
     int? numOccupants,
     int? floor,
-    String? parkingSpot,
+    List<String>? parkingSpots,
     String? docPath,
     String? arnonaDocPath,
+    double? sizeSqm,
   }) async {
     await api.post('/api/join-requests', {
       'buildingId': buildingId,
@@ -117,10 +124,11 @@ class SessionController extends ChangeNotifier {
       if (email != null && email.isNotEmpty) 'email': email,
       'numOccupants': ?numOccupants,
       'floor': ?floor,
-      if (parkingSpot != null && parkingSpot.isNotEmpty)
-        'parkingSpot': parkingSpot,
+      if (parkingSpots != null && parkingSpots.isNotEmpty)
+        'parkingSpots': parkingSpots,
       'docPath': ?docPath,
       'arnonaDocPath': ?arnonaDocPath,
+      'sizeSqm': ?sizeSqm,
     });
     await refreshMe();
   }
@@ -161,7 +169,7 @@ class SessionController extends ChangeNotifier {
 
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
-    realtime.setBuilding(null);
+    await realtime.setBuilding(null);
     user = null;
     building = null;
     apartment = null;

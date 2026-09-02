@@ -133,10 +133,17 @@ class AppLocalizationsHe extends AppLocalizations {
   String get assemblies => 'אסיפות';
 
   @override
-  String get myTickets => 'הקריאות שלי';
+  String get myTickets => 'קריאות שירות';
 
   @override
   String get noOpenTickets => 'אין קריאות פתוחות — הכול שקט בבניין.';
+
+  @override
+  String get homeTicketsClearTitle => 'הכול שקט';
+
+  @override
+  String get homeTicketsClearBody =>
+      'אין קריאות פתוחות כרגע. כל קריאה חדשה תופיע כאן.';
 
   @override
   String get noTicketsYet => 'אין קריאות עדיין';
@@ -145,7 +152,117 @@ class AppLocalizationsHe extends AppLocalizations {
   String get noTicketsHint => 'לחצו על + למטה כדי לדווח על תקלה בבניין.';
 
   @override
-  String get communityBoard => 'לוח הקהילה';
+  String get communityBoard => 'לוח הבניין';
+
+  @override
+  String get seeDetails => 'לפרטים';
+
+  @override
+  String get viewAllCalls => 'לכל הקריאות';
+
+  @override
+  String get viewAllBoardMessages => 'כל ההודעות';
+
+  @override
+  String get allBoardMessages => 'כל הודעות הלוח';
+
+  @override
+  String boardPublishedOn(String date) {
+    return 'פורסם ב-$date';
+  }
+
+  @override
+  String get noCurrentBoardMessages => 'אין הודעות לשבוע הזה';
+
+  @override
+  String get paymentsSubtitle => 'כל התשלומים, מסודרים וברורים.';
+
+  @override
+  String get buildingBalance => 'יתרת בניין';
+
+  @override
+  String balanceAsOf(String date) {
+    return 'נכון ל-$date';
+  }
+
+  @override
+  String get buildingIncome => 'סה״כ הכנסות';
+
+  @override
+  String get buildingExpensesTotal => 'סה״כ הוצאות';
+
+  @override
+  String get monthlyCommitteeFees => 'דמי ועד חודשיים';
+
+  @override
+  String get paymentsAutoUpdated => 'התשלומים מתעדכנים באופן אוטומטי';
+
+  @override
+  String get residentsDirectory => 'ספר תושבים';
+
+  @override
+  String apartmentsCountN(String n) {
+    return '$n דירות';
+  }
+
+  @override
+  String get vaadTools => 'כלי ועד';
+
+  @override
+  String get toolGuests => 'אורחים';
+
+  @override
+  String get toolSurveys => 'סקרים';
+
+  @override
+  String get toolMessage => 'הודעה';
+
+  @override
+  String get ticketCatLeak => 'נזילה';
+
+  @override
+  String get ticketCatElevator => 'בעיה במעלית';
+
+  @override
+  String get ticketCatCleaning => 'ניקיון';
+
+  @override
+  String get ticketCatLights => 'מנורות שרופות';
+
+  @override
+  String get ticketCatElectric => 'תקלה בחשמל';
+
+  @override
+  String get ticketCatDoor => 'תקלה בדלת';
+
+  @override
+  String get ticketCatOther => 'אחר';
+
+  @override
+  String get ticketCategoryLabel => 'מה סוג התקלה?';
+
+  @override
+  String ticketCreatedOn(String date) {
+    return 'נוצרה בתאריך $date';
+  }
+
+  @override
+  String get ticketUploadingPhoto => 'מעלים תמונה…';
+
+  @override
+  String get ticketCreating => 'שולחים דיווח…';
+
+  @override
+  String get ticketCreateDone => 'הדיווח נשלח';
+
+  @override
+  String get ticketCreateFailed => 'שליחת הדיווח נכשלה';
+
+  @override
+  String get ticketRetry => 'נסה שוב';
+
+  @override
+  String get ticketDismiss => 'סגור';
 
   @override
   String get fromTheVaad => 'הודעה חדשה מהוועד';
@@ -191,22 +308,85 @@ class AppLocalizationsHe extends AppLocalizations {
   }
 
   @override
-  String get statusOpen => 'פתוחה';
+  String get statusOpen => 'חדש';
 
   @override
-  String get statusApproved => 'אושרה';
+  String get statusApproved => 'בטיפול';
 
   @override
   String get statusInProgress => 'בטיפול';
 
   @override
-  String get statusResolved => 'טופלה';
+  String get statusResolved => 'טופל';
 
   @override
   String get approveAndDispatch => 'אישור ושליחת סוכן AI';
 
   @override
   String get markResolved => 'סימון כטופל';
+
+  @override
+  String get ticketTapStatusHint => 'לחצו על שלב כדי לעדכן סטטוס';
+
+  @override
+  String get ticketRepairCost => 'עלות התיקון';
+
+  @override
+  String get ticketRepairCostHint => 'כמה עלה התיקון?';
+
+  @override
+  String get ticketAddRepairCost => 'הוספת עלות תיקון';
+
+  @override
+  String get ticketEditRepairCost => 'עדכון עלות וקבלה';
+
+  @override
+  String get ticketCostSaved => 'עלות התיקון נשמרה';
+
+  @override
+  String ticketCostAmount(String amount) {
+    return '₪$amount';
+  }
+
+  @override
+  String get ticketEdit => 'עריכת קריאה';
+
+  @override
+  String get ticketEdited => 'הקריאה עודכנה';
+
+  @override
+  String get ticketUpdateProgress => 'עדכון התקדמות';
+
+  @override
+  String get ticketProgressSaved => 'ההתקדמות עודכנה';
+
+  @override
+  String get ticketProgressNote => 'מה קורה עכשיו?';
+
+  @override
+  String get ticketProgressNoteHint => 'למשל: נפתח אצל הספק, הוזמנו חלקים…';
+
+  @override
+  String get ticketFixDateLabel => 'תאריך טיפול צפוי';
+
+  @override
+  String ticketFixDate(String date) {
+    return 'תאריך טיפול: $date';
+  }
+
+  @override
+  String ticketExpectedBy(String date) {
+    return 'צפוי ל־$date';
+  }
+
+  @override
+  String get ticketProgressOpenedProvider => 'נפתחה קריאה אצל ספק השירות';
+
+  @override
+  String get ticketProgressPartsOrdered => 'הוזמנו חלקים';
+
+  @override
+  String get ticketProgressScheduled => 'נקבע מועד לתיקון';
 
   @override
   String get reportAFault => 'דיווח על תקלה';
@@ -218,10 +398,13 @@ class AppLocalizationsHe extends AppLocalizations {
   String get faultHint => 'למשל: המעלית תקועה בקומה 3';
 
   @override
-  String get details => 'פרטים';
+  String get details => 'פרטים (רשות)';
 
   @override
   String get detailsHint => 'מתי זה התחיל? איפה בדיוק?';
+
+  @override
+  String get addMorePhotos => 'הוספת תמונות';
 
   @override
   String get submitting => 'שולח…';
@@ -372,7 +555,7 @@ class AppLocalizationsHe extends AppLocalizations {
   }
 
   @override
-  String get directoryTitle => 'דיירים וחניות';
+  String get directoryTitle => 'ספר תושבים';
 
   @override
   String floorN(String n) {
@@ -389,6 +572,11 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get noParking => 'ללא חניה משויכת';
+
+  @override
+  String directoryResidentSince(String date) {
+    return 'מאז $date';
+  }
 
   @override
   String get inviteResident => 'הזמנת דייר/ת';
@@ -678,6 +866,76 @@ class AppLocalizationsHe extends AppLocalizations {
   String get apartmentsPerFloor => 'בקומה';
 
   @override
+  String get numberOfApartments => 'מספר דירות';
+
+  @override
+  String get numberOfFloors => 'מספר קומות';
+
+  @override
+  String get typicalFloorLabel => 'בקומה טיפוסית';
+
+  @override
+  String get baseFloorLabel => 'הקומה הראשונה';
+
+  @override
+  String get firstApartmentShortLabel => 'הדירה הראשונה';
+
+  @override
+  String get structureStepSubtitle =>
+      'קובעים את הקומה הטיפוסית, ומתקנים רק את הקומות החריגות.';
+
+  @override
+  String floorsRangeSummary(
+    String from,
+    String to,
+    String aptFrom,
+    String aptTo,
+  ) {
+    return 'הקומות ירוצו מ־$from עד $to · הדירות ימוספרו מ־$aptFrom עד $aptTo';
+  }
+
+  @override
+  String get floorDivisionTitle => 'חלוקה לקומות';
+
+  @override
+  String resetExceptions(String count) {
+    return 'איפוס $count חריגים';
+  }
+
+  @override
+  String floorBadge(String floor) {
+    return 'ק$floor';
+  }
+
+  @override
+  String get floorBadgeGround => 'קר';
+
+  @override
+  String floorAptsCount(String count) {
+    return '$count דירות';
+  }
+
+  @override
+  String floorAptsRange(String from, String to) {
+    return 'דירות $from–$to';
+  }
+
+  @override
+  String get exceptionBadge => 'חריג';
+
+  @override
+  String get mappingTotalLabel => 'סה״כ במיפוי';
+
+  @override
+  String mappingTotalMeta(String apts, String floors) {
+    return '$apts דירות · $floors קומות';
+  }
+
+  @override
+  String get floorPlanMismatch =>
+      'סכום הדירות בקומות חייב להיות שווה למספר הדירות הכולל';
+
+  @override
   String get feeMethodLabel => 'דמי ועד';
 
   @override
@@ -690,7 +948,403 @@ class AppLocalizationsHe extends AppLocalizations {
   String get monthlyAmount => 'סכום חודשי (₪)';
 
   @override
+  String get feeFixedMonthlyLabel => 'דמי ועד לדירה · לחודש';
+
+  @override
+  String get feePerApartmentUnit => 'לדירה';
+
+  @override
   String get pricePerSqmLabel => 'מחיר למ״ר (₪)';
+
+  @override
+  String get updateVaadFee => 'הגדרת דמי ועד';
+
+  @override
+  String get buildingSettings => 'הגדרות בניין';
+
+  @override
+  String get joinPolicySection => 'מדיניות הצטרפות';
+
+  @override
+  String get createBuildingStepYou => 'הפרטים שלכם';
+
+  @override
+  String get createBuildingStepPlace => 'כתובת הבניין';
+
+  @override
+  String get createBuildingStepEntrances => 'כניסות ומעליות';
+
+  @override
+  String get createBuildingStepStructure => 'קומות ודירות';
+
+  @override
+  String get createBuildingStepFees => 'דמי ועד';
+
+  @override
+  String get createBuildingStepMyApartment => 'הדירה שלכם';
+
+  @override
+  String get createBuildingStepServices => 'שירותים קבועים';
+
+  @override
+  String get createBuildingStepBalance => 'יתרת חשבון';
+
+  @override
+  String get createBuildingStepSummary => 'סיכום ואישור';
+
+  @override
+  String get createBuildingYouSubtitle =>
+      'הפרטים יוצגו לדיירים כפרטי הקשר של הוועד.';
+
+  @override
+  String get createBuildingYouAptLaterNote =>
+      'בשלב הדירה תגדירו את הדירה שלכם — מספר, דיירים ומסמכים — כמו כל דייר בבניין.';
+
+  @override
+  String get createBuildingMyAptSubtitle =>
+      'הזינו את פרטי הדירה שלכם. ניצור את הדירה ונשייך אתכם אליה כחברי ועד.';
+
+  @override
+  String get createBuildingPlaceSubtitle =>
+      'כתובת אחת לפרוטוקולים, קבלות והזמנות.';
+
+  @override
+  String get createBuildingEntrancesSubtitle => 'קודי כניסה ומעליות של הבניין.';
+
+  @override
+  String get createBuildingFeesSubtitle => 'איך מחושבים דמי הוועד החודשיים.';
+
+  @override
+  String get createBuildingServicesSubtitle =>
+      'הגדירו שירותים קבועים ליומן הבניין. אפשר לשנות אחר כך.';
+
+  @override
+  String get createBuildingSummarySubtitle =>
+      'בדקו שהכול נכון לפני יצירת הבניין.';
+
+  @override
+  String get serviceCleaningStairs => 'ניקיון חדרי מדרגות';
+
+  @override
+  String get serviceGarbage => 'פינוי אשפה';
+
+  @override
+  String get serviceGardening => 'גינון';
+
+  @override
+  String get servicePest => 'הדברה';
+
+  @override
+  String get serviceWaterTank => 'ניקוי מאגר מים';
+
+  @override
+  String get serviceFrequencyWeekly => 'שבועי';
+
+  @override
+  String get serviceFrequencyBiweekly => 'דו-שבועי';
+
+  @override
+  String get serviceFrequencyMonthly => 'חודשי';
+
+  @override
+  String get serviceFrequencyQuarterly => 'רבעוני';
+
+  @override
+  String get serviceFrequencyYearly => 'שנתי';
+
+  @override
+  String get serviceCostHint => '₪ עלות';
+
+  @override
+  String get serviceProviderHint => 'שם ספק';
+
+  @override
+  String get serviceAddCustom => 'הוספת שירות מותאם';
+
+  @override
+  String get serviceCustomTitle => 'שם השירות';
+
+  @override
+  String get serviceSkipLater => 'דלג — אפשר להוסיף אחר כך';
+
+  @override
+  String serviceEstimatedMonthly(String amount) {
+    return 'הוצאה חודשית משוערת · ₪$amount';
+  }
+
+  @override
+  String serviceBalanceAfterFees(String amount) {
+    return 'נותר מהגבייה · ₪$amount';
+  }
+
+  @override
+  String get serviceCalendarNote =>
+      'שירותים מופעלים יופיעו ביומן הבניין עם תזכורות לוועד.';
+
+  @override
+  String get serviceDayOfMonth => 'יום בחודש';
+
+  @override
+  String get serviceOffHint => 'כבוי — לחצו להגדרה';
+
+  @override
+  String get serviceDaySun => 'א';
+
+  @override
+  String get serviceDayMon => 'ב';
+
+  @override
+  String get serviceDayTue => 'ג';
+
+  @override
+  String get serviceDayWed => 'ד';
+
+  @override
+  String get serviceDayThu => 'ה';
+
+  @override
+  String get serviceDayFri => 'ו';
+
+  @override
+  String get serviceDaySat => 'ש';
+
+  @override
+  String get summaryServicesTitle => 'שירותים קבועים';
+
+  @override
+  String get summaryServicesNone => 'לא נבחרו';
+
+  @override
+  String get verifiedPhoneLabel => 'טלפון מאומת';
+
+  @override
+  String get myApartmentNumber => 'מספר דירה';
+
+  @override
+  String get committeeApartmentNote =>
+      'הדירה תסומן כדירת הוועד במדריך הדיירים.';
+
+  @override
+  String get vaadAptClaimTitle => 'הדירה שלכם';
+
+  @override
+  String get vaadAptClaimSubtitle =>
+      'בחרו את הדירה שלכם מתוך המיפוי. ניצור את כל הדירות בבניין ונשייך אתכם לדירה הזו בוועד.';
+
+  @override
+  String vaadAptRangeHint(String from, String to) {
+    return 'מספרים במיפוי: $from–$to';
+  }
+
+  @override
+  String get vaadAptOutOfPlan => 'מספר הדירה לא קיים במיפוי שהגדרתם';
+
+  @override
+  String vaadAptSqmHint(String typical) {
+    return 'רשות — ברירת מחדל מהבניין: $typical מ\"ר';
+  }
+
+  @override
+  String get countryIsrael => 'ישראל';
+
+  @override
+  String get countryUsa => 'USA';
+
+  @override
+  String get countryOther => 'אחר';
+
+  @override
+  String get districtOptional => 'מחוז / אזור (רשות)';
+
+  @override
+  String get useMyLocation => 'שימוש במיקום הנוכחי';
+
+  @override
+  String get locatingAddress => 'מאתרים את הכתובת…';
+
+  @override
+  String get locationFilledHint =>
+      'הוצע לפי המיקום הנוכחי — אשרו עיר ורחוב מהרשימה.';
+
+  @override
+  String get locationOutsideIsrael =>
+      'המיקום אינו בישראל. המדינה נשארת ישראל — מלאו ידנית, או החליפו מדינה.';
+
+  @override
+  String get locationUnavailable =>
+      'לא הצלחנו לקרוא את המיקום. אפשר למלא את הכתובת ידנית.';
+
+  @override
+  String get entrancesCountLabel => 'כניסות';
+
+  @override
+  String get elevatorsCountLabel => 'מעליות';
+
+  @override
+  String get entranceCodesTitle => 'קודי כניסה';
+
+  @override
+  String get entranceCodeHint => 'קוד (רשות)';
+
+  @override
+  String get entranceCodesPrivacyNote =>
+      'קודי הכניסה גלויים לדיירי הבניין בלבד.';
+
+  @override
+  String get typicalApartmentSqmLabel => 'גודל דירה טיפוסית (מ״ר)';
+
+  @override
+  String feePreviewSize(String sqm) {
+    return 'דירה $sqm מ״ר';
+  }
+
+  @override
+  String feePreviewTypical(String sqm) {
+    return 'טיפוסית · $sqm מ״ר';
+  }
+
+  @override
+  String get feeTemporaryNote =>
+      'עד שיוגדר גודל לכל דירה, החיוב מבוסס על הגודל הטיפוסי.';
+
+  @override
+  String get billingDayLabel => 'יום חיוב בחודש';
+
+  @override
+  String billingDaySummary(String day) {
+    return 'יום חיוב: $day';
+  }
+
+  @override
+  String get expectedMonthlyCollection => 'גבייה חודשית צפויה';
+
+  @override
+  String get sqmUnit => 'מ״ר';
+
+  @override
+  String get summaryContactTitle => 'פרטי קשר';
+
+  @override
+  String get summaryAddressTitle => 'כתובת';
+
+  @override
+  String get summaryBuildingTitle => 'הבניין';
+
+  @override
+  String get summaryFloorsTitle => 'קומות';
+
+  @override
+  String get summaryFeesTitle => 'דמי ועד';
+
+  @override
+  String summaryEntrancesLine(String entrances, String elevators) {
+    return '$entrances כניסות · $elevators מעליות';
+  }
+
+  @override
+  String apartmentLabel(String n) {
+    return 'דירה $n';
+  }
+
+  @override
+  String createBuildingNextWithApts(String n) {
+    return 'המשך • $n דירות';
+  }
+
+  @override
+  String get openingBalanceTitle => 'יתרת קופת הבניין';
+
+  @override
+  String get openingBalanceBody =>
+      'כמה כסף יש כרגע בחשבון הבנק או בקופה של הבניין? זו נקודת ההתחלה ליתרת הבניין באפליקציה — תשלומי דיירים מתווספים, הוצאות יורדות. אפשר להשאיר 0 ולעדכן אחר כך.';
+
+  @override
+  String get openingBalanceLabel => 'יתרת קופה נוכחית (₪)';
+
+  @override
+  String get openingBalanceHint => 'רשות — אפשר להשאיר 0.';
+
+  @override
+  String get openingBalanceSkip => 'להתחיל מאפס';
+
+  @override
+  String get openingBalanceRow => 'יתרת פתיחה';
+
+  @override
+  String get createBuildingNext => 'המשך';
+
+  @override
+  String get createBuildingBack => 'חזרה';
+
+  @override
+  String createBuildingStepOf(String current, String total) {
+    return 'שלב $current מתוך $total';
+  }
+
+  @override
+  String get comingSoonSection => 'הגדרות נוספות';
+
+  @override
+  String get shareAppSection => 'שיתוף Buildingo';
+
+  @override
+  String get shareAppTitle => 'שיתוף האפליקציה';
+
+  @override
+  String get shareAppSubtitle => 'הזמינו ועדים בבניינים אחרים בוואטסאפ';
+
+  @override
+  String shareAppMessage(String link) {
+    return 'היי! אנחנו מנהלים את הבניין עם Buildingo — תשלומים, דיירים ותקלות במקום אחד. הורידו כאן: $link';
+  }
+
+  @override
+  String get comingSoon => 'בקרוב';
+
+  @override
+  String get entranceCodesSoon => 'קוד כניסה (קדמית / אחורית)';
+
+  @override
+  String get garbageScheduleSoon => 'פינוי אשפה';
+
+  @override
+  String get cleaningScheduleSoon => 'ניקיון';
+
+  @override
+  String get saveFee => 'שמירה והודעה לדיירים';
+
+  @override
+  String get vaadFeeSaved => 'דמי הוועד עודכנו — נשלחה הודעה לבניין';
+
+  @override
+  String get apartmentSizeSqm => 'גודל הדירה (מ\"ר)';
+
+  @override
+  String get apartmentSizeRequired => 'נדרש גודל הדירה מחשבון הארנונה';
+
+  @override
+  String monthlyFeePreview(String amount) {
+    return 'דמי הוועד החודשיים שלך: $amount';
+  }
+
+  @override
+  String monthlyFeePreviewPerSqm(String amount, String sqm, String rate) {
+    return '$amount לחודש ($sqm מ\"ר × $rate/מ\"ר, מעוגל למעלה)';
+  }
+
+  @override
+  String existingApartmentSize(String sqm) {
+    return 'גודל ידוע: $sqm מ\"ר';
+  }
+
+  @override
+  String get sqmExtracted => 'הגודל נקרא מחשבון הארנונה';
+
+  @override
+  String get sqmEnterManually => 'לא הצלחנו לקרוא את הגודל — הזינו ידנית';
+
+  @override
+  String get yourMonthlyVaadFee => 'דמי ועד חודשיים';
 
   @override
   String get myApartmentOptional => 'מספר הדירה שלי (רשות)';
@@ -867,6 +1521,37 @@ class AppLocalizationsHe extends AppLocalizations {
   String get buildingSchedule => 'לוח הבניין';
 
   @override
+  String get whatsappConnect => 'וואטסאפ';
+
+  @override
+  String get whatsappConnectBody =>
+      'חברו מספר וואטסאפ לבניין ואז בחרו את קבוצת הדיירים. Buildingo יאזין לדיווחי תקלות בקבוצה ויפתח קריאות אוטומטית. אפשר גם לשלוח הודעות לדיירים בוואטסאפ.';
+
+  @override
+  String get whatsappNotConfigured => 'וואטסאפ (WAHA) עדיין לא מוגדר בשרת.';
+
+  @override
+  String get whatsappConnected => 'וואטסאפ מחובר';
+
+  @override
+  String get whatsappNotConnected => 'וואטסאפ לא מחובר';
+
+  @override
+  String get whatsappStartSession => 'התחלת חיבור וואטסאפ';
+
+  @override
+  String get whatsappScanQr => 'סרקו את ה-QR בוואטסאפ ← מכשירים מקושרים';
+
+  @override
+  String get whatsappPickGroup => 'בחרו את קבוצת הוואטסאפ של הבניין';
+
+  @override
+  String get whatsappGroupLinked => 'קבוצת הבניין קושרה';
+
+  @override
+  String get whatsappLoadGroups => 'טעינת קבוצות';
+
+  @override
   String get comingUp => 'בקרוב';
 
   @override
@@ -893,6 +1578,26 @@ class AppLocalizationsHe extends AppLocalizations {
   @override
   String get scheduleEmptyBody =>
       'הוסיפו ימי פינוי אשפה, ניקוי ואירועים חד-פעמיים — כדי שכל הדיירים ידעו מה קורה בבניין.';
+
+  @override
+  String get scheduleDayEmptyTitle => 'אין אירועים ביום זה';
+
+  @override
+  String get scheduleDayEmptyBody => 'לא נקבעו אירועים ליום שבחרתם.';
+
+  @override
+  String get scheduleDayEmptyBodyVaad =>
+      'אין אירועים עדיין — לחצו + כדי להוסיף ליום זה.';
+
+  @override
+  String get announcementDateOptional => 'תאריך בלוח (רשות)';
+
+  @override
+  String get announcementDateHint =>
+      'הוסיפו תאריך כדי להציג את ההודעה בלוח הבניין';
+
+  @override
+  String get clear => 'ניקוי';
 
   @override
   String get scheduleWeekly => 'שבועי';
@@ -998,6 +1703,34 @@ class AppLocalizationsHe extends AppLocalizations {
   String get vendorAgentsStep3 => 'הסוכן פותח את הקריאה אצל הספק ומעדכן אתכם';
 
   @override
+  String get agentsComingSoonBadge => 'בגרסה הבאה';
+
+  @override
+  String get agentsComingSoonTitle => 'סוכני AI לספקים שלכם';
+
+  @override
+  String get agentsComingSoonBody =>
+      'בקרוב בילדינגו ייצור קשר עם ספקי מעליות, אינסטלציה וניקיון בשבילכם — יפתח קריאה, יעקוב אחריה ויעדכן את הדיירים.';
+
+  @override
+  String get agentsComingSoonFeature1 => 'פנייה לספק במייל, SMS או וואטסאפ';
+
+  @override
+  String get agentsComingSoonFeature2 => 'לחיצה אחת אחרי אישור תקלה מדייר';
+
+  @override
+  String get agentsComingSoonFeature3 =>
+      'עדכונים אוטומטיים חזרה לוועד ולדיירים';
+
+  @override
+  String get agentsComingSoonFootnote =>
+      'זמין בגרסת בילדינגו הבאה — המשך יבוא.';
+
+  @override
+  String get agentDispatchComingSoon =>
+      'שליחת סוכן AI לספק מגיעה בגרסה הבאה. בינתיים העבירו את הקריאה ל״בטיפול״ וטפלו בספק ידנית.';
+
+  @override
   String get addFirstVendor => 'הוספת הספק הראשון';
 
   @override
@@ -1044,6 +1777,22 @@ class AppLocalizationsHe extends AppLocalizations {
   String get pickCityFirst => 'בחרו קודם עיר';
 
   @override
+  String get pickStreetFirst => 'בחרו קודם רחוב';
+
+  @override
+  String get streetLabel => 'רחוב';
+
+  @override
+  String get houseNumberLabel => 'מספר בית';
+
+  @override
+  String get pickFromGovList => 'בחרו מהרשימה הרשמית';
+
+  @override
+  String get govAddressHint =>
+      'עיר ורחוב נבחרים ממאגר ממשלתי כדי שכל הבניינים יישמרו באותו כתיב.';
+
+  @override
   String get askVaadInviteHint =>
       'לא מוצאים את הבניין? בקשו מוועד הבית לשלוח לכם הזמנה אישית או את קישור ההצטרפות של הבניין.';
 
@@ -1062,6 +1811,15 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get parkingOptional => 'חניה (לא חובה)';
+
+  @override
+  String get parkingSpotsLabel => 'חניות (לא חובה)';
+
+  @override
+  String get parkingSpotHint => 'למשל ב-12';
+
+  @override
+  String get addParkingSpot => 'הוסיפו חניה נוספת';
 
   @override
   String get attachDocOptional => 'צירוף מסמך (לא חובה)';
@@ -1113,7 +1871,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get joinRequestPending => 'בקשת הצטרפות ממתינה לאישור';
 
   @override
-  String get financesTitle => 'כספים';
+  String get financesTitle => 'תשלומים';
 
   @override
   String get expensesTab => 'הוצאות';
@@ -1128,6 +1886,12 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get onlyWithDebt => 'רק עם חוב';
+
+  @override
+  String get searchPayments => 'חיפוש לפי דירה, שם או טלפון';
+
+  @override
+  String get noPaymentSearchResults => 'אין דירות שתואמות לחיפוש';
 
   @override
   String get collapseAll => 'כיווץ הכל';
@@ -1208,6 +1972,14 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get viewReceipt => 'צפייה בקבלה';
+
+  @override
+  String paymentReceiptTitle(String month, String year) {
+    return 'קבלה על תשלום · $month $year';
+  }
+
+  @override
+  String get paymentReceiptsSection => 'קבלות תשלום';
 
   @override
   String get expenseSaved => 'ההוצאה נשמרה';
@@ -1502,7 +2274,34 @@ class AppLocalizationsHe extends AppLocalizations {
   String get attachReceiptOnlyPaid => 'אפשר לצרף קבלה רק לחודש ששולם';
 
   @override
-  String get attachReceiptHint => 'לחיצה ארוכה על חודש ששולם — צירוף קבלה';
+  String get attachReceiptHint =>
+      'לחיצה ארוכה על חודש ששולם — צירוף קבלה. אייקון קבלה נשאר לחיץ גם אם החודש מסומן כלא שולם.';
+
+  @override
+  String get confirmUnmarkPaymentTitle => 'לסמן כלא שולם?';
+
+  @override
+  String confirmUnmarkPaymentBody(String who, String month, String year) {
+    return 'לסמן את $who כלא שולם עבור $month $year?';
+  }
+
+  @override
+  String get paymentHasReceiptNote => 'לחודש זה מצורפת קבלה.';
+
+  @override
+  String get keepPaymentReceipt => 'להשאיר את הקבלה';
+
+  @override
+  String get removePaymentReceipt => 'להסיר את הקבלה';
+
+  @override
+  String get confirmMarkUnpaid => 'סמן כלא שולם';
+
+  @override
+  String get markPaymentPaid => 'סמן כשולם';
+
+  @override
+  String get receiptOnUnpaidHint => 'יש קבלה בתיק';
 
   @override
   String get takePhoto => 'צילום במצלמה';

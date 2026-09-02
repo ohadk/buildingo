@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'core/realtime.dart';
 import 'core/session.dart';
 import 'core/theme.dart';
+import 'core/tickets_controller.dart';
 import 'firebase_options.dart';
 import 'l10n/l10n.dart';
 import 'screens/blocked_screen.dart';
@@ -35,6 +36,7 @@ class DiraApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SessionController()),
+        ChangeNotifierProvider(create: (_) => TicketsController()),
         ChangeNotifierProvider.value(value: localeController),
       ],
       child: Consumer<LocaleController>(

@@ -1,0 +1,6 @@
+/* Permission strings shown when iOS prompts the user (Hebrew). */
+"NSCameraUsageDescription" = "Buildingo צריכה גישה למצלמה כדי לצלם תקלות ולסרוק מסמכים כמו חשבון ארנונה.";
+"NSLocationWhenInUseUsageDescription" = "Buildingo משתמשת במיקום שלכם כדי להציע את העיר והרחוב של הבניין במהלך ההקמה.";
+"NSPhotoLibraryUsageDescription" = "Buildingo צריכה גישה לספריית התמונות כדי לצרף תמונות לדיווחי תקלות, תמונת פרופיל ומסמכי הבניין.";
+"CFBundleDisplayName" = "Buildingo";
+"CFBundleName" = "Buildingo";

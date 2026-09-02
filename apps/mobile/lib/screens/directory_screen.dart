@@ -12,7 +12,12 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import '../widgets/phone_field.dart';
+import '../widgets/upload_document_sheet.dart';
+import '../widgets/vault_file_viewer.dart';
 import 'tenant_transfer_screen.dart';
+import 'documents_screen.dart';
+import 'meetings_screen.dart';
+import 'whatsapp_connect_screen.dart';
 
 class DirectoryScreen extends StatefulWidget {
   const DirectoryScreen({super.key});
@@ -55,13 +60,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     final isVaad = context.read<SessionController>().user?.isVaad ?? false;
     try {
       final data = await api.get('/api/directory');
-      List<JoinRequest> requests = [];
-      if (isVaad) {
-        final jr = await api.get('/api/join-requests');
-        requests = ((jr['joinRequests'] ?? []) as List)
-            .map((e) => JoinRequest.fromJson(e))
-            .toList();
-      }
       if (!mounted) return;
       setState(() {
         _entries = ((data['directory'] ?? []) as List)
@@ -75,11 +73,23 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             _pendingInvites.putIfAbsent(aptId, () => []).add(phone);
           }
         }
-        _joinRequests = requests;
         _loading = false;
       });
     } on ApiException {
       if (mounted) setState(() => _loading = false);
+    }
+
+    if (!isVaad || !mounted) return;
+    try {
+      final jr = await api.get('/api/join-requests');
+      if (!mounted) return;
+      setState(() {
+        _joinRequests = ((jr['joinRequests'] ?? []) as List)
+            .map((e) => JoinRequest.fromJson(e))
+            .toList();
+      });
+    } on ApiException {
+      // Join requests are secondary — don't blank the directory.
     }
   }
 
@@ -158,6 +168,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         ? _entries
         : _entries.where((e) {
             if ('${e.apartmentNumber}' == q) return true;
+            final parking = e.parkingSpot?.toLowerCase();
+            if (parking != null && parking.contains(q)) return true;
             return e.residents.any(
               (r) =>
                   r.name.toLowerCase().contains(q) || r.phone.contains(q),
@@ -177,12 +189,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     final sortedFloors = floors.keys.toList()..sort();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          l10n.directoryTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: DiraColors.brick),
@@ -191,18 +197,41 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               onRefresh: _load,
               color: DiraColors.brick,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 children: [
+                  SafeArea(
+                    bottom: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.directoryTitle,
+                          style: heading(fontSize: 26),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          context.watch<SessionController>().building?.address ??
+                              context.watch<SessionController>().building?.name ??
+                              '',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            color: DiraColors.inkSoft,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   if (isVaad) ...[
                     const _InviteLinkCard(),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                   ],
                   TextField(
                     onChanged: (v) => setState(() => _query = v),
                     decoration: InputDecoration(
                       hintText: l10n.searchResidents,
                       hintStyle: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 13.5,
                         color: DiraColors.inkSoft,
                       ),
                       prefixIcon: const Icon(
@@ -213,24 +242,31 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       isDense: true,
                       filled: true,
                       fillColor: DiraColors.creamCard,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(color: DiraColors.creamDeep),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(color: DiraColors.creamDeep),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(
+                          color: DiraColors.brick,
+                          width: 1.4,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   if (isVaad && _joinRequests.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
                         l10n.joinRequestsTitle,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: DiraColors.brickDark,
-                        ),
+                        style: heading(fontSize: 17),
                       ),
                     ),
                     ..._joinRequests.map(
@@ -245,230 +281,330 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     Builder(
                       builder: (context) {
                         final apts = floors[floor]!;
-                        final occupied = apts
-                            .where((e) => e.residents.isNotEmpty)
-                            .length;
-                        final waiting = apts.any(
-                          (e) =>
-                              (_pendingInvites[e.apartmentId] ?? [])
-                                  .isNotEmpty ||
-                              (e.residents.isEmpty &&
-                                  pendingByApt[e.apartmentNumber] != null),
-                        );
                         final expanded =
                             q.isNotEmpty || (_floorExpanded[floor] ?? false);
                         return Padding(
-                          padding: const EdgeInsets.only(top: 4, bottom: 8),
-                          child: InkWell(
-                            onTap: () => setState(
-                              () => _floorExpanded[floor] = !expanded,
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: DiraColors.creamCard,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: DiraColors.creamDeep),
                             ),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: DiraColors.creamDeep,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    l10n.floorN('$floor'),
-                                    style: const TextStyle(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: DiraColors.sageDark,
+                            child: Column(
+                              children: [
+                                InkWell(
+                                  onTap: () => setState(
+                                    () => _floorExpanded[floor] = !expanded,
+                                  ),
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          l10n.floorN('$floor'),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          l10n.apartmentsCountN('${apts.length}'),
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            color: DiraColors.inkSoft,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Icon(
+                                          expanded
+                                              ? Icons.keyboard_arrow_up_rounded
+                                              : Icons.keyboard_arrow_down_rounded,
+                                          size: 22,
+                                          color: DiraColors.inkSoft,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  if (isVaad && waiting) ...[
-                                    const SizedBox(width: 8),
-                                    const Icon(
-                                      Icons.hourglass_top_rounded,
-                                      size: 15,
-                                      color: DiraColors.goldDark,
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                  Text(
-                                    l10n.occupiedOfTotal(
-                                      '$occupied',
-                                      '${apts.length}',
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: DiraColors.inkSoft,
-                                    ),
+                                ),
+                                if (expanded) ...[
+                                  const Divider(
+                                    height: 1,
+                                    color: DiraColors.creamDeep,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    expanded
-                                        ? Icons.keyboard_arrow_up_rounded
-                                        : Icons.keyboard_arrow_down_rounded,
-                                    size: 20,
-                                    color: DiraColors.inkSoft,
-                                  ),
+                                  ...apts.map((e) {
+                                    final invited =
+                                        _pendingInvites[e.apartmentId] ?? [];
+                                    final hasResidents = e.residents.isNotEmpty;
+                                    final request = hasResidents
+                                        ? null
+                                        : pendingByApt[e.apartmentNumber];
+                                    final waiting =
+                                        invited.isNotEmpty || request != null;
+                                    final name = hasResidents
+                                        ? e.residents
+                                              .map(
+                                                (r) => r.name.isEmpty
+                                                    ? r.phone
+                                                    : r.name,
+                                              )
+                                              .join(', ')
+                                        : request != null
+                                        ? (request.fullName ??
+                                              request.phoneNumber ??
+                                              l10n.vacant)
+                                        : invited.isNotEmpty
+                                        ? invited.join(', ')
+                                        : l10n.vacant;
+                                    final phone = hasResidents
+                                        ? e.residents.first.phone
+                                        : null;
+                                    final locale =
+                                        Localizations.localeOf(context)
+                                            .languageCode;
+                                    final metaParts = <String>[
+                                      if (e.parkingSpot != null)
+                                        l10n.parkingSpot(e.parkingSpot!),
+                                      if (hasResidents &&
+                                          e.numOccupants != null)
+                                        l10n.occupantsN('${e.numOccupants}'),
+                                      if (hasResidents &&
+                                          e.residentSince != null)
+                                        l10n.directoryResidentSince(
+                                          DateFormat.yMMMd(locale)
+                                              .format(e.residentSince!),
+                                        ),
+                                    ];
+                                    return InkWell(
+                                      onTap: isVaad
+                                          ? () => showModalBottomSheet(
+                                                context: context,
+                                                isScrollControlled: true,
+                                                backgroundColor:
+                                                    DiraColors.cream,
+                                                shape:
+                                                    const RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                            top:
+                                                                Radius.circular(
+                                                                  24,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                builder: (_) =>
+                                                    _ApartmentSheet(entry: e),
+                                              )
+                                          : null,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 12,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    l10n.apartmentShort(
+                                                      '${e.apartmentNumber}',
+                                                    ),
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: DiraColors.inkSoft,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    name,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 14.5,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: !hasResidents &&
+                                                              !waiting
+                                                          ? DiraColors.inkSoft
+                                                          : DiraColors.ink,
+                                                    ),
+                                                  ),
+                                                  if (metaParts.isNotEmpty)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                        top: 2,
+                                                      ),
+                                                      child: Text(
+                                                        metaParts.join(' · '),
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: DiraColors
+                                                              .inkSoft,
+                                                          height: 1.25,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (isVaad &&
+                                                !hasResidents &&
+                                                !waiting)
+                                              IconButton(
+                                                tooltip: l10n.inviteResident,
+                                                icon: const Icon(
+                                                  Icons.person_add,
+                                                  color: DiraColors.brick,
+                                                ),
+                                                onPressed: () => _invite(e),
+                                              )
+                                            else if (phone != null &&
+                                                phone.isNotEmpty)
+                                              InkWell(
+                                                onTap: () => launchUrl(
+                                                  Uri.parse('tel:$phone'),
+                                                ),
+                                                customBorder:
+                                                    const CircleBorder(),
+                                                child: Container(
+                                                  width: 40,
+                                                  height: 40,
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        color: DiraColors.brick,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                  child: const Icon(
+                                                    Icons.phone_rounded,
+                                                    color: Colors.white,
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                              )
+                                            else if (waiting)
+                                              const Icon(
+                                                Icons.hourglass_top_rounded,
+                                                color: DiraColors.goldDark,
+                                                size: 20,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }),
                                 ],
-                              ),
+                              ],
                             ),
                           ),
                         );
                       },
                     ),
-                    if (q.isNotEmpty || (_floorExpanded[floor] ?? false))
-                      ...floors[floor]!.map((e) {
-                      final invited = _pendingInvites[e.apartmentId] ?? [];
-                      final hasResidents = e.residents.isNotEmpty;
-                      final request = hasResidents
-                          ? null
-                          : pendingByApt[e.apartmentNumber];
-                      // Someone is waiting: either invited by the Vaad or
-                      // asked to join themselves.
-                      final waiting = invited.isNotEmpty || request != null;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Card(
-                          // Occupied / waiting / vacant color coding.
-                          color: hasResidents
-                              ? DiraColors.creamCard
-                              : waiting
-                              ? const Color(0xFFFAF0D7)
-                              : DiraColors.cream,
-                          elevation: hasResidents ? 1.5 : 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: hasResidents
-                                ? const BorderSide(
-                                    color: DiraColors.sageLight,
-                                    width: 1.2,
-                                  )
-                                : waiting
-                                ? const BorderSide(
-                                    color: DiraColors.goldLight,
-                                    width: 1.2,
-                                  )
-                                : const BorderSide(
-                                    color: DiraColors.creamDeep,
-                                  ),
-                          ),
-                          child: ListTile(
-                            onTap: isVaad
-                                ? () => showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: DiraColors.cream,
-                                      shape: const RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.vertical(
-                                          top: Radius.circular(24),
-                                        ),
-                                      ),
-                                      builder: (_) =>
-                                          _ApartmentSheet(entry: e),
-                                    )
-                                : null,
-                            contentPadding: const EdgeInsetsDirectional.only(
-                              start: 16,
-                              end: 10,
-                              top: 4,
-                              bottom: 4,
+                  ],
+                  if (isVaad) ...[
+                    const SizedBox(height: 12),
+                    Text(l10n.vaadTools, style: heading(fontSize: 17)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _VaadToolTile(
+                          icon: Icons.folder_rounded,
+                          label: l10n.documents,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DocumentsScreen(),
                             ),
-                          leading: CircleAvatar(
-                            backgroundColor: hasResidents
-                                ? DiraColors.sageLight
-                                : waiting
-                                ? DiraColors.goldLight
-                                : DiraColors.cream,
-                            child: Text(
-                              '${e.apartmentNumber}',
-                              style: TextStyle(
-                                color: hasResidents
-                                    ? DiraColors.sageDark
-                                    : waiting
-                                    ? DiraColors.goldDark
-                                    : DiraColors.inkSoft,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            hasResidents
-                                ? e.residents
-                                      .map(
-                                        (r) =>
-                                            r.name.isEmpty ? r.phone : r.name,
-                                      )
-                                      .join(', ')
-                                : request != null
-                                ? (request.fullName ??
-                                      request.phoneNumber ??
-                                      l10n.vacant)
-                                : invited.isNotEmpty
-                                ? invited.join(', ')
-                                : l10n.vacant,
-                            textDirection:
-                                !hasResidents &&
-                                    request == null &&
-                                    invited.isNotEmpty
-                                ? TextDirection.ltr
-                                : null,
-                            textAlign: !hasResidents && invited.isNotEmpty
-                                ? TextAlign.start
-                                : null,
-                            style: !hasResidents && !waiting
-                                ? const TextStyle(color: DiraColors.inkSoft)
-                                : null,
-                          ),
-                          subtitle: Text(
-                            [
-                              if (isVaad && request != null)
-                                l10n.joinRequestPending
-                              else if (isVaad && invited.isNotEmpty)
-                                l10n.invitePending,
-                              e.parkingSpot != null
-                                  ? l10n.parkingSpot(e.parkingSpot!)
-                                  : l10n.noParking,
-                            ].join(' · '),
-                            style: isVaad && waiting
-                                ? const TextStyle(color: DiraColors.goldDark)
-                                : null,
-                          ),
-                          trailing: isVaad && !hasResidents
-                              ? waiting
-                                    ? const Icon(
-                                        Icons.hourglass_top_rounded,
-                                        color: DiraColors.goldDark,
-                                        size: 20,
-                                      )
-                                    : IconButton(
-                                        tooltip: l10n.inviteResident,
-                                        icon: const Icon(
-                                          Icons.person_add,
-                                          color: DiraColors.brick,
-                                        ),
-                                        onPressed: () => _invite(e),
-                                      )
-                              : isVaad
-                              // chevron_right auto-mirrors in RTL, so it
-                              // points "inward" in both directions.
-                              ? const Icon(
-                                  Icons.chevron_right,
-                                  color: DiraColors.inkSoft,
-                                  size: 20,
-                                )
-                              : null,
                           ),
                         ),
-                      );
-                    }),
+                        const SizedBox(width: 10),
+                        _VaadToolTile(
+                          icon: Icons.chat_rounded,
+                          label: l10n.whatsappConnect,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const WhatsAppConnectScreen(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _VaadToolTile(
+                          icon: Icons.how_to_vote_rounded,
+                          label: l10n.assemblies,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const MeetingsScreen(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _VaadToolTile(
+                          icon: Icons.mail_outline_rounded,
+                          label: l10n.toolMessage,
+                          onTap: () {
+                            // Compose lives on home FAB for Vaad.
+                          },
+                        ),
+                      ],
+                    ),
                   ],
-                  // Clear the notched bottom bar + FAB.
                   const SizedBox(height: 120),
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _VaadToolTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _VaadToolTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                color: DiraColors.brick,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -500,6 +636,37 @@ class _ApartmentSheetState extends State<_ApartmentSheet> {
       if (mounted) setState(() => _data = res);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    }
+  }
+
+  Future<void> _openVaultDoc(String path, {String? title}) async {
+    await openVaultFile(
+      context,
+      bucket: 'documents',
+      path: path,
+      title: title,
+    );
+  }
+
+  Future<void> _uploadDocument() async {
+    final l10n = context.l10n;
+    final uploaded = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => UploadDocumentSheet(
+        apartmentId: widget.entry.apartmentId,
+      ),
+    );
+    if (uploaded == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.documentsUploaded)),
+      );
+      setState(() => _data = null);
+      await _fetch();
     }
   }
 
@@ -599,6 +766,8 @@ class _ApartmentSheetState extends State<_ApartmentSheet> {
     final residents = (data?['residents'] ?? []) as List;
     final invites = (data?['pendingInvites'] ?? []) as List;
     final documents = (data?['documents'] ?? []) as List;
+    final vaultDocuments = (data?['vaultDocuments'] ?? []) as List;
+    final hasAnyDocs = documents.isNotEmpty || vaultDocuments.isNotEmpty;
     final debt = double.tryParse('${data?['debt'] ?? 0}') ?? 0;
     final tenancies = ((data?['tenancies'] ?? []) as List)
         .map((t) => Tenancy.fromJson(t))
@@ -862,13 +1031,76 @@ class _ApartmentSheetState extends State<_ApartmentSheet> {
                     ),
                   ),
                 ],
-                _sectionTitle(l10n.documents),
-                if (documents.isEmpty)
+                Row(
+                  children: [
+                    Expanded(child: _sectionTitle(l10n.documents)),
+                    TextButton.icon(
+                      onPressed: _uploadDocument,
+                      icon: const Icon(Icons.upload_file_rounded, size: 18),
+                      label: Text(l10n.uploadDocument),
+                    ),
+                  ],
+                ),
+                if (!hasAnyDocs)
                   Text(
                     l10n.noDocsForApartment,
                     style: const TextStyle(color: DiraColors.inkSoft),
                   )
-                else
+                else ...[
+                  ...vaultDocuments.map((d) {
+                    final title = (d['title'] ?? '') as String;
+                    final who = (d['uploaded_by_name'] ?? '') as String?;
+                    final isPdf = d['file_type'] == 'application/pdf';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        onTap: () => _openVaultDoc('${d['file_path']}'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: DiraColors.creamCard,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isPdf
+                                    ? Icons.picture_as_pdf
+                                    : Icons.insert_drive_file,
+                                size: 18,
+                                color: DiraColors.brick,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              if ((who ?? '').isNotEmpty)
+                                Text(
+                                  who!,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: DiraColors.inkSoft,
+                                  ),
+                                ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.open_in_new_rounded,
+                                size: 14,
+                                color: DiraColors.inkSoft,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
                   ...documents.map((d) {
                     final isArnona = d['kind'] == 'arnona';
                     final who = (d['user_name'] ?? '') as String?;
@@ -927,6 +1159,7 @@ class _ApartmentSheetState extends State<_ApartmentSheet> {
                       ),
                     );
                   }),
+                ],
               ],
             ],
           ),
@@ -1061,163 +1294,153 @@ class _InviteLinkCard extends StatelessWidget {
     final building = context.watch<SessionController>().building;
     final code = building?.joinCode;
     if (building == null || code == null) return const SizedBox.shrink();
-    final link = '${ApiClient.publicWebUrl}/join/$code';
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
-      decoration: BoxDecoration(
-        color: DiraColors.sageLight,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header: what this link is and who can use it.
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 17,
-                backgroundColor: DiraColors.sagePale,
-                child: Icon(
-                  Icons.group_add_rounded,
-                  size: 19,
+    return FutureBuilder<String>(
+      future: ApiClient.joinLinkFor(code),
+      builder: (context, snap) {
+        final link = snap.data;
+        if (link == null) {
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: DiraColors.sageLight,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
                   color: DiraColors.sageDark,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.inviteResidents,
-                      style: heading(fontSize: 15.5, color: DiraColors.sageDeep),
-                    ),
-                    Text(
-                      l10n.inviteLinkExplain,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: DiraColors.sageDark,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+          decoration: BoxDecoration(
+            color: DiraColors.sageLight,
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(height: 10),
-          // One slim row: link + copy + WhatsApp share.
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
-                Icons.link_rounded,
-                size: 18,
-                color: DiraColors.sageDark,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    await Clipboard.setData(ClipboardData(text: link));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l10n.joinLinkCopied)),
-                      );
-                    }
-                  },
-                  child: Text(
-                    link.replaceFirst(RegExp(r'^https?://'), ''),
-                    textDirection: TextDirection.ltr,
-                    textAlign: TextAlign.left,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: DiraColors.ink,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: l10n.copyLink,
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(
-                  Icons.copy_rounded,
-                  size: 17,
-                  color: DiraColors.brick,
-                ),
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: link));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.joinLinkCopied)),
-                    );
-                  }
-                },
-              ),
-              IconButton(
-                tooltip: l10n.shareOnWhatsapp,
-                visualDensity: VisualDensity.compact,
-                icon: const CircleAvatar(
-                  radius: 13,
-                  backgroundColor: Color(0xFF25D366),
-                  child: Icon(Icons.chat_rounded, size: 14, color: Colors.white),
-                ),
-                onPressed: () {
-                  final message = l10n.shareJoinMessage(building.name, link);
-                  launchUrl(
-                    Uri.parse(
-                      'https://wa.me/?text=${Uri.encodeComponent(message)}',
-                    ),
-                    mode: LaunchMode.externalApplication,
-                  );
-                },
-              ),
-            ],
-          ),
-          // Building policy: require an Arnona bill + proof of residence
-          // from anyone asking to join.
-          Row(
-            children: [
-              Expanded(
-                child: Tooltip(
-                  message: l10n.requireDocsSubtitle,
-                  child: Text(
-                    l10n.requireDocsTitle,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12.5,
+              Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 17,
+                    backgroundColor: DiraColors.sagePale,
+                    child: Icon(
+                      Icons.group_add_rounded,
+                      size: 19,
                       color: DiraColors.sageDark,
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.inviteResidents,
+                          style: heading(
+                            fontSize: 15.5,
+                            color: DiraColors.sageDeep,
+                          ),
+                        ),
+                        Text(
+                          l10n.inviteLinkExplain,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: DiraColors.sageDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              Transform.scale(
-                scale: 0.8,
-                child: Switch(
-                  value: building.requireJoinDocs,
-                  activeTrackColor: DiraColors.sageDark,
-                  onChanged: (v) async {
-                    final session = context.read<SessionController>();
-                    try {
-                      await api.patch('/api/buildings/${building.id}', {
-                        'requireJoinDocs': v,
-                      });
-                      await session.refreshMe();
-                    } on ApiException catch (e) {
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.link_rounded,
+                    size: 18,
+                    color: DiraColors.sageDark,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        await Clipboard.setData(ClipboardData(text: link));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l10n.joinLinkCopied)),
+                          );
+                        }
+                      },
+                      child: Text(
+                        link.replaceFirst(RegExp(r'^https?://'), ''),
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.left,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: DiraColors.ink,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: l10n.copyLink,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.copy_rounded,
+                      size: 17,
+                      color: DiraColors.brick,
+                    ),
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: link));
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.message)),
+                          SnackBar(content: Text(l10n.joinLinkCopied)),
                         );
                       }
-                    }
-                  },
-                ),
+                    },
+                  ),
+                  IconButton(
+                    tooltip: l10n.shareOnWhatsapp,
+                    visualDensity: VisualDensity.compact,
+                    icon: const CircleAvatar(
+                      radius: 13,
+                      backgroundColor: Color(0xFF25D366),
+                      child: Icon(
+                        Icons.chat_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                    onPressed: () {
+                      final message =
+                          l10n.shareJoinMessage(building.name, link);
+                      launchUrl(
+                        Uri.parse(
+                          'https://wa.me/?text=${Uri.encodeComponent(message)}',
+                        ),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -1322,6 +1545,11 @@ class _JoinRequestCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
+            if (r.sizeSqm != null)
+              _detail(
+                Icons.square_foot_outlined,
+                l10n.sqmShort('${r.sizeSqm}'),
+              ),
             if (r.floor != null)
               _detail(Icons.stairs_outlined, l10n.floorN('${r.floor}')),
             if (r.numOccupants != null)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, getCurrentUser, requireRole, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
+import { monthlyFeeAmount } from "@/lib/fees";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const generateSchema = z.object({
@@ -22,7 +23,7 @@ const patchSchema = z
     paymentDate: z.string().optional(),
     notes: z.string().optional(),
     /** Storage path of an uploaded receipt (see /api/payments/upload). */
-    receiptPath: z.string().max(500).optional(),
+    receiptPath: z.string().max(500).optional().nullable(),
   })
   .refine(
     (b) => b.paymentId != null || (b.apartmentId != null && b.month != null && b.year != null),
@@ -40,13 +41,7 @@ function amountFor(
   building: FeeRules | null,
   a: { monthly_fee: number; size_sqm: number | null },
 ): number {
-  if (building?.fee_method === "per_sqm" && building.price_per_sqm != null && a.size_sqm != null) {
-    return Math.round(a.size_sqm * building.price_per_sqm * 100) / 100;
-  }
-  if (building?.fee_method === "fixed" && building.fixed_monthly_fee != null) {
-    return building.fixed_monthly_fee;
-  }
-  return a.monthly_fee;
+  return monthlyFeeAmount(building, a) ?? a.monthly_fee;
 }
 
 /**
@@ -73,16 +68,14 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   if (error) throw new ApiError(500, error.message);
 
   // Attach a viewable link for any receipt the Vaad uploaded.
-  const db = supabaseAdmin();
-  const payments = await Promise.all(
-    (data ?? []).map(async (p) => {
-      if (!p.receipt_path) return { ...p, receipt_url: null };
-      const { data: signed } = await db.storage
-        .from("receipts")
-        .createSignedUrl(p.receipt_path, 60 * 60);
-      return { ...p, receipt_url: signed?.signedUrl ?? null };
-    }),
-  );
+  // Prefer the authenticated API proxy (same pattern as ticket photos).
+  const origin = req.nextUrl.origin;
+  const payments = (data ?? []).map((p) => ({
+    ...p,
+    receipt_url: p.receipt_path
+      ? `${origin}/api/files/content?bucket=receipts&path=${encodeURIComponent(p.receipt_path)}`
+      : null,
+  }));
   return NextResponse.json({ payments });
 });
 

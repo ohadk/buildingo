@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { decryptTenancyRow, decryptUserRow, decryptUserRows } from "@/lib/pii";
+import type { Row } from "@/lib/pii/fields";
+import { normalizeParkingSpots } from "@/lib/parking";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const patchSchema = z
   .object({
     sizeSqm: z.number().min(1).max(10000).optional(),
+    parkingSpots: z.array(z.string().min(1).max(50)).max(10).optional(),
+    /** @deprecated Prefer parkingSpots. */
     parkingSpot: z.string().max(50).nullable().optional(),
     monthlyFee: z.number().min(0).optional(),
   })
@@ -31,8 +36,13 @@ export const GET = withErrorHandling(
       .maybeSingle();
     if (!apartment) throw new ApiError(404, "Apartment not found in your building");
 
-    const [{ data: residents }, { data: invites }, { data: payments }, { data: tenancies }] =
-      await Promise.all([
+    const [
+      { data: residents },
+      { data: invites },
+      { data: payments },
+      { data: tenancies },
+      { data: vaultDocuments },
+    ] = await Promise.all([
         db
           .from("users")
           .select("id, full_name, phone_number, email, role, num_occupants, is_active")
@@ -54,10 +64,16 @@ export const GET = withErrorHandling(
           .select("id, full_name, phone_number, holder_type, num_occupants, started_at, ended_at, end_debt_policy, status")
           .eq("apartment_id", id)
           .order("started_at", { ascending: false }),
+        db
+          .from("documents")
+          .select("id, title, file_path, file_type, created_at, uploaded_by, users!documents_uploaded_by_fkey(full_name)")
+          .eq("apartment_id", id)
+          .order("created_at", { ascending: false }),
       ]);
 
-    // Documents the residents attached when joining.
     const residentIds = (residents ?? []).map((r) => r.id);
+
+    // Documents the residents attached when joining.
     const documents: {
       kind: "arnona" | "residence";
       user_name: string | null;
@@ -111,11 +127,23 @@ export const GET = withErrorHandling(
 
     return NextResponse.json({
       apartment,
-      residents: residents ?? [],
+      residents: decryptUserRows(residents ?? []),
       pendingInvites: invites ?? [],
       documents,
+      vaultDocuments: (vaultDocuments ?? []).map((d) => ({
+        id: d.id,
+        title: d.title,
+        file_path: d.file_path,
+        file_type: d.file_type,
+        created_at: d.created_at,
+        uploaded_by_name: (() => {
+          const u = d.users as unknown;
+          if (!u || Array.isArray(u)) return null;
+          return decryptUserRow(u as Row).full_name as string;
+        })(),
+      })),
       debt,
-      tenancies: tenancies ?? [],
+      tenancies: (tenancies ?? []).map((t) => decryptTenancyRow(t)),
     });
   },
 );
@@ -129,12 +157,16 @@ export const PATCH = withErrorHandling(
     const user = await requireRole(req, "vaad", "super_admin");
     const { id } = await params;
     const body = patchSchema.parse(await req.json());
+    const parkingSpots =
+      body.parkingSpots !== undefined || body.parkingSpot !== undefined
+        ? normalizeParkingSpots(body)
+        : undefined;
 
     const { data, error } = await supabaseAdmin()
       .from("apartments")
       .update({
         ...(body.sizeSqm !== undefined ? { size_sqm: body.sizeSqm } : {}),
-        ...(body.parkingSpot !== undefined ? { parking_spot: body.parkingSpot } : {}),
+        ...(parkingSpots !== undefined ? { parking_spots: parkingSpots } : {}),
         ...(body.monthlyFee !== undefined ? { monthly_fee: body.monthlyFee } : {}),
       })
       .eq("id", id)

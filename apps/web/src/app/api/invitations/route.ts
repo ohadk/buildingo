@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
+import {
+  decryptInvitationRows,
+  findUserByPhone,
+  phoneStorageFields,
+  revokePendingInvitesForPhone,
+} from "@/lib/pii";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendSms } from "@/lib/notify";
 import { activateTenancy } from "@/lib/tenancy";
@@ -24,7 +30,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     .eq("building_id", user.building_id!)
     .order("created_at", { ascending: false });
   if (error) throw new ApiError(500, error.message);
-  return NextResponse.json({ invitations: data });
+  return NextResponse.json({ invitations: decryptInvitationRows(data ?? []) });
 });
 
 /**
@@ -48,31 +54,20 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   // If this phone already has an account, grant access right away —
   // no need to wait for their next sign-in.
-  const { data: existingUser, error: lookupError } = await db
-    .from("users")
-    .select("id, role")
-    .eq("phone_number", phoneNumber)
-    .maybeSingle();
+  const { data: existingUser, error: lookupError } = await findUserByPhone(db, phoneNumber);
   if (lookupError) throw new ApiError(500, lookupError.message);
   if (existingUser?.role === "super_admin") {
     throw new ApiError(400, "This phone number belongs to a platform admin");
   }
 
-  // Replace any previous pending invite for this phone in this building,
-  // so re-assigning doesn't pile up duplicates.
-  await db
-    .from("invitations")
-    .update({ status: "revoked" })
-    .eq("building_id", targetBuilding)
-    .eq("phone_number", phoneNumber)
-    .eq("status", "pending");
+  await revokePendingInvitesForPhone(db, targetBuilding, phoneNumber);
 
   const { data: invite, error } = await db
     .from("invitations")
     .insert({
       building_id: targetBuilding,
       apartment_id: apartmentId,
-      phone_number: phoneNumber,
+      ...phoneStorageFields(phoneNumber),
       role,
       created_by: user.id,
       ...(existingUser ? { status: "accepted", accepted_by: existingUser.id } : {}),
@@ -118,7 +113,11 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   });
 
   return NextResponse.json(
-    { invitation: invite, smsDelivery: sms, assignedImmediately: Boolean(existingUser) },
+    {
+      invitation: decryptInvitationRows([invite])[0],
+      smsDelivery: sms,
+      assignedImmediately: Boolean(existingUser),
+    },
     { status: 201 },
   );
 });

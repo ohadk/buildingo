@@ -43,7 +43,8 @@ export interface Apartment {
   building_id: string;
   apartment_number: number;
   floor: number;
-  parking_spot: string | null;
+  parking_spots: string[];
+
   size_sqm: number | null;
   monthly_fee: number;
 }

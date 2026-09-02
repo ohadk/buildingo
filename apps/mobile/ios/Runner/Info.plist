@@ -14,6 +14,11 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>he</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>Buildingo</string>
 	<key>CFBundlePackageType</key>
@@ -35,12 +40,24 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+		<string>tel</string>
+		<string>mailto</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Buildingo uses the camera to photograph faults and scan documents.</string>
+	<string>Buildingo needs camera access to photograph maintenance faults and scan documents such as Arnona bills.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Buildingo uses your location to suggest your building’s city and street during setup.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Buildingo uses your photo library to attach pictures to reports and documents.</string>
+	<string>Buildingo needs photo library access so you can attach pictures to fault reports, profile photos, and building documents.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

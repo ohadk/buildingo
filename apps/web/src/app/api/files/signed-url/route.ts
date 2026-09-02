@@ -24,6 +24,9 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     if (
       user.role === "tenant" &&
       secondFolder !== "building" &&
+      secondFolder !== "tickets" &&
+      secondFolder !== "expenses" &&
+      secondFolder !== "payments" &&
       secondFolder !== user.apartment_id
     ) {
       throw new ApiError(403, "File outside your apartment vault");

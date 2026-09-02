@@ -14,30 +14,63 @@ const createSchema = z.object({
   provider: z.string().max(255).optional(),
 });
 
-/** GET /api/expenses — building outflows, visible to all residents. */
+/** GET /api/expenses — building outflows, visible to all residents.
+ * Also returns a cash-position summary: paid dues − expenses. */
 export const GET = withErrorHandling(async (req: NextRequest) => {
   const user = await getCurrentUser(req);
   if (!user.building_id) throw new ApiError(409, "Not mapped to a building");
 
   const db = supabaseAdmin();
-  const { data, error } = await db
-    .from("expenses")
-    .select("*")
-    .eq("building_id", user.building_id)
-    .order("expense_date", { ascending: false });
+  const [{ data, error }, { data: paidRows, error: paidErr }, { data: building, error: bErr }] =
+    await Promise.all([
+      db
+        .from("expenses")
+        .select("*")
+        .eq("building_id", user.building_id)
+        .order("expense_date", { ascending: false }),
+      db
+        .from("payments")
+        .select("amount")
+        .eq("building_id", user.building_id)
+        .eq("status", "paid"),
+      db
+        .from("buildings")
+        .select("opening_balance")
+        .eq("id", user.building_id)
+        .single(),
+    ]);
   if (error) throw new ApiError(500, error.message);
+  if (paidErr) throw new ApiError(500, paidErr.message);
+  if (bErr) throw new ApiError(500, bErr.message);
 
-  // Attach a viewable link for any uploaded receipt.
-  const expenses = await Promise.all(
-    (data ?? []).map(async (e) => {
-      if (!e.receipt_path) return { ...e, receipt_url: null };
-      const { data: signed } = await db.storage
-        .from("receipts")
-        .createSignedUrl(e.receipt_path, 60 * 60);
-      return { ...e, receipt_url: signed?.signedUrl ?? null };
-    }),
+  // Prefer authenticated API proxy URLs (same pattern as ticket photos).
+  const origin = req.nextUrl.origin;
+  const expenses = (data ?? []).map((e) => ({
+    ...e,
+    receipt_url: e.receipt_path
+      ? `${origin}/api/files/content?bucket=receipts&path=${encodeURIComponent(e.receipt_path)}`
+      : null,
+  }));
+
+  const openingBalance = Number(building?.opening_balance ?? 0);
+  const totalIncome = (paidRows ?? []).reduce(
+    (sum, row) => sum + Number(row.amount ?? 0),
+    0,
   );
-  return NextResponse.json({ expenses });
+  const totalExpenses = expenses.reduce(
+    (sum, row) => sum + Number(row.amount ?? 0),
+    0,
+  );
+
+  return NextResponse.json({
+    expenses,
+    summary: {
+      openingBalance,
+      totalIncome,
+      totalExpenses,
+      balance: openingBalance + totalIncome - totalExpenses,
+    },
+  });
 });
 
 /** POST /api/expenses — Vaad records a manual expense. */

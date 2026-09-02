@@ -8,6 +8,15 @@ import {
   SESSION_DURATION_MS,
   withErrorHandling,
 } from "@/lib/auth/session";
+import {
+  decryptInvitationRow,
+  decryptUserRow,
+  findPendingInvitationByPhone,
+  findSuperAdminByPhone,
+  findUserByPhone,
+  normalizePhone,
+  userPiiStorageFields,
+} from "@/lib/pii";
 import { activateTenancy } from "@/lib/tenancy";
 import type { AppUser } from "@/lib/types";
 
@@ -36,6 +45,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   if (!phone) throw new ApiError(400, "Token has no phone number; use phone OTP sign-in");
 
   const db = supabaseAdmin();
+  const normalizedPhone = normalizePhone(phone);
 
   const existing = await db
     .from("users")
@@ -43,18 +53,10 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .eq("firebase_uid", decoded.uid)
     .maybeSingle();
   if (existing.error) throw new ApiError(500, `User lookup failed: ${existing.error.message}`);
-  let user = existing.data;
+  let user = existing.data ? decryptUserRow(existing.data) : null;
 
   if (!user) {
-    // The Firebase account may have been recreated (new UID) for a phone
-    // we already know — e.g. reinstall or a recreated test user. The OTP
-    // proves ownership of the number, so re-link the profile to the new UID
-    // instead of inserting a duplicate.
-    const byPhone = await db
-      .from("users")
-      .select("*")
-      .eq("phone_number", phone)
-      .maybeSingle();
+    const byPhone = await findUserByPhone(db, phone);
     if (byPhone.error) {
       throw new ApiError(500, `User lookup failed: ${byPhone.error.message}`);
     }
@@ -66,33 +68,27 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         .select("*")
         .single();
       if (error) throw new ApiError(500, error.message);
-      user = relinked;
+      user = decryptUserRow(relinked);
     }
   }
 
   if (!user) {
-    // Role resolution for first-time sign-ins
-    const { data: superAdmin, error: superAdminError } = await db
-      .from("super_admins")
-      .select("id")
-      .eq("phone_number", phone)
-      .maybeSingle();
+    const { data: superAdmin, error: superAdminError } = await findSuperAdminByPhone(
+      db,
+      phone,
+    );
     if (superAdminError) {
       throw new ApiError(500, `Role lookup failed: ${superAdminError.message}`);
     }
 
     let invite = null;
     if (!superAdmin) {
-      const query = db
-        .from("invitations")
-        .select("*")
-        .eq("status", "pending")
-        .gt("expires_at", new Date().toISOString());
-      const { data: invites } = inviteCode
-        ? await query.eq("invite_code", inviteCode)
-        : await query.eq("phone_number", phone);
-      invite = invites?.[0] ?? null;
-      if (invite && invite.phone_number !== phone) {
+      const { data: inv, error: invErr } = await findPendingInvitationByPhone(db, phone, {
+        inviteCode,
+      });
+      if (invErr) throw new ApiError(500, invErr.message);
+      invite = inv ? decryptInvitationRow(inv) : null;
+      if (invite && normalizePhone(invite.phone_number) !== normalizedPhone) {
         throw new ApiError(403, "This invitation was issued for a different phone number");
       }
     }
@@ -101,7 +97,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       .from("users")
       .insert({
         firebase_uid: decoded.uid,
-        phone_number: phone,
+        ...userPiiStorageFields({ phone: normalizedPhone }),
         role: superAdmin ? "super_admin" : (invite?.role ?? "tenant"),
         building_id: invite?.building_id ?? null,
         apartment_id: invite?.apartment_id ?? null,
@@ -109,7 +105,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       .select("*")
       .single();
     if (error) throw new ApiError(500, error.message);
-    user = created;
+    user = decryptUserRow(created);
 
     if (invite) {
       await db
@@ -121,22 +117,16 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
           id: created.id,
           building_id: invite.building_id,
           apartment_id: invite.apartment_id,
-          full_name: created.full_name,
-          phone_number: created.phone_number,
-          num_occupants: created.num_occupants,
+          full_name: user.full_name,
+          phone_number: user.phone_number,
+          num_occupants: user.num_occupants,
         });
       }
     }
   } else if (!user.building_id && user.role !== "super_admin") {
-    // Returning user who signed up before being invited: claim any pending
-    // invitation for their phone so assignment takes effect on next login.
-    const { data: invites } = await db
-      .from("invitations")
-      .select("*")
-      .eq("status", "pending")
-      .eq("phone_number", phone)
-      .gt("expires_at", new Date().toISOString());
-    const invite = invites?.[0];
+    const { data: inv, error: invErr } = await findPendingInvitationByPhone(db, phone);
+    if (invErr) throw new ApiError(500, invErr.message);
+    const invite = inv ? decryptInvitationRow(inv) : null;
     if (invite) {
       const { data: updated, error } = await db
         .from("users")
@@ -149,7 +139,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         .select("*")
         .single();
       if (error) throw new ApiError(500, error.message);
-      user = updated;
+      user = decryptUserRow(updated);
       await db
         .from("invitations")
         .update({ status: "accepted", accepted_by: user.id })

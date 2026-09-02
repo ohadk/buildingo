@@ -19,13 +19,57 @@ class ApiClient {
     defaultValue: 'http://localhost:3000',
   );
 
-  /// Origin used for user-facing links (join/share). Unlike [baseUrl]
-  /// (which may be a LAN IP during development), this should always be
-  /// the public domain; it falls back to [baseUrl] when not provided.
+  /// Origin used for user-facing links (join/share). Prefer the server
+  /// `PUBLIC_WEB_URL` (loaded via [/api/config]); dart-define is a fallback
+  /// for offline / pre-config builds. Never prefer a LAN API base URL.
   static const publicWebUrl = String.fromEnvironment(
     'PUBLIC_WEB_URL',
-    defaultValue: baseUrl,
+    defaultValue: '',
   );
+
+  static String? _resolvedPublicWebUrl;
+
+  /// Shareable web origin (no trailing slash).
+  static Future<String> resolvePublicWebUrl() async {
+    if (_resolvedPublicWebUrl != null) return _resolvedPublicWebUrl!;
+    try {
+      final cfg = await api.get('/api/config');
+      final fromServer = (cfg['publicWebUrl'] as String?)?.trim();
+      if (fromServer != null && fromServer.isNotEmpty) {
+        _resolvedPublicWebUrl = fromServer.replaceAll(RegExp(r'/+$'), '');
+        return _resolvedPublicWebUrl!;
+      }
+    } catch (_) {
+      /* fall through */
+    }
+    final fromDefine = publicWebUrl.trim();
+    if (fromDefine.isNotEmpty) {
+      _resolvedPublicWebUrl = fromDefine.replaceAll(RegExp(r'/+$'), '');
+      return _resolvedPublicWebUrl!;
+    }
+    // Last resort: product marketing domain (not localhost API).
+    _resolvedPublicWebUrl = 'https://buildingo.com';
+    return _resolvedPublicWebUrl!;
+  }
+
+  /// Join / invite URL for a building code.
+  static Future<String> joinLinkFor(String code) async {
+    final origin = await resolvePublicWebUrl();
+    return '$origin/join/$code';
+  }
+
+  /// Single download link that sends iOS → App Store, Android → Play.
+  static Future<String> appDownloadLink() async {
+    try {
+      final cfg = await api.get('/api/config');
+      final fromServer = (cfg['appDownloadUrl'] as String?)?.trim();
+      if (fromServer != null && fromServer.isNotEmpty) return fromServer;
+    } catch (_) {
+      /* fall through */
+    }
+    final origin = await resolvePublicWebUrl();
+    return '$origin/app';
+  }
 
   Future<Map<String, String>> _headers({bool json = true}) async {
     final token = await FirebaseAuth.instance.currentUser?.getIdToken();
@@ -100,6 +144,28 @@ class ApiClient {
       );
     final res = await http.Response.fromStream(await request.send());
     return _decode(res);
+  }
+
+  /// Authenticated binary download (e.g. `/api/files/content?…`).
+  Future<({List<int> bytes, String contentType})> getBytes(String path) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl$path'),
+      headers: await _headers(json: false),
+    );
+    if (res.statusCode >= 400) {
+      String message = 'Request failed';
+      try {
+        final body = jsonDecode(res.body);
+        message = body['error']?.toString() ?? message;
+      } catch (_) {
+        if (res.body.isNotEmpty) message = res.body;
+      }
+      throw ApiException(res.statusCode, message);
+    }
+    return (
+      bytes: res.bodyBytes,
+      contentType: res.headers['content-type'] ?? 'application/octet-stream',
+    );
   }
 }
 

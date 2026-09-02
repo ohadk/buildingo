@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 import '../core/api_client.dart';
 import '../core/session.dart';
@@ -7,7 +8,8 @@ import '../l10n/l10n.dart';
 import 'directory_screen.dart';
 import 'documents_screen.dart';
 import 'home_screen.dart';
-import 'maintenance_screen.dart' show NewTicketScreen, VendorAgentsScreen;
+import 'maintenance_screen.dart' show NewTicketScreen;
+import 'agents_coming_soon_screen.dart';
 import 'meetings_screen.dart';
 import 'payments_screen.dart';
 
@@ -192,6 +194,7 @@ class _AnnouncementSheet extends StatefulWidget {
 class _AnnouncementSheetState extends State<_AnnouncementSheet> {
   final _title = TextEditingController();
   final _body = TextEditingController();
+  DateTime? _eventDate;
   bool _busy = false;
   String? _error;
 
@@ -212,6 +215,16 @@ class _AnnouncementSheetState extends State<_AnnouncementSheet> {
     ),
   );
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _eventDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 730)),
+    );
+    if (picked != null) setState(() => _eventDate = picked);
+  }
+
   Future<void> _send() async {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
@@ -219,9 +232,11 @@ class _AnnouncementSheetState extends State<_AnnouncementSheet> {
       _error = null;
     });
     try {
+      final fmt = DateFormat('yyyy-MM-dd');
       await api.post('/api/announcements', {
         'title': _title.text.trim(),
         'body': _body.text.trim(),
+        if (_eventDate != null) 'eventDate': fmt.format(_eventDate!),
       });
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -235,6 +250,7 @@ class _AnnouncementSheetState extends State<_AnnouncementSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -302,7 +318,26 @@ class _AnnouncementSheetState extends State<_AnnouncementSheet> {
               minLines: 4,
               decoration: _boxDecoration(l10n.announcementBody),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event_outlined, color: DiraColors.goldDark),
+              title: Text(l10n.announcementDateOptional),
+              subtitle: Text(
+                _eventDate == null
+                    ? l10n.announcementDateHint
+                    : DateFormat('EEEE, d MMMM yyyy', locale).format(_eventDate!),
+              ),
+              trailing: _eventDate == null
+                  ? const Icon(Icons.add)
+                  : IconButton(
+                      tooltip: l10n.clear,
+                      onPressed: () => setState(() => _eventDate = null),
+                      icon: const Icon(Icons.close),
+                    ),
+              onTap: _pickDate,
+            ),
+            const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _busy || !_valid ? null : _send,
               icon: const Icon(Icons.send_rounded, size: 18),

@@ -3,6 +3,16 @@ import { z } from "zod";
 import { ApiError, getCurrentUser, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
 import { assertBuildingCapacity } from "@/lib/billing";
+import { validateJoinSubmission } from "@/lib/join-validation";
+import { normalizeParkingSpots } from "@/lib/parking";
+import {
+  decryptInvitationRow,
+  decryptJoinRequestRow,
+  decryptUserRow,
+  joinRequestPiiStorageFields,
+  normalizePhone,
+  userPiiStorageFields,
+} from "@/lib/pii";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { activateTenancy } from "@/lib/tenancy";
 
@@ -59,11 +69,14 @@ const joinSchema = z.object({
   email: z.string().email().optional(),
   numOccupants: z.number().int().min(1).max(20).optional(),
   floor: z.number().int().min(-5).max(200).optional(),
+  parkingSpots: z.array(z.string().min(1).max(50)).max(10).optional(),
+  /** @deprecated Prefer parkingSpots. */
   parkingSpot: z.string().max(50).optional(),
   /** Proof of residence: rent/purchase agreement. */
   docPath: z.string().max(500).optional(),
   /** Arnona bill — shows the apartment's sqm (drives per-sqm fees). */
   arnonaDocPath: z.string().max(500).optional(),
+  sizeSqm: z.number().min(1).max(10000).optional(),
 });
 
 /**
@@ -80,6 +93,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const body = joinSchema.parse(await req.json());
   const { code, apartmentNumber, fullName } = body;
   const db = supabaseAdmin();
+  const parkingSpots = normalizeParkingSpots(body);
 
   // 1. Personal invitation
   const { data: invite } = await db
@@ -90,7 +104,8 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
   if (invite) {
-    if (invite.phone_number !== user.phone_number) {
+    const decryptedInvite = decryptInvitationRow(invite);
+    if (normalizePhone(decryptedInvite.phone_number) !== normalizePhone(user.phone_number)) {
       throw new ApiError(403, "This invitation was issued for a different phone number");
     }
     const { data: updated, error } = await db
@@ -99,7 +114,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         role: invite.role,
         building_id: invite.building_id,
         apartment_id: invite.apartment_id,
-        ...(fullName ? { full_name: fullName } : {}),
+        ...(fullName ? userPiiStorageFields({ fullName }) : {}),
       })
       .eq("id", user.id)
       .select("*")
@@ -134,13 +149,13 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       },
     });
 
-    return NextResponse.json({ user: updated, joined: "invitation" });
+    return NextResponse.json({ user: decryptUserRow(updated), joined: "invitation" });
   }
 
   // 2. Building join link → pending request awaiting Vaad approval
   const { data: building } = await db
     .from("buildings")
-    .select("id, name, is_active, require_join_docs")
+    .select("id, name, is_active")
     .eq("join_code", code)
     .maybeSingle();
   if (!building) throw new ApiError(404, "Code not found or expired");
@@ -149,12 +164,12 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   if (!fullName || fullName.trim().length < 2) {
     throw new ApiError(400, "fullName is required so the Vaad knows who's asking");
   }
-  if (building.require_join_docs && (!body.docPath || !body.arnonaDocPath)) {
-    throw new ApiError(
-      400,
-      "ועד הבית דורש לצרף חשבון ארנונה ואישור מגורים כדי להצטרף",
-    );
-  }
+
+  const { sizeSqm } = await validateJoinSubmission(db, building.id, apartmentNumber, {
+    docPath: body.docPath,
+    arnonaDocPath: body.arnonaDocPath,
+    sizeSqm: body.sizeSqm,
+  });
 
   // The building's declared apartment count is a hard resident limit.
   await assertBuildingCapacity(building.id, apartmentNumber);
@@ -172,13 +187,16 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       building_id: building.id,
       user_id: user.id,
       apartment_number: apartmentNumber,
-      full_name: fullName.trim(),
-      email: body.email ?? null,
+      ...joinRequestPiiStorageFields({
+        fullName: fullName.trim(),
+        email: body.email ?? null,
+      }),
       num_occupants: body.numOccupants ?? null,
       floor: body.floor ?? null,
-      parking_spot: body.parkingSpot ?? null,
+      parking_spots: parkingSpots,
       doc_path: body.docPath ?? null,
       arnona_doc_path: body.arnonaDocPath ?? null,
+      size_sqm: sizeSqm,
     })
     .select("*")
     .single();
@@ -186,7 +204,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   await db
     .from("users")
-    .update({ full_name: fullName.trim(), email: body.email ?? null })
+    .update(userPiiStorageFields({ fullName: fullName.trim(), email: body.email ?? null }))
     .eq("id", user.id);
 
   await logAudit({
@@ -198,5 +216,8 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     details: { name: fullName.trim(), apartment: apartmentNumber },
   });
 
-  return NextResponse.json({ joinRequest: request, joined: "pending" }, { status: 201 });
+  return NextResponse.json(
+    { joinRequest: decryptJoinRequestRow(request), joined: "pending" },
+    { status: 201 },
+  );
 });

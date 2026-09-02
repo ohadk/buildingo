@@ -175,14 +175,18 @@ class _CodeSheetState extends State<_CodeSheet> {
       final buildingName =
           res['building']?['name'] as String? ?? context.l10n.myBuilding;
       final requireDocs = res['building']?['require_join_docs'] == true;
+      final feeMethod = res['building']?['fee_method'] as String? ?? 'fixed';
+      final buildingId = res['building']?['id'] as String?;
       Navigator.pop(context);
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => TenantProfileScreen(
             joinCode: code,
+            buildingId: buildingId,
             buildingName: buildingName,
             requireDocs: requireDocs,
+            feeMethod: feeMethod,
           ),
         ),
       );
@@ -284,7 +288,7 @@ class _ChoiceCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left, color: DiraColors.inkSoft),
+              const Icon(Icons.chevron_right, color: DiraColors.inkSoft),
             ],
           ),
         ),

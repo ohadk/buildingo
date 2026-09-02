@@ -133,6 +133,7 @@ class _JoinBuildingScreenState extends State<JoinBuildingScreen> {
           buildingName:
               building['name'] ?? '${building['address']}, ${building['city']}',
           requireDocs: building['require_join_docs'] == true,
+          feeMethod: building['fee_method'] as String? ?? 'fixed',
         ),
       ),
     );

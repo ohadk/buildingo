@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
+import { monthlyFeeAmount } from "@/lib/fees";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const bodySchema = z.object({
@@ -42,15 +43,8 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   ]);
   if (!apartments?.length) throw new ApiError(404, "Apartments not found in your building");
 
-  const amountFor = (a: { monthly_fee: number; size_sqm: number | null }): number => {
-    if (building?.fee_method === "per_sqm" && building.price_per_sqm != null && a.size_sqm != null) {
-      return Math.round(a.size_sqm * building.price_per_sqm * 100) / 100;
-    }
-    if (building?.fee_method === "fixed" && building.fixed_monthly_fee != null) {
-      return building.fixed_monthly_fee;
-    }
-    return a.monthly_fee;
-  };
+  const amountFor = (a: { monthly_fee: number; size_sqm: number | null }): number =>
+    monthlyFeeAmount(building, a) ?? a.monthly_fee;
 
   // Existing rows keep their amount; missing ones get a computed one.
   const years = [...new Set(months.map((m) => m.year))];

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase/admin";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { decryptUserRow } from "@/lib/pii";
 import type { AppUser, UserRole } from "@/lib/types";
 
 export const SESSION_COOKIE = "dira_session";
@@ -77,7 +78,7 @@ export async function getCurrentUserWithAccess(
   const { buildings, ...user } = data as AppUser & { buildings: BuildingPlanRow | null };
   const blockedReason =
     user.role === "super_admin" ? null : buildingBlockReason(buildings);
-  return { user: user as AppUser, blockedReason };
+  return { user: decryptUserRow(user) as AppUser, blockedReason };
 }
 
 export async function getCurrentUser(req: NextRequest): Promise<AppUser> {
@@ -117,7 +118,7 @@ export async function getSessionUser(): Promise<AppUser | null> {
     if (!data || !data.is_active) return null;
     const { buildings, ...user } = data as AppUser & { buildings: BuildingPlanRow | null };
     if (user.role !== "super_admin" && buildingBlockReason(buildings)) return null;
-    return user as AppUser;
+    return decryptUserRow(user) as AppUser;
   } catch {
     return null;
   }

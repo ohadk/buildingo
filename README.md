@@ -100,7 +100,9 @@ Run in the SQL editor (or `supabase db push`), in order:
 4. `supabase/seed.sql` — **first replace the phone number** with yours; that
    number becomes the super admin on first sign-in.
 5. Later migrations in `supabase/migrations/` (e.g. `0018_schedule_events.sql`
-   for the building schedule) — run each new file in the SQL editor when added.
+   for the building schedule, `0019_building_whatsapp.sql` for WhatsApp/WAHA,
+   `0020_announcement_event_date.sql` for dated announcements)
+   — run each new file in the SQL editor when added.
 
 ### 2. Web (`apps/web`)
 
@@ -165,6 +167,19 @@ is `111111`. The occupied ones live in the building
 | `+972548899656` | Tenant | אבנר נתניהו | Apt 15, floor 5 |
 | `+972548899653` | *free* | — | for testing new sign-ups / invites |
 | `+972547777777` | *free* | — | for testing new sign-ups / invites |
+
+### PII encryption (production)
+
+Tenant phone numbers, names, and emails are stored encrypted in Postgres when
+`PII_SECRET_KEY` is set. HMAC hash columns (`phone_number_hash`, `email_hash`)
+enable indexed lookups without exposing raw values.
+
+1. Run migration `supabase/migrations/0022_pii_encryption.sql` in the Supabase SQL editor.
+2. Generate a key: `openssl rand -base64 32` → add to `apps/web/.env.local` as `PII_SECRET_KEY`.
+3. Backfill existing rows: `npm run backfill:pii --workspace=@dira/web`.
+4. New writes automatically encrypt; the API decrypts only for authorized callers.
+
+Without `PII_SECRET_KEY`, dev mode keeps plaintext columns (backward compatible).
 
 ## End-to-end walkthrough
 

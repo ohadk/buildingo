@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
+import { maskPhone, phoneStorageFields, revokePendingInvitesForPhone, tenancyPiiStorageFields } from "@/lib/pii";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendSms } from "@/lib/notify";
 
@@ -125,8 +126,10 @@ export const POST = withErrorHandling(
       .insert({
         building_id: apartment.building_id,
         apartment_id: id,
-        full_name: body.incoming.fullName ?? null,
-        phone_number: body.incoming.phone ?? null,
+        ...tenancyPiiStorageFields({
+          fullName: body.incoming.fullName ?? null,
+          phone: body.incoming.phone ?? null,
+        }),
         holder_type: body.incoming.holderType,
         num_occupants: body.incoming.occupants ?? null,
         started_at: body.incoming.startDate,
@@ -139,18 +142,13 @@ export const POST = withErrorHandling(
     // 5) With a phone we can invite right away (and optionally SMS).
     let inviteCode: string | null = null;
     if (body.incoming.phone) {
-      await db
-        .from("invitations")
-        .update({ status: "revoked" })
-        .eq("building_id", apartment.building_id)
-        .eq("phone_number", body.incoming.phone)
-        .eq("status", "pending");
+      await revokePendingInvitesForPhone(db, apartment.building_id, body.incoming.phone);
       const { data: invite, error: inviteError } = await db
         .from("invitations")
         .insert({
           building_id: apartment.building_id,
           apartment_id: id,
-          phone_number: body.incoming.phone,
+          ...phoneStorageFields(body.incoming.phone),
           role: "tenant",
           created_by: user.id,
         })
@@ -176,8 +174,8 @@ export const POST = withErrorHandling(
       entityId: id,
       details: {
         apartment: apartment.apartment_number,
-        outgoing: outgoing?.map((t) => t.full_name ?? t.phone_number) ?? [],
-        incoming: body.incoming.fullName ?? body.incoming.phone ?? null,
+        outgoingCount: outgoing?.length ?? 0,
+        incoming: body.incoming.fullName ?? (body.incoming.phone ? maskPhone(body.incoming.phone) : null),
         holderType: body.incoming.holderType,
         endDate: body.endDate,
         startDate: body.incoming.startDate,

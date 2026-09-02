@@ -9,13 +9,18 @@ import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
-import '../widgets/ticket_timeline.dart';
+import '../widgets/status_pill.dart';
+import '../widgets/pending_ticket_card.dart';
+import '../core/tickets_controller.dart';
 import 'activity_log_screen.dart';
+import 'board_messages_screen.dart';
+import 'building_settings_screen.dart';
 import 'documents_screen.dart';
 import 'maintenance_screen.dart';
 import 'meetings_screen.dart';
 import 'profile_screen.dart';
 import 'schedule_screen.dart';
+import 'whatsapp_connect_screen.dart';
 
 /// Home tab. Tenants get the design's home: blush hero with the two
 /// stat cards (open tickets / next payment), gold announcement banner,
@@ -30,19 +35,24 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Ticket> _tickets = [];
   List<Announcement> _announcements = [];
   List<Payment> _payments = [];
   List<JoinRequest> _joinRequests = [];
-  List<ScheduleOccurrence> _upcomingSchedule = [];
   List<DirectoryEntry> _apartments = [];
   bool _loading = true;
   StreamSubscription<String>? _realtimeSub;
+  Timer? _pollTimer;
+  final Set<String> _seenAnnouncementIds = {};
+  bool _announcementBaselineReady = false;
+  TicketsController? _ticketsInbox;
+  int _lastPendingCount = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
     _realtimeSub = realtime.listen({
       'tickets',
@@ -50,22 +60,46 @@ class _HomeScreenState extends State<HomeScreen> {
       'announcements',
       'payments',
       'join_requests',
-      'schedule_events',
-      'meetings',
-    }, _load);
+    }, () => _load(silent: true));
+    // Fallback when Realtime isn't configured: keep the board live.
+    _pollTimer = Timer.periodic(
+      Duration(seconds: realtimeEnabled ? 25 : 6),
+      (_) => _load(silent: true),
+    );
+    // When an optimistic create finishes, refresh so the real ticket appears.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _ticketsInbox = context.read<TicketsController>();
+      _ticketsInbox!.addListener(_onPendingTicketsChanged);
+    });
+  }
+
+  void _onPendingTicketsChanged() {
+    final pending = _ticketsInbox?.pending ?? const <PendingTicket>[];
+    final count = pending.length;
+    final hasDone = pending.any((p) => p.phase == PendingTicketPhase.done);
+    if (hasDone || count < _lastPendingCount) {
+      _load(silent: true);
+    }
+    _lastPendingCount = count;
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _ticketsInbox?.removeListener(_onPendingTicketsChanged);
     _realtimeSub?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _load() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load(silent: true);
+  }
+
+  Future<void> _load({bool silent = false}) async {
     final isVaad = context.read<SessionController>().user?.isVaad ?? false;
-    final fmt = DateFormat('yyyy-MM-dd');
-    final today = DateTime.now();
-    final horizon = today.add(const Duration(days: 14));
     try {
       final core = await Future.wait([
         api.get('/api/tickets'),
@@ -74,29 +108,19 @@ class _HomeScreenState extends State<HomeScreen> {
         if (isVaad) api.get('/api/join-requests'),
         if (isVaad) api.get('/api/directory'),
       ]);
-      var schedule = <ScheduleOccurrence>[];
-      try {
-        final scheduleRes = await api.get(
-          '/api/schedule-events?from=${fmt.format(today)}&to=${fmt.format(horizon)}',
-        );
-        schedule = ((scheduleRes['occurrences'] ?? []) as List)
-            .map((e) => ScheduleOccurrence.fromJson(e))
-            .toList();
-      } on ApiException {
-        // Schedule is optional until migration 0018 is applied.
-      }
       if (!mounted) return;
+      final nextAnnouncements = ((core[1]['announcements'] ?? []) as List)
+          .map((a) => Announcement.fromJson(a as Map<String, dynamic>))
+          .toList();
+      _notifyNewAnnouncements(nextAnnouncements);
       setState(() {
         _tickets = ((core[0]['tickets'] ?? []) as List)
             .map((t) => Ticket.fromJson(t))
             .toList();
-        _announcements = ((core[1]['announcements'] ?? []) as List)
-            .map((a) => Announcement.fromJson(a))
-            .toList();
+        _announcements = nextAnnouncements;
         _payments = ((core[2]['payments'] ?? []) as List)
             .map((p) => Payment.fromJson(p))
             .toList();
-        _upcomingSchedule = schedule;
         _joinRequests = isVaad
             ? ((core[3]['joinRequests'] ?? []) as List)
                   .map((e) => JoinRequest.fromJson(e))
@@ -110,13 +134,49 @@ class _HomeScreenState extends State<HomeScreen> {
         _loading = false;
       });
     } on ApiException {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && !silent) setState(() => _loading = false);
     }
   }
 
-  List<Ticket> get _openTickets => _tickets
-      .where((t) => ['open', 'approved', 'in_progress'].contains(t.status))
-      .toList();
+  void _notifyNewAnnouncements(List<Announcement> next) {
+    final ids = next.map((a) => a.id).toSet();
+    if (!_announcementBaselineReady) {
+      _seenAnnouncementIds
+        ..clear()
+        ..addAll(ids);
+      _announcementBaselineReady = true;
+      return;
+    }
+    final fresh = next
+        .where((a) => !_seenAnnouncementIds.contains(a.id))
+        .toList();
+    _seenAnnouncementIds
+      ..clear()
+      ..addAll(ids);
+    if (fresh.isEmpty || !mounted) return;
+    final newest = fresh.first;
+    final l10n = context.l10n;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: DiraColors.goldDark,
+        duration: const Duration(seconds: 5),
+        content: Text(
+          '${l10n.announcementTag}: ${newest.title}',
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  List<Ticket> get _openTickets {
+    final list = _tickets
+        .where((t) => t.displayStatus != 'resolved')
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
 
   double _expectedMonthlyTotal(Building? building) {
     if (building == null || _apartments.isEmpty) return 0;
@@ -124,12 +184,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (building.feeMethod == 'per_sqm' &&
           building.pricePerSqm != null &&
           a.sizeSqm != null) {
-        return a.sizeSqm! * building.pricePerSqm!;
+        return (a.sizeSqm! * building.pricePerSqm!).ceilToDouble();
       }
       if (building.feeMethod == 'fixed' && building.fixedMonthlyFee != null) {
-        return building.fixedMonthlyFee!;
+        return building.fixedMonthlyFee!.ceilToDouble();
       }
-      return a.monthlyFee;
+      return a.monthlyFee.ceilToDouble();
     }
 
     return _apartments.fold(0.0, (sum, a) => sum + feeFor(a));
@@ -226,107 +286,148 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: DiraColors.cream,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            _MenuTile(
-              icon: Icons.account_circle_outlined,
-              color: DiraColors.brick,
-              label: l10n.myProfile,
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
-              },
-            ),
-            _MenuTile(
-              icon: Icons.handyman_rounded,
-              color: DiraColors.terracotta,
-              label: l10n.maintenance,
-              onTap: () {
-                Navigator.pop(ctx);
-                _openTicketsScreen();
-              },
-            ),
-            _MenuTile(
-              icon: Icons.calendar_month_rounded,
-              color: DiraColors.sage,
-              label: l10n.buildingSchedule,
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ScheduleScreen()),
-                );
-              },
-            ),
-            _MenuTile(
-              icon: Icons.campaign_rounded,
-              color: DiraColors.goldDark,
-              label: l10n.assemblies,
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MeetingsScreen()),
-                );
-              },
-            ),
-            if (isVaad) ...[
-              _MenuTile(
-                icon: Icons.folder_rounded,
-                color: DiraColors.gold,
-                label: l10n.documents,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const DocumentsScreen(),
+      builder: (ctx) {
+        final maxHeight = MediaQuery.sizeOf(ctx).height * 0.85;
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  _MenuTile(
+                    icon: Icons.account_circle_outlined,
+                    color: DiraColors.brick,
+                    label: l10n.myProfile,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _MenuTile(
+                    icon: Icons.handyman_rounded,
+                    color: DiraColors.terracotta,
+                    label: l10n.maintenance,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openTicketsScreen();
+                    },
+                  ),
+                  _MenuTile(
+                    icon: Icons.calendar_month_rounded,
+                    color: DiraColors.sage,
+                    label: l10n.buildingSchedule,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ScheduleScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _MenuTile(
+                    icon: Icons.campaign_rounded,
+                    color: DiraColors.goldDark,
+                    label: l10n.assemblies,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const MeetingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (isVaad) ...[
+                    _MenuTile(
+                      icon: Icons.settings_suggest_rounded,
+                      color: DiraColors.brick,
+                      label: l10n.buildingSettings,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const BuildingSettingsScreen(),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-              _MenuTile(
-                icon: Icons.history_rounded,
-                color: DiraColors.sageDark,
-                label: l10n.activityLog,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ActivityLogScreen(),
+                    _MenuTile(
+                      icon: Icons.folder_rounded,
+                      color: DiraColors.gold,
+                      label: l10n.documents,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const DocumentsScreen(),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                    _MenuTile(
+                      icon: Icons.history_rounded,
+                      color: DiraColors.sageDark,
+                      label: l10n.activityLog,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ActivityLogScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MenuTile(
+                      icon: Icons.chat_rounded,
+                      color: DiraColors.sage,
+                      label: l10n.whatsappConnect,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const WhatsAppConnectScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  _MenuTile(
+                    icon: Icons.language,
+                    color: DiraColors.sageDeep,
+                    label: l10n.language,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      context.read<LocaleController>().toggle(context);
+                    },
+                  ),
+                  const Divider(height: 16, indent: 20, endIndent: 20),
+                  _MenuTile(
+                    icon: Icons.logout,
+                    color: DiraColors.brickDark,
+                    label: l10n.signOut,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      session.signOut();
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ),
-            ],
-            _MenuTile(
-              icon: Icons.language,
-              color: DiraColors.sageDeep,
-              label: l10n.language,
-              onTap: () {
-                Navigator.pop(ctx);
-                context.read<LocaleController>().toggle(context);
-              },
             ),
-            const Divider(height: 16, indent: 20, endIndent: 20),
-            _MenuTile(
-              icon: Icons.logout,
-              color: DiraColors.brickDark,
-              label: l10n.signOut,
-              onTap: () {
-                Navigator.pop(ctx);
-                session.signOut();
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -493,261 +594,200 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ------------------------------------------------------------------
-  // Tenant body: my tickets + community board
+  // Tenant body: building board + service calls
   // ------------------------------------------------------------------
   List<Widget> _tenantBody(BuildContext context) {
     final l10n = context.l10n;
     return [
+      ..._boardSection(context),
+      const SizedBox(height: 22),
       _SectionHeader(
         title: l10n.myTickets,
-        actionLabel: '${l10n.newReport} +',
-        onAction: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const NewTicketScreen()),
-        ),
+        actionLabel: l10n.viewAllCalls,
+        onAction: _openTicketsScreen,
       ),
-      const SizedBox(height: 12),
-      if (_loading)
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: CircularProgressIndicator(color: DiraColors.brick),
-          ),
-        )
-      else if (_tickets.isEmpty)
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              l10n.noOpenTickets,
-              style: const TextStyle(color: DiraColors.inkSoft),
-            ),
-          ),
-        )
-      else
-        ..._tickets
-            .take(3)
-            .map(
-              (t) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _TicketCard(ticket: t),
-              ),
-            ),
-      const SizedBox(height: 16),
-      ..._scheduleSection(context),
-      const SizedBox(height: 16),
-      ..._boardSection(context),
+      const SizedBox(height: 10),
+      _serviceCallsList(
+        context,
+        tickets: _openTickets.take(5).toList(),
+      ),
       const SizedBox(height: 110),
     ];
   }
 
   // ------------------------------------------------------------------
-  // Vaad body: schedule, community board, open tickets
+  // Vaad body: building board + open service calls
   // ------------------------------------------------------------------
   List<Widget> _vaadBody(BuildContext context) {
     final l10n = context.l10n;
     return [
-      ..._scheduleSection(context),
-      const SizedBox(height: 16),
       ..._boardSection(context),
-      const SizedBox(height: 16),
+      const SizedBox(height: 22),
       _SectionHeader(
-        title: l10n.openTicketsStat,
-        actionLabel: l10n.viewAll,
+        title: l10n.myTickets,
+        actionLabel: l10n.viewAllCalls,
         onAction: _openTicketsScreen,
       ),
-      const SizedBox(height: 12),
-      if (_loading)
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: CircularProgressIndicator(color: DiraColors.brick),
-          ),
-        )
-      else if (_openTickets.isEmpty)
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              l10n.noOpenTickets,
-              style: const TextStyle(color: DiraColors.inkSoft),
-            ),
-          ),
-        )
-      else
-        ..._openTickets
-            .take(3)
-            .map(
-              (t) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _TicketCard(ticket: t, showReporter: true),
-              ),
-            ),
+      const SizedBox(height: 10),
+      _serviceCallsList(
+        context,
+        tickets: _openTickets.take(5).toList(),
+        showReporter: true,
+      ),
       const SizedBox(height: 110),
     ];
   }
 
-  // ------------------------------------------------------------------
-  // Building schedule preview (shared)
-  // ------------------------------------------------------------------
-  List<Widget> _scheduleSection(BuildContext context) {
-    final l10n = context.l10n;
-    void openCalendar() {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+  Widget _serviceCallsList(
+    BuildContext context, {
+    required List<Ticket> tickets,
+    bool showReporter = false,
+  }) {
+    final pending = context.watch<TicketsController>().pending;
+    final pendingIds =
+        pending.map((p) => p.createdId).whereType<String>().toSet();
+    final visible =
+        tickets.where((t) => !pendingIds.contains(t.id)).toList();
+
+    if (_loading && pending.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(color: DiraColors.brick),
+        ),
       );
     }
+    if (pending.isEmpty && visible.isEmpty) {
+      return const _TicketsEmptyState();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: DiraColors.creamCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: DiraColors.creamDeep),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < pending.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: DiraColors.creamDeep,
+              ),
+            PendingTicketCard(pending: pending[i]),
+          ],
+          for (var i = 0; i < visible.length; i++) ...[
+            if (i > 0 || pending.isNotEmpty)
+              const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: DiraColors.creamDeep,
+              ),
+            _ServiceCallRow(
+              ticket: visible[i],
+              showReporter: showReporter,
+              onTap: _openTicketsScreen,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Building board — horizontal message cards (design-aligned)
+  // ------------------------------------------------------------------
+  List<Widget> _boardSection(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final relevant = _announcements
+        .where((a) => isAnnouncementOnHomeBoard(a, locale: locale))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final cards = <_BoardCardData>[
+      for (final a in relevant.take(8))
+        _BoardCardData(
+          title: a.title,
+          body: a.body.isNotEmpty ? a.body : l10n.announcementTag,
+          publishedLabel: DateFormat(
+            'd MMM yyyy',
+            locale,
+          ).format(a.createdAt.toLocal()),
+          icon: _boardIconFor(a.title),
+          color: _boardColorFor(a.title),
+          onTap: () => showAnnouncementDetail(context, a),
+        ),
+    ];
 
     return [
       _SectionHeader(
-        title: l10n.comingUp,
-        actionLabel: l10n.viewCalendar,
-        onAction: openCalendar,
+        title: l10n.communityBoard,
+        actionLabel: _announcements.isEmpty
+            ? null
+            : l10n.viewAllBoardMessages,
+        onAction: _announcements.isEmpty
+            ? null
+            : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => BoardMessagesScreen(
+                      announcements: _announcements,
+                    ),
+                  ),
+                ),
       ),
       const SizedBox(height: 12),
-      if (_loading)
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: CircularProgressIndicator(color: DiraColors.brick),
-          ),
+      if (cards.isEmpty && !_loading)
+        _EmptySoftCard(
+          message: _announcements.isEmpty
+              ? l10n.nothingOnBoard
+              : l10n.noCurrentBoardMessages,
         )
-      else if (_upcomingSchedule.isEmpty)
-        Card(
-          child: InkWell(
-            onTap: openCalendar,
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: DiraColors.sage.withValues(alpha: 0.35),
-                    child: const Icon(
-                      Icons.calendar_month_outlined,
-                      color: DiraColors.sageDark,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      l10n.scheduleEmptyTitle,
-                      style: const TextStyle(
-                        color: DiraColors.inkSoft,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, color: DiraColors.inkSoft),
-                ],
-              ),
-            ),
-          ),
-        )
-      else
-        ..._upcomingSchedule.take(3).map(
-          (o) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: ScheduleEventTile(occurrence: o),
+      else if (cards.isNotEmpty)
+        SizedBox(
+          height: 186,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: cards.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, i) => _BoardMessageCard(data: cards[i]),
           ),
         ),
     ];
   }
 
-  // ------------------------------------------------------------------
-  // Community board (shared)
-  // ------------------------------------------------------------------
-  List<Widget> _boardSection(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      Text(l10n.communityBoard, style: heading(fontSize: 18)),
-      const SizedBox(height: 12),
-      if (_announcements.isEmpty && !_loading)
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              l10n.nothingOnBoard,
-              style: const TextStyle(color: DiraColors.inkSoft),
-            ),
-          ),
-        )
-      else
-        ..._announcements
-            .take(4)
-            .map(
-              (a) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: DiraColors.terracottaSoft,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                l10n.announcementTag,
-                                style: const TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: DiraColors.brickDark,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _relativeDate(context, a.createdAt.toLocal()),
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: DiraColors.inkSoft,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          a.title,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (a.body.isNotEmpty) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            a.body,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: DiraColors.inkSoft,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-    ];
+  IconData _boardIconFor(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('אסיפ') || t.contains('meeting') || t.contains('assembly')) {
+      return Icons.groups_rounded;
+    }
+    if (t.contains('תחזוק') ||
+        t.contains('ירוק') ||
+        t.contains('maintenance') ||
+        t.contains('clean')) {
+      return Icons.eco_rounded;
+    }
+    if (t.contains('calendar') || t.contains('לוח')) {
+      return Icons.calendar_month_rounded;
+    }
+    return Icons.campaign_rounded;
   }
 
-  String _relativeDate(BuildContext context, DateTime date) {
-    final days = DateTime.now().difference(date).inDays;
-    if (days <= 0) return context.l10n.dateToday;
-    if (days == 1) return context.l10n.dateYesterday;
-    return context.l10n.daysAgo('$days');
+  Color _boardColorFor(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('אסיפ') || t.contains('meeting') || t.contains('assembly')) {
+      return DiraColors.goldDark;
+    }
+    if (t.contains('תחזוק') ||
+        t.contains('ירוק') ||
+        t.contains('maintenance') ||
+        t.contains('clean')) {
+      return DiraColors.sageDark;
+    }
+    return DiraColors.brick;
   }
 }
 
@@ -1079,78 +1119,289 @@ class _GoldBanner extends StatelessWidget {
   }
 }
 
-/// Expandable ticket card with the sage-green timeline panel.
-class _TicketCard extends StatefulWidget {
-  final Ticket ticket;
-  final bool showReporter;
-  const _TicketCard({required this.ticket, this.showReporter = false});
-
-  @override
-  State<_TicketCard> createState() => _TicketCardState();
-}
-
-class _TicketCardState extends State<_TicketCard> {
-  bool _expanded = true;
+/// Soft empty-state card matching the light home redesign.
+class _EmptySoftCard extends StatelessWidget {
+  final String message;
+  const _EmptySoftCard({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    final t = widget.ticket;
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: DiraColors.sageDark,
+        color: DiraColors.creamCard,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DiraColors.creamDeep),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(color: DiraColors.inkSoft, fontSize: 14),
+      ),
+    );
+  }
+}
+
+/// Designed empty state when the building has no open service calls.
+class _TicketsEmptyState extends StatelessWidget {
+  const _TicketsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(22, 28, 22, 26),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [DiraColors.sagePale, DiraColors.creamCard],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DiraColors.creamDeep),
       ),
       child: Column(
         children: [
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 13, 12, 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: DiraColors.terracotta,
-                    ),
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: DiraColors.sageDark.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.verified_rounded,
+              size: 34,
+              color: DiraColors.sageDark,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.homeTicketsClearTitle,
+            textAlign: TextAlign.center,
+            style: heading(fontSize: 18, color: DiraColors.sageDark),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.homeTicketsClearBody,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.35,
+              color: DiraColors.inkSoft,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BoardCardData {
+  final String title;
+  final String body;
+  final String publishedLabel;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _BoardCardData({
+    required this.title,
+    required this.body,
+    required this.publishedLabel,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+/// Horizontal building-board message card from the marketing design.
+class _BoardMessageCard extends StatelessWidget {
+  final _BoardCardData data;
+  const _BoardMessageCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      width: 168,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      decoration: BoxDecoration(
+        color: DiraColors.creamCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: DiraColors.creamDeep),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F2B261F),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: data.color.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(data.icon, size: 18, color: data.color),
+              ),
+              const Spacer(),
+              Flexible(
+                child: Text(
+                  data.publishedLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: DiraColors.inkSoft,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t.title,
-                          style: heading(fontSize: 15, color: Colors.white),
-                        ),
-                        if (widget.showReporter &&
-                            (t.reporterName ?? '').isNotEmpty)
-                          Text(
-                            t.reporterName!,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: Colors.white70,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white70,
-                  ),
-                ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            data.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Text(
+              data.body,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: DiraColors.inkSoft,
+                height: 1.3,
               ),
             ),
           ),
-          if (_expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: TicketTimeline(ticket: t),
+          InkWell(
+            onTap: data.onTap,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.seeDetails,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: DiraColors.brick,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: DiraColors.brick,
+                ),
+              ],
             ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Light service-call row: category glyph + title/date + status pill.
+class _ServiceCallRow extends StatelessWidget {
+  final Ticket ticket;
+  final bool showReporter;
+  final VoidCallback onTap;
+
+  const _ServiceCallRow({
+    required this.ticket,
+    this.showReporter = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final date = DateFormat(
+      'd.M.yy',
+      locale,
+    ).format(ticket.createdAt.toLocal());
+    final subtitle = showReporter && (ticket.reporterName ?? '').isNotEmpty
+        ? '${ticket.reporterName} · ${l10n.ticketCreatedOn(date)}'
+        : l10n.ticketCreatedOn(date);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              CategoryGlyph.forTicket(
+                categoryId: ticket.category,
+                title: ticket.title,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ticket.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DiraColors.inkSoft,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              StatusPill.ticket(context, ticket.displayStatus),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: DiraColors.inkSoft,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

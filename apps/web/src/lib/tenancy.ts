@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { tenancyPiiStorageFields } from "@/lib/pii";
 
 /**
  * Called whenever a user becomes attached to an apartment (invite
@@ -41,8 +42,10 @@ export async function activateTenancy(u: {
         .from("tenancies")
         .update({
           user_id: u.id,
-          full_name: u.full_name ?? t.full_name,
-          phone_number: u.phone_number ?? t.phone_number,
+          ...tenancyPiiStorageFields({
+            fullName: u.full_name ?? (t.full_name as string | null),
+            phone: u.phone_number ?? (t.phone_number as string | null),
+          }),
           num_occupants: u.num_occupants ?? t.num_occupants,
           status: "active",
         })
@@ -54,8 +57,10 @@ export async function activateTenancy(u: {
       building_id: u.building_id,
       apartment_id: u.apartment_id,
       user_id: u.id,
-      full_name: u.full_name ?? null,
-      phone_number: u.phone_number ?? null,
+      ...tenancyPiiStorageFields({
+        fullName: u.full_name ?? null,
+        phone: u.phone_number ?? null,
+      }),
       num_occupants: u.num_occupants ?? null,
       status: "active",
     });

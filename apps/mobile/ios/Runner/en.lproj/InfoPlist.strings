@@ -1,0 +1,6 @@
+/* Permission strings shown when iOS prompts the user (English). */
+"NSCameraUsageDescription" = "Buildingo needs camera access to photograph maintenance faults and scan documents such as Arnona bills.";
+"NSLocationWhenInUseUsageDescription" = "Buildingo uses your location to suggest your building’s city and street during setup.";
+"NSPhotoLibraryUsageDescription" = "Buildingo needs photo library access so you can attach pictures to fault reports, profile photos, and building documents.";
+"CFBundleDisplayName" = "Buildingo";
+"CFBundleName" = "Buildingo";

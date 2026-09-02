@@ -3,7 +3,9 @@ export type ScheduleRecurrence =
   | "daily"
   | "weekly"
   | "biweekly"
-  | "monthly";
+  | "monthly"
+  | "quarterly"
+  | "yearly";
 
 export type ScheduleEventRow = {
   id: string;
@@ -17,6 +19,8 @@ export type ScheduleEventRow = {
   specific_date: string | null;
   time_of_day: string | null;
   is_active: boolean;
+  monthly_cost?: number | null;
+  provider_name?: string | null;
   created_at?: string;
 };
 
@@ -34,6 +38,14 @@ export type MeetingRow = {
   meeting_date: string;
   location: string | null;
   is_closed: boolean;
+};
+
+export type AnnouncementRow = {
+  id: string;
+  building_id: string;
+  title: string;
+  body: string;
+  event_date: string | null;
 };
 
 function parseDate(s: string): Date {
@@ -121,6 +133,34 @@ export function expandScheduleEvents(
           y += 1;
         }
       }
+      continue;
+    }
+
+    if (
+      (event.recurrence === "quarterly" || event.recurrence === "yearly") &&
+      event.day_of_month != null
+    ) {
+      const anchor = parseDate(
+        event.specific_date ??
+          (event.created_at ? event.created_at.slice(0, 10) : from),
+      );
+      const stepMonths = event.recurrence === "quarterly" ? 3 : 12;
+      let y = anchor.getFullYear();
+      let m = anchor.getMonth();
+      // Walk forward from anchor until past [to].
+      while (new Date(y, m, 1) <= toD) {
+        const lastDay = new Date(y, m + 1, 0).getDate();
+        const dom = Math.min(event.day_of_month, lastDay);
+        const d = new Date(y, m, dom);
+        if (d >= fromD && d <= toD && d >= anchor) {
+          out.push({ ...event, occurrence_date: formatDate(d) });
+        }
+        m += stepMonths;
+        while (m > 11) {
+          m -= 12;
+          y += 1;
+        }
+      }
     }
   }
 
@@ -166,18 +206,45 @@ export function meetingsToOccurrences(
   return out;
 }
 
+/** Dated community announcements as one-off calendar items. */
+export function announcementsToOccurrences(
+  announcements: AnnouncementRow[],
+  from: string,
+  to: string,
+): ScheduleOccurrence[] {
+  const out: ScheduleOccurrence[] = [];
+  for (const a of announcements) {
+    if (!a.event_date) continue;
+    if (a.event_date < from || a.event_date > to) continue;
+    out.push({
+      id: a.id,
+      building_id: a.building_id,
+      event_type: "announcement",
+      title: a.title,
+      notes: a.body,
+      recurrence: "once",
+      day_of_week: null,
+      day_of_month: null,
+      specific_date: a.event_date,
+      time_of_day: null,
+      is_active: true,
+      occurrence_date: a.event_date,
+    });
+  }
+  return out;
+}
+
 function compareOccurrences(a: ScheduleOccurrence, b: ScheduleOccurrence): number {
   const left = a.starts_at ?? `${a.occurrence_date}T${a.time_of_day ?? "23:59"}`;
   const right = b.starts_at ?? `${b.occurrence_date}T${b.time_of_day ?? "23:59"}`;
   return left.localeCompare(right);
 }
 
-/** Merge schedule rules and assemblies into one sorted timeline. */
+/** Merge any schedule sources into one sorted timeline. */
 export function mergeScheduleOccurrences(
-  schedule: ScheduleOccurrence[],
-  meetings: ScheduleOccurrence[],
+  ...groups: ScheduleOccurrence[][]
 ): ScheduleOccurrence[] {
-  return [...schedule, ...meetings].sort(compareOccurrences);
+  return groups.flat().sort(compareOccurrences);
 }
 
 export function isScheduleTableMissing(message: string): boolean {
