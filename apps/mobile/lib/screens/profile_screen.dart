@@ -5,6 +5,7 @@ import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import '../widgets/attachment_picker.dart';
 import '../widgets/phone_field.dart';
+import 'settings_screen.dart';
 
 /// The signed-in user's own profile: photo, editable name/email, and
 /// read-only account details (phone, role, building, apartment).
@@ -92,7 +93,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         : user.fullName.characters.first.toUpperCase();
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.myProfile)),
+      appBar: AppBar(
+        title: Text(l10n.myProfile),
+        actions: [
+          IconButton(
+            tooltip: l10n.settingsTitle,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+            icon: const Icon(Icons.settings_outlined),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
@@ -210,6 +224,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            tileColor: DiraColors.creamCard,
+            leading: const Icon(Icons.settings_outlined, color: DiraColors.brick),
+            title: Text(
+              l10n.settingsTitle,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(l10n.settingsNotificationsSection),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
           ),
         ],
       ),

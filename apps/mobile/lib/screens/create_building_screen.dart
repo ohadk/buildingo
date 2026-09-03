@@ -41,7 +41,7 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _myApt = TextEditingController();
-  final _occupants = TextEditingController(text: '1');
+  final _occupants = TextEditingController();
   final _mySqm = TextEditingController();
   List<String> _parkingSpots = [];
   final _country = TextEditingController(text: IsraelGovAddressFields.israel);
@@ -50,28 +50,29 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
   final _houseNumber = TextEditingController();
   final _postal = TextEditingController();
   final _district = TextEditingController();
-  final _openingBalance = TextEditingController(text: '0');
+  final _openingBalance = TextEditingController();
 
   PlatformFile? _arnonaDoc;
   PlatformFile? _residenceDoc;
 
   String _feeMethod = 'per_sqm';
-  double _pricePerSqm = 6.0;
-  double _typicalSqm = 78;
-  double _fixedFee = 390;
-  int _billingDay = 1;
+  // 0 / null = unset — fields show placeholders until the Vaad enters a value.
+  double _pricePerSqm = 0;
+  double _typicalSqm = 0;
+  double _fixedFee = 0;
+  int? _billingDay;
 
-  int _entranceCount = 1;
+  int _entranceCount = 0;
   int _elevatorCount = 0;
-  final List<TextEditingController> _entranceCodes = [
-    TextEditingController(),
-  ];
+  final List<TextEditingController> _entranceCodes = [];
 
   late final List<_ServiceDraft> _services = _ServiceDraft.presets();
 
   bool _busy = false;
   String? _error;
   bool _placeValid = false;
+  String? _duplicateBuildingName;
+  bool _duplicateDialogOpen = false;
   bool _structureValid = false;
   BuildingFloorPlan? _floorPlan;
 
@@ -169,6 +170,7 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
             _floorPlan != null &&
             _floorPlan!.totalApartments > 0;
       case 4:
+        if (_billingDay == null) return false;
         if (_feeMethod == 'fixed') return _fixedFee > 0;
         return _pricePerSqm > 0 && _typicalSqm > 0;
       case 5:
@@ -203,7 +205,52 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
     return l10n.createBuildingNext;
   }
 
+  Future<void> _showAddressTakenDialog(String buildingName) async {
+    if (!mounted || _duplicateDialogOpen) return;
+    _duplicateDialogOpen = true;
+    final l10n = context.l10n;
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            l10n.addressAlreadyRegisteredTitle,
+            style: heading(fontSize: 20, color: DiraColors.brickDeep),
+          ),
+          content: Text(
+            l10n.addressAlreadyRegistered(buildingName),
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.4,
+              color: DiraColors.ink,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.gotIt),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _duplicateDialogOpen = false;
+    }
+  }
+
   Future<void> _goNext() async {
+    // Address step (index 1): never advance if the building already exists.
+    if (_step == 1) {
+      if (_duplicateBuildingName != null) {
+        await _showAddressTakenDialog(_duplicateBuildingName!);
+        return;
+      }
+      if (!_placeValid) return;
+    }
     if (_step < _stepCount - 1) {
       setState(() {
         _step++;
@@ -308,8 +355,8 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
         'feeMethod': _feeMethod,
         if (_feeMethod == 'fixed') 'fixedMonthlyFee': _fixedFee,
         if (_feeMethod == 'per_sqm') 'pricePerSqm': _pricePerSqm,
-        'typicalApartmentSqm': _typicalSqm,
-        'billingDay': _billingDay,
+        'typicalApartmentSqm': _typicalSqm > 0 ? _typicalSqm : null,
+        'billingDay': _billingDay ?? 1,
         'openingBalance': opening,
         'myApartmentNumber': myAptNum,
         'fullName': _name.text.trim(),
@@ -346,7 +393,22 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
       );
       if (mounted) Navigator.popUntil(context, (r) => r.isFirst);
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (e.status == 409) {
+        final name = IsraelGovAddressFields.composeFullAddress(
+          street: _street.text,
+          houseNumber: _houseNumber.text,
+          city: _city.text,
+          country: _country.text,
+        );
+        await _showAddressTakenDialog(
+          name.isEmpty ? (_city.text.trim()) : name,
+        );
+        // Jump back to the address step so they can change it.
+        if (mounted && _step != 1) await _goToStep(1);
+        setState(() => _error = null);
+      } else {
+        setState(() => _error = e.message);
+      }
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -455,10 +517,23 @@ class _CreateBuildingScreenState extends State<CreateBuildingScreen> {
                     postal: _postal,
                     district: _district,
                     subtitle: l10n.createBuildingPlaceSubtitle,
+                    checkDuplicateBuilding: true,
                     onChanged: () => setState(() {}),
                     onValidityChanged: (ok) {
+                      if (!ok) {
+                        // Keep last duplicate name for Continue guard / dialog.
+                      } else {
+                        _duplicateBuildingName = null;
+                      }
                       if (_placeValid == ok) return;
                       setState(() => _placeValid = ok);
+                    },
+                    onDuplicateBuilding: (name) {
+                      setState(() {
+                        _duplicateBuildingName = name;
+                        _placeValid = false;
+                      });
+                      _showAddressTakenDialog(name);
                     },
                   ),
                 ),
@@ -829,8 +904,9 @@ class _EntrancesStep extends StatelessWidget {
               child: _StepperCard(
                 label: l10n.entrancesCountLabel,
                 value: entranceCount,
-                onMinus: () => onEntrances((entranceCount - 1).clamp(1, 10)),
-                onPlus: () => onEntrances((entranceCount + 1).clamp(1, 10)),
+                emptyPlaceholder: '—',
+                onMinus: () => onEntrances((entranceCount - 1).clamp(0, 10)),
+                onPlus: () => onEntrances((entranceCount + 1).clamp(0, 10)),
               ),
             ),
             const SizedBox(width: 10),
@@ -954,10 +1030,10 @@ class _StructureStepState extends State<_StructureStep>
   static const _maxTypical = 40;
   static const _maxPerFloor = 80;
 
-  int _floorCount = 4;
-  int _typical = 4;
-  int _baseFloor = 1;
-  int _firstApt = 1;
+  int _floorCount = 0;
+  int _typical = 0;
+  int _baseFloor = -1; // -1 = unset (show placeholder)
+  int _firstApt = 0;
   final Map<int, int> _overrides = {};
 
   @override
@@ -980,7 +1056,10 @@ class _StructureStepState extends State<_StructureStep>
       _floors.where((f) => _overrides.containsKey(f)).length;
 
   BuildingFloorPlan? _computePlan() {
-    if (_floorCount < 1 || _typical < 1 || _baseFloor < 0 || _firstApt < 1) {
+    if (_floorCount < 1 ||
+        _typical < 1 ||
+        _baseFloor < 0 ||
+        _firstApt < 1) {
       return null;
     }
     final plan = BuildingFloorPlan.fromTypical(
@@ -1009,22 +1088,22 @@ class _StructureStepState extends State<_StructureStep>
   }
 
   void _setFloorCount(int v) {
-    _floorCount = v.clamp(1, _maxFloors);
+    _floorCount = v.clamp(0, _maxFloors);
     _emit();
   }
 
   void _setTypical(int v) {
-    _typical = v.clamp(1, _maxTypical);
+    _typical = v.clamp(0, _maxTypical);
     _emit();
   }
 
   void _setBaseFloor(int v) {
-    _baseFloor = v.clamp(0, 100);
+    _baseFloor = v.clamp(-1, 100);
     _emit();
   }
 
   void _setFirstApt(int v) {
-    _firstApt = v.clamp(1, 9999);
+    _firstApt = v.clamp(0, 9999);
     _emit();
   }
 
@@ -1086,6 +1165,7 @@ class _StructureStepState extends State<_StructureStep>
               child: _StepperCard(
                 label: l10n.numberOfFloors,
                 value: _floorCount,
+                emptyPlaceholder: '—',
                 onMinus: () => _setFloorCount(_floorCount - 1),
                 onPlus: () => _setFloorCount(_floorCount + 1),
               ),
@@ -1096,6 +1176,7 @@ class _StructureStepState extends State<_StructureStep>
                 label: l10n.typicalFloorLabel,
                 value: _typical,
                 highlighted: true,
+                emptyPlaceholder: '—',
                 onMinus: () => _setTypical(_typical - 1),
                 onPlus: () => _setTypical(_typical + 1),
               ),
@@ -1109,7 +1190,8 @@ class _StructureStepState extends State<_StructureStep>
               child: _StepperCard(
                 label: l10n.baseFloorLabel,
                 value: _baseFloor,
-                displayValue: _floorLabel(l10n, _baseFloor),
+                displayValue:
+                    _baseFloor < 0 ? '—' : _floorLabel(l10n, _baseFloor),
                 onMinus: () => _setBaseFloor(_baseFloor - 1),
                 onPlus: () => _setBaseFloor(_baseFloor + 1),
               ),
@@ -1119,6 +1201,7 @@ class _StructureStepState extends State<_StructureStep>
               child: _StepperCard(
                 label: l10n.firstApartmentShortLabel,
                 value: _firstApt,
+                emptyPlaceholder: '—',
                 onMinus: () => _setFirstApt(_firstApt - 1),
                 onPlus: () => _setFirstApt(_firstApt + 1),
               ),
@@ -1205,6 +1288,7 @@ class _StepperCard extends StatelessWidget {
   final String label;
   final int value;
   final String? displayValue;
+  final String? emptyPlaceholder;
   final bool highlighted;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
@@ -1215,8 +1299,15 @@ class _StepperCard extends StatelessWidget {
     required this.onMinus,
     required this.onPlus,
     this.displayValue,
+    this.emptyPlaceholder,
     this.highlighted = false,
   });
+
+  String get _shown {
+    if (displayValue != null) return displayValue!;
+    if (emptyPlaceholder != null && value < 1) return emptyPlaceholder!;
+    return '$value';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1258,7 +1349,7 @@ class _StepperCard extends StatelessWidget {
                 onPressed: onMinus,
               ),
               Text(
-                displayValue ?? '$value',
+                _shown,
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -1559,9 +1650,11 @@ class _MyApartmentStep extends StatelessWidget {
     final rangeHint = (from != null && to != null)
         ? l10n.vaadAptRangeHint('$from', '$to')
         : null;
-    final typicalHint = typicalSqm == typicalSqm.roundToDouble()
-        ? '${typicalSqm.toInt()}'
-        : typicalSqm.toStringAsFixed(1);
+    final typicalHint = typicalSqm <= 0
+        ? '80'
+        : (typicalSqm == typicalSqm.roundToDouble()
+            ? '${typicalSqm.toInt()}'
+            : typicalSqm.toStringAsFixed(1));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1742,7 +1835,7 @@ class _FeesStep extends StatefulWidget {
   final double pricePerSqm;
   final double typicalSqm;
   final double fixedFee;
-  final int billingDay;
+  final int? billingDay;
   final int apartmentCount;
   final ValueChanged<String> onMethod;
   final ValueChanged<double> onPrice;
@@ -1798,6 +1891,7 @@ class _FeesStepState extends State<_FeesStep> {
     if ((next - prev).abs() < 0.001) return;
     final parsed = double.tryParse(c.text.replaceAll(',', '.'));
     if (parsed != null && (parsed - next).abs() < 0.001) return;
+    if (c.text.trim().isEmpty && next <= 0) return;
     c.text = _fmtEditable(next);
   }
 
@@ -1810,6 +1904,7 @@ class _FeesStepState extends State<_FeesStep> {
   }
 
   String _fmtEditable(double v) {
+    if (v <= 0) return '';
     if (v == v.roundToDouble()) return '${v.toInt()}';
     return v.toStringAsFixed(1);
   }
@@ -1863,19 +1958,30 @@ class _FeesStepState extends State<_FeesStep> {
             label: l10n.pricePerSqmLabel,
             controller: _priceCtrl,
             suffix: '/${l10n.sqmUnit}',
-            onMinus: () =>
-                widget.onPrice((pricePerSqm - 0.5).clamp(0.5, 100)),
-            onPlus: () =>
-                widget.onPrice((pricePerSqm + 0.5).clamp(0.5, 100)),
+            hintText: '6',
+            onMinus: () {
+              if (pricePerSqm <= 0) return;
+              widget.onPrice((pricePerSqm - 0.5).clamp(0.5, 100));
+            },
+            onPlus: () {
+              if (pricePerSqm <= 0) {
+                widget.onPrice(_priceChips.first);
+                return;
+              }
+              widget.onPrice((pricePerSqm + 0.5).clamp(0.5, 100));
+            },
             onEdited: (v) {
-              if (v == null) return;
+              if (v == null) {
+                widget.onPrice(0);
+                return;
+              }
               widget.onPrice(v.clamp(0.5, 100));
             },
             chips: [
               for (final chip in _priceChips)
                 (
                   label: _fmtMoney(chip),
-                  selected: (pricePerSqm - chip).abs() < 0.01,
+                  selected: pricePerSqm > 0 && (pricePerSqm - chip).abs() < 0.01,
                   onTap: () => widget.onPrice(chip),
                 ),
             ],
@@ -1909,8 +2015,10 @@ class _FeesStepState extends State<_FeesStep> {
                   children: [
                     _RoundIconButton(
                       icon: Icons.remove_rounded,
-                      onPressed: () =>
-                          widget.onTypical((typicalSqm - 1).clamp(20, 500)),
+                      onPressed: () {
+                        if (typicalSqm <= 0) return;
+                        widget.onTypical((typicalSqm - 1).clamp(20, 500));
+                      },
                     ),
                     Expanded(
                       child: TextField(
@@ -1930,12 +2038,23 @@ class _FeesStepState extends State<_FeesStep> {
                             RegExp(r'[0-9.,]'),
                           ),
                         ],
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           border: InputBorder.none,
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(vertical: 4),
+                          hintText: '80',
+                          hintStyle: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: DiraColors.inkSoft,
+                            height: 1,
+                          ),
                         ),
                         onChanged: (raw) {
+                          if (raw.trim().isEmpty) {
+                            widget.onTypical(0);
+                            return;
+                          }
                           final v = _parse(raw);
                           if (v != null) {
                             widget.onTypical(v.clamp(20, 500));
@@ -1945,32 +2064,39 @@ class _FeesStepState extends State<_FeesStep> {
                     ),
                     _RoundIconButton(
                       icon: Icons.add_rounded,
-                      onPressed: () =>
-                          widget.onTypical((typicalSqm + 1).clamp(20, 500)),
+                      onPressed: () {
+                        if (typicalSqm <= 0) {
+                          widget.onTypical(80);
+                          return;
+                        }
+                        widget.onTypical((typicalSqm + 1).clamp(20, 500));
+                      },
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          for (final size in _previewSizes) ...[
-            _FeePreviewRow(
-              label: size == null
-                  ? l10n.feePreviewTypical(
-                      typicalSqm == typicalSqm.roundToDouble()
-                          ? '${typicalSqm.toInt()}'
-                          : typicalSqm.toStringAsFixed(0),
-                    )
-                  : l10n.feePreviewSize(
-                      size == size.roundToDouble()
-                          ? '${size.toInt()}'
-                          : size.toStringAsFixed(0),
-                    ),
-              amount: _fmtMoney(pricePerSqm * (size ?? typicalSqm)),
-              emphasized: size == null,
-            ),
-            const SizedBox(height: 6),
+          if (pricePerSqm > 0 && typicalSqm > 0) ...[
+            const SizedBox(height: 14),
+            for (final size in _previewSizes) ...[
+              _FeePreviewRow(
+                label: size == null
+                    ? l10n.feePreviewTypical(
+                        typicalSqm == typicalSqm.roundToDouble()
+                            ? '${typicalSqm.toInt()}'
+                            : typicalSqm.toStringAsFixed(0),
+                      )
+                    : l10n.feePreviewSize(
+                        size == size.roundToDouble()
+                            ? '${size.toInt()}'
+                            : size.toStringAsFixed(0),
+                      ),
+                amount: _fmtMoney(pricePerSqm * (size ?? typicalSqm)),
+                emphasized: size == null,
+              ),
+              const SizedBox(height: 6),
+            ],
           ],
           const SizedBox(height: 8),
           _InfoBox(text: l10n.feeTemporaryNote),
@@ -1980,19 +2106,30 @@ class _FeesStepState extends State<_FeesStep> {
             controller: _fixedCtrl,
             suffix: l10n.feePerApartmentUnit,
             prefixShekel: true,
-            onMinus: () =>
-                widget.onFixed((fixedFee - 10).clamp(10, 5000)),
-            onPlus: () =>
-                widget.onFixed((fixedFee + 10).clamp(10, 5000)),
+            hintText: '390',
+            onMinus: () {
+              if (fixedFee <= 0) return;
+              widget.onFixed((fixedFee - 10).clamp(10, 5000));
+            },
+            onPlus: () {
+              if (fixedFee <= 0) {
+                widget.onFixed(_fixedChips.first);
+                return;
+              }
+              widget.onFixed((fixedFee + 10).clamp(10, 5000));
+            },
             onEdited: (v) {
-              if (v == null) return;
+              if (v == null) {
+                widget.onFixed(0);
+                return;
+              }
               widget.onFixed(v.clamp(10, 5000));
             },
             chips: [
               for (final chip in _fixedChips)
                 (
                   label: _fmtMoney(chip),
-                  selected: (fixedFee - chip).abs() < 0.01,
+                  selected: fixedFee > 0 && (fixedFee - chip).abs() < 0.01,
                   onTap: () => widget.onFixed(chip),
                 ),
             ],
@@ -2020,7 +2157,11 @@ class _FeesStepState extends State<_FeesStep> {
               ),
           ],
         ),
-        if (widget.apartmentCount > 0) ...[
+        if (widget.apartmentCount > 0 &&
+            ((feeMethod == 'fixed' && fixedFee > 0) ||
+                (feeMethod == 'per_sqm' &&
+                    pricePerSqm > 0 &&
+                    typicalSqm > 0))) ...[
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(16),
@@ -2063,6 +2204,7 @@ class _FeeAmountCard extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String? suffix;
+  final String? hintText;
   final bool prefixShekel;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
@@ -2077,6 +2219,7 @@ class _FeeAmountCard extends StatelessWidget {
     required this.onEdited,
     required this.chips,
     this.suffix,
+    this.hintText,
     this.prefixShekel = false,
   });
 
@@ -2142,12 +2285,24 @@ class _FeeAmountCard extends StatelessWidget {
                             RegExp(r'[0-9.,]'),
                           ),
                         ],
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 4),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 4),
+                          hintText: hintText,
+                          hintStyle: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w800,
+                            color: DiraColors.creamCard.withValues(alpha: 0.35),
+                            height: 1,
+                          ),
                         ),
                         onChanged: (raw) {
+                          if (raw.trim().isEmpty) {
+                            onEdited(null);
+                            return;
+                          }
                           final v = double.tryParse(
                             raw.trim().replaceAll(',', '.'),
                           );
@@ -2353,7 +2508,6 @@ class _ServiceDraft {
           enabled: true,
           recurrence: 'weekly',
           daysOfWeek: [2],
-          cost: '3200',
         ),
         _ServiceDraft(
           eventType: 'garbage',
@@ -2366,7 +2520,6 @@ class _ServiceDraft {
           enabled: false,
           recurrence: 'biweekly',
           daysOfWeek: [1],
-          cost: '1850',
         ),
         _ServiceDraft(
           eventType: 'pest',
@@ -2397,7 +2550,6 @@ class _ServiceDraft {
     if (eventType == 'gardening') {
       recurrence = 'biweekly';
       daysOfWeek = [1];
-      if (costCtrl.text.trim().isEmpty) costCtrl.text = '1850';
     } else if (eventType == 'pest') {
       recurrence = 'quarterly';
       dayOfMonth = 1;
@@ -2896,7 +3048,7 @@ class _SummaryStep extends StatelessWidget {
   final double pricePerSqm;
   final double typicalSqm;
   final double fixedFee;
-  final int billingDay;
+  final int? billingDay;
   final TextEditingController openingBalance;
   final List<_ServiceDraft> services;
   final ValueChanged<int> onEdit;
@@ -3003,7 +3155,7 @@ class _SummaryStep extends StatelessWidget {
           title: l10n.summaryFeesTitle,
           lines: [
             feeLine,
-            l10n.billingDaySummary('$billingDay'),
+            l10n.billingDaySummary('${billingDay ?? '—'}'),
           ],
           onEdit: () => onEdit(4),
         ),
@@ -3053,6 +3205,7 @@ class _SummaryStep extends StatelessWidget {
           onChanged: (_) => onBalanceChanged(),
           decoration: InputDecoration(
             prefixText: '₪ ',
+            hintText: '0',
             helperText: l10n.openingBalanceHint,
           ),
         ),

@@ -152,6 +152,18 @@ abstract class AppLocalizations {
   /// **'Please wait…'**
   String get pleaseWait;
 
+  /// No description provided for @splashTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Your building, together'**
+  String get splashTagline;
+
+  /// No description provided for @splashLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting things ready…'**
+  String get splashLoading;
+
   /// No description provided for @verifyAndSignIn.
   ///
   /// In en, this message translates to:
@@ -193,6 +205,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My profile'**
   String get myProfile;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsNotificationsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsNotificationsSection;
+
+  /// No description provided for @settingsNotificationsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner push notifications are not enabled yet. While the app is open, updates appear live. These switches save your preferences for when push alerts are turned on.'**
+  String get settingsNotificationsNote;
+
+  /// No description provided for @settingsNotifyTickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Tickets & maintenance'**
+  String get settingsNotifyTickets;
+
+  /// No description provided for @settingsNotifyTicketsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New tickets and status updates'**
+  String get settingsNotifyTicketsHint;
+
+  /// No description provided for @settingsNotifyAnnouncements.
+  ///
+  /// In en, this message translates to:
+  /// **'Board announcements'**
+  String get settingsNotifyAnnouncements;
+
+  /// No description provided for @settingsNotifyAnnouncementsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages from the committee'**
+  String get settingsNotifyAnnouncementsHint;
+
+  /// No description provided for @settingsNotifyPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments & fees'**
+  String get settingsNotifyPayments;
+
+  /// No description provided for @settingsNotifyPaymentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Dues reminders and payment updates'**
+  String get settingsNotifyPaymentsHint;
+
+  /// No description provided for @settingsNotifyMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Building messages'**
+  String get settingsNotifyMessages;
+
+  /// No description provided for @settingsNotifyMessagesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'General building chat and alerts'**
+  String get settingsNotifyMessagesHint;
+
+  /// No description provided for @settingsPrivacySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get settingsPrivacySection;
+
+  /// No description provided for @settingsPrivacyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Buildingo is built for your building community. We collect only what is needed to run the building — not ads, not selling personal data.'**
+  String get settingsPrivacyBody;
+
+  /// No description provided for @settingsPrivacyBullets.
+  ///
+  /// In en, this message translates to:
+  /// **'• Phone number — to sign in and reach you as a resident\n• Name and optional email — shown to your building directory\n• Apartment details and documents you upload (e.g. Arnona) — for fees and Vaad review\n• Location — only if you choose “use current location” when setting an address\n• Sensitive fields are encrypted at rest on our servers'**
+  String get settingsPrivacyBullets;
+
+  /// No description provided for @settingsPrivacyPolicyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open privacy policy'**
+  String get settingsPrivacyPolicyLink;
 
   /// No description provided for @menu.
   ///
@@ -1688,6 +1790,30 @@ abstract class AppLocalizations {
   /// **'Postal code (optional)'**
   String get postalCodeOptional;
 
+  /// No description provided for @findZipCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Find postal code'**
+  String get findZipCode;
+
+  /// No description provided for @lookingUpZip.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking up postal code…'**
+  String get lookingUpZip;
+
+  /// No description provided for @zipLookupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t find a postal code for this address. You can enter it manually.'**
+  String get zipLookupFailed;
+
+  /// No description provided for @zipLookupUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Postal-code lookup is unavailable right now (AI service). You can enter it manually.'**
+  String get zipLookupUnavailable;
+
   /// No description provided for @apartmentsCount.
   ///
   /// In en, this message translates to:
@@ -2230,7 +2356,7 @@ abstract class AppLocalizations {
   /// No description provided for @locationFilledHint.
   ///
   /// In en, this message translates to:
-  /// **'Suggested from your current location — confirm city and street from the list.'**
+  /// **'Filled from your location — you can edit any field.'**
   String get locationFilledHint;
 
   /// No description provided for @locationOutsideIsrael.
@@ -2244,6 +2370,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn’t read your location. You can fill the address manually.'**
   String get locationUnavailable;
+
+  /// No description provided for @addressAlreadyRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'A building already exists at this exact address ({name}). You can’t create another one here — ask to join it instead.'**
+  String addressAlreadyRegistered(String name);
+
+  /// No description provided for @addressAlreadyRegisteredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Address already taken'**
+  String get addressAlreadyRegisteredTitle;
+
+  /// No description provided for @gotIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get gotIt;
 
   /// No description provided for @entrancesCountLabel.
   ///
@@ -2392,7 +2536,7 @@ abstract class AppLocalizations {
   /// No description provided for @openingBalanceHint.
   ///
   /// In en, this message translates to:
-  /// **'Optional — leave 0 for now.'**
+  /// **'Optional — leave empty for now.'**
   String get openingBalanceHint;
 
   /// No description provided for @openingBalanceSkip.
@@ -3060,6 +3204,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tomorrow'**
   String get scheduleTomorrow;
+
+  /// No description provided for @happeningToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Happening today'**
+  String get happeningToday;
+
+  /// No description provided for @scheduleEventToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} today'**
+  String scheduleEventToday(String title);
 
   /// No description provided for @scheduleRecurring.
   ///

@@ -38,6 +38,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pleaseWait => 'Please wait…';
 
   @override
+  String get splashTagline => 'Your building, together';
+
+  @override
+  String get splashLoading => 'Getting things ready…';
+
+  @override
   String get verifyAndSignIn => 'Verify & sign in';
 
   @override
@@ -57,6 +63,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get myProfile => 'My profile';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsNotificationsSection => 'Notifications';
+
+  @override
+  String get settingsNotificationsNote =>
+      'Banner push notifications are not enabled yet. While the app is open, updates appear live. These switches save your preferences for when push alerts are turned on.';
+
+  @override
+  String get settingsNotifyTickets => 'Tickets & maintenance';
+
+  @override
+  String get settingsNotifyTicketsHint => 'New tickets and status updates';
+
+  @override
+  String get settingsNotifyAnnouncements => 'Board announcements';
+
+  @override
+  String get settingsNotifyAnnouncementsHint => 'Messages from the committee';
+
+  @override
+  String get settingsNotifyPayments => 'Payments & fees';
+
+  @override
+  String get settingsNotifyPaymentsHint => 'Dues reminders and payment updates';
+
+  @override
+  String get settingsNotifyMessages => 'Building messages';
+
+  @override
+  String get settingsNotifyMessagesHint => 'General building chat and alerts';
+
+  @override
+  String get settingsPrivacySection => 'Privacy';
+
+  @override
+  String get settingsPrivacyBody =>
+      'Buildingo is built for your building community. We collect only what is needed to run the building — not ads, not selling personal data.';
+
+  @override
+  String get settingsPrivacyBullets =>
+      '• Phone number — to sign in and reach you as a resident\n• Name and optional email — shown to your building directory\n• Apartment details and documents you upload (e.g. Arnona) — for fees and Vaad review\n• Location — only if you choose “use current location” when setting an address\n• Sensitive fields are encrypted at rest on our servers';
+
+  @override
+  String get settingsPrivacyPolicyLink => 'Open privacy policy';
 
   @override
   String get menu => 'Menu';
@@ -864,6 +918,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get postalCodeOptional => 'Postal code (optional)';
 
   @override
+  String get findZipCode => 'Find postal code';
+
+  @override
+  String get lookingUpZip => 'Looking up postal code…';
+
+  @override
+  String get zipLookupFailed =>
+      'Couldn’t find a postal code for this address. You can enter it manually.';
+
+  @override
+  String get zipLookupUnavailable =>
+      'Postal-code lookup is unavailable right now (AI service). You can enter it manually.';
+
+  @override
   String get apartmentsCount => 'Apartments';
 
   @override
@@ -1171,7 +1239,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locationFilledHint =>
-      'Suggested from your current location — confirm city and street from the list.';
+      'Filled from your location — you can edit any field.';
 
   @override
   String get locationOutsideIsrael =>
@@ -1180,6 +1248,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get locationUnavailable =>
       'Couldn’t read your location. You can fill the address manually.';
+
+  @override
+  String addressAlreadyRegistered(String name) {
+    return 'A building already exists at this exact address ($name). You can’t create another one here — ask to join it instead.';
+  }
+
+  @override
+  String get addressAlreadyRegisteredTitle => 'Address already taken';
+
+  @override
+  String get gotIt => 'Got it';
 
   @override
   String get entrancesCountLabel => 'Entrances';
@@ -1269,7 +1348,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openingBalanceLabel => 'Current cash balance (₪)';
 
   @override
-  String get openingBalanceHint => 'Optional — leave 0 for now.';
+  String get openingBalanceHint => 'Optional — leave empty for now.';
 
   @override
   String get openingBalanceSkip => 'Start from zero';
@@ -1653,6 +1732,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scheduleTomorrow => 'Tomorrow';
+
+  @override
+  String get happeningToday => 'Happening today';
+
+  @override
+  String scheduleEventToday(String title) {
+    return '$title today';
+  }
 
   @override
   String get scheduleRecurring => 'Repeats weekly';

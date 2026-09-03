@@ -102,8 +102,38 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         }
         _loading = false;
       });
+      if (isVaad) await _ensureCurrentMonthDues();
     } on ApiException {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Silently open this calendar month for every apartment (pending / unpaid).
+  /// Replaces the old manual "יצירת חיובי החודש" action.
+  Future<void> _ensureCurrentMonthDues() async {
+    if (!mounted || _apartments.isEmpty) return;
+    final now = DateTime.now();
+    final index = _cellIndex;
+    final missing = _apartments.any(
+      (a) => index[_cellKey(a.apartmentId, now.year, now.month)] == null,
+    );
+    if (!missing) return;
+    try {
+      final res = await api.post('/api/payments', {
+        'month': now.month,
+        'year': now.year,
+      });
+      final created = (res['created'] as num?)?.toInt() ?? 0;
+      if (created < 1 || !mounted) return;
+      final pay = await api.get('/api/payments');
+      if (!mounted) return;
+      setState(() {
+        _payments = ((pay['payments'] ?? []) as List)
+            .map((p) => Payment.fromJson(p))
+            .toList();
+      });
+    } on ApiException {
+      // Non-fatal — marking a cell can still create a row on demand.
     }
   }
 
@@ -489,27 +519,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
-  Future<void> _generateMonth() async {
-    final now = DateTime.now();
-    final locale = Localizations.localeOf(context).languageCode;
-    try {
-      final res = await api.post('/api/payments', {
-        'month': now.month,
-        'year': now.year,
-      });
-      if (!mounted) return;
-      _snack(
-        context.l10n.generatedDues(
-          '${res['created']}',
-          DateFormat('MMMM', locale).format(now),
-        ),
-      );
-      await _load();
-    } on ApiException catch (e) {
-      _snack(e.message);
-    }
-  }
-
   /// Long-press on a paid matrix cell: attach the receipt document.
   /// The resident then sees it next to that month in their own view.
   Future<void> _attachReceipt(DirectoryEntry apt, DateTime month) async {
@@ -814,16 +823,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       _expandedOverride[f] = false;
                     }
                   }),
-                ),
-                const SizedBox(width: 8),
-                ActionChip(
-                  avatar: const Icon(
-                    Icons.playlist_add,
-                    size: 18,
-                    color: DiraColors.brickDark,
-                  ),
-                  label: Text(l10n.generateMonthDues),
-                  onPressed: _generateMonth,
                 ),
               ],
             ),
@@ -1274,9 +1273,93 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 // that fit the screen width (no horizontal scrolling), debt column.
 // ====================================================================
 class _MatrixDims {
-  static const double labelWidth = 44;
+  static const double labelWidth = 72;
   static const double debtWidth = 52;
   static const double cellHeight = 38;
+}
+
+/// Last token of a full name — works for Hebrew "שם משפחה" and Latin surnames.
+String? _familyNameOf(String fullName) {
+  final parts = fullName
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((p) => p.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return null;
+  return parts.last;
+}
+
+/// Compact surname label for the matrix. Same family once; mixed → first + "+".
+String? _apartmentFamilyLabel(DirectoryEntry apt) {
+  final families = <String>[];
+  final seen = <String>{};
+  for (final r in apt.residents) {
+    final f = _familyNameOf(r.name);
+    if (f == null) continue;
+    final key = f.toLowerCase();
+    if (seen.add(key)) families.add(f);
+  }
+  if (families.isEmpty) return null;
+  if (families.length == 1) return families.first;
+  return '${families.first}+';
+}
+
+String _apartmentResidentsTooltip(DirectoryEntry apt, AppLocalizations l10n) {
+  final names = apt.residents
+      .map((r) => r.name.trim())
+      .where((n) => n.isNotEmpty)
+      .toList();
+  if (names.isEmpty) return l10n.vacant;
+  return names.join('\n');
+}
+
+/// Apt number + optional family name under it; long-press tooltip for full names.
+class _AptLabel extends StatelessWidget {
+  final DirectoryEntry apartment;
+
+  const _AptLabel({required this.apartment});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final family = _apartmentFamilyLabel(apartment);
+    return Tooltip(
+      message: _apartmentResidentsTooltip(apartment, l10n),
+      waitDuration: const Duration(milliseconds: 350),
+      child: SizedBox(
+        width: _MatrixDims.labelWidth,
+        height: _MatrixDims.cellHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              l10n.aptTiny('${apartment.apartmentNumber}'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                height: 1.1,
+              ),
+            ),
+            if (family != null)
+              Text(
+                family,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: DiraColors.inkSoft,
+                  height: 1.15,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _FloorSection extends StatelessWidget {
@@ -1369,15 +1452,7 @@ class _FloorSection extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: _MatrixDims.labelWidth,
-                    child: Text(
-                      l10n.aptTiny('${a.apartmentNumber}'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: _AptLabel(apartment: a),
                   ),
                   ...months.map((m) {
                     final p =

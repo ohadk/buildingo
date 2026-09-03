@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { canonicalizeBuildingAddress } from "@/lib/building-address";
+import { findActiveBuildingByAddress } from "@/lib/find-building-by-address";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const createSchema = z
@@ -48,9 +50,31 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const body = createSchema.parse(await req.json());
   const db = supabaseAdmin();
 
-  const address = body.address.trim();
-  const city = body.city.trim();
-  const name = `${address}, ${city}`;
+  let canonical;
+  try {
+    canonical = canonicalizeBuildingAddress({
+      city: body.city,
+      address: body.address,
+      country: body.country,
+    });
+  } catch {
+    throw new ApiError(400, "Invalid city or address");
+  }
+
+  try {
+    const { building: existing } = await findActiveBuildingByAddress({
+      city: canonical.city,
+      address: canonical.address,
+      country: canonical.country,
+    });
+    if (existing) {
+      throw new ApiError(409, "A building at this address already exists");
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+  }
+
+  const { address, city, country, name } = canonical;
 
   const { data: building, error } = await db
     .from("buildings")
@@ -58,7 +82,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       name,
       address,
       city,
-      country: body.country,
+      country,
       postal_code: body.postalCode ?? null,
       fee_method: body.feeMethod,
       fixed_monthly_fee: body.feeMethod === "fixed" ? body.fixedMonthlyFee : null,
@@ -69,7 +93,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     })
     .select("*")
     .single();
-  // 23505 = unique violation on uq_buildings_active_address.
+  // 23505 = unique violation on uq_buildings_active_address_hash.
   if (error?.code === "23505") {
     throw new ApiError(409, "A building at this address already exists");
   }

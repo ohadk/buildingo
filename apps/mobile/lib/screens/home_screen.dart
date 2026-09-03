@@ -20,6 +20,7 @@ import 'maintenance_screen.dart';
 import 'meetings_screen.dart';
 import 'profile_screen.dart';
 import 'schedule_screen.dart';
+import 'settings_screen.dart';
 import 'whatsapp_connect_screen.dart';
 
 /// Home tab. Tenants get the design's home: blush hero with the two
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Payment> _payments = [];
   List<JoinRequest> _joinRequests = [];
   List<DirectoryEntry> _apartments = [];
+  List<ScheduleOccurrence> _todayEvents = [];
   bool _loading = true;
   StreamSubscription<String>? _realtimeSub;
   Timer? _pollTimer;
@@ -60,6 +62,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       'announcements',
       'payments',
       'join_requests',
+      'schedule_events',
+      'meetings',
     }, () => _load(silent: true));
     // Fallback when Realtime isn't configured: keep the board live.
     _pollTimer = Timer.periodic(
@@ -101,18 +105,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _load({bool silent = false}) async {
     final isVaad = context.read<SessionController>().user?.isVaad ?? false;
     try {
-      final core = await Future.wait([
-        api.get('/api/tickets'),
-        api.get('/api/announcements'),
-        api.get('/api/payments'),
-        if (isVaad) api.get('/api/join-requests'),
-        if (isVaad) api.get('/api/directory'),
+      final results = await Future.wait([
+        Future.wait([
+          api.get('/api/tickets'),
+          api.get('/api/announcements'),
+          api.get('/api/payments'),
+          if (isVaad) api.get('/api/join-requests'),
+          if (isVaad) api.get('/api/directory'),
+        ]),
+        _fetchTodayEvents(),
       ]);
       if (!mounted) return;
+      final core = results[0] as List;
+      final todayRaw = results[1] as Map<String, dynamic>;
       final nextAnnouncements = ((core[1]['announcements'] ?? []) as List)
           .map((a) => Announcement.fromJson(a as Map<String, dynamic>))
           .toList();
       _notifyNewAnnouncements(nextAnnouncements);
+      final todayEvents = ((todayRaw['occurrences'] ?? []) as List)
+          .map((e) => ScheduleOccurrence.fromJson(e as Map<String, dynamic>))
+          .where((o) => o.eventType != 'announcement')
+          .toList();
       setState(() {
         _tickets = ((core[0]['tickets'] ?? []) as List)
             .map((t) => Ticket.fromJson(t))
@@ -131,10 +144,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 .map((e) => DirectoryEntry.fromJson(e))
                 .toList()
             : [];
+        _todayEvents = todayEvents;
         _loading = false;
       });
     } on ApiException {
       if (mounted && !silent) setState(() => _loading = false);
+    }
+  }
+
+  /// Soft-fail schedule fetch so a missing table never breaks home.
+  Future<Map<String, dynamic>> _fetchTodayEvents() async {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    try {
+      return await api.get(
+        '/api/schedule-events?from=$today&to=$today',
+      );
+    } on ApiException {
+      return const {'occurrences': <dynamic>[]};
     }
   }
 
@@ -309,6 +335,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const ProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _MenuTile(
+                    icon: Icons.settings_outlined,
+                    color: DiraColors.inkSoft,
+                    label: l10n.settingsTitle,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
                         ),
                       );
                     },
@@ -574,6 +613,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ],
             ),
           ),
+          if (_todayEvents.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _TodayScheduleBanner(
+              events: _todayEvents,
+              onOpen: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+              ),
+            ),
+          ],
           if (isVaad && _joinRequests.isNotEmpty) ...[
             const SizedBox(height: 10),
             _JoinRequestsBanner(
@@ -1115,6 +1163,164 @@ class _GoldBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Soft sage strip highlighting building services happening today.
+class _TodayScheduleBanner extends StatelessWidget {
+  final List<ScheduleOccurrence> events;
+  final VoidCallback onOpen;
+
+  const _TodayScheduleBanner({
+    required this.events,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final shown = events.take(3).toList();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: DiraColors.sagePale,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: DiraColors.sageMist.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: DiraColors.sageDeep,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        l10n.happeningToday,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      l10n.viewCalendar,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: DiraColors.sageDark,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: DiraColors.sageDark,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                for (var i = 0; i < shown.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  _TodayEventRow(occurrence: shown[i]),
+                ],
+                if (events.length > shown.length) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '+${events.length - shown.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: DiraColors.sageDark,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayEventRow extends StatelessWidget {
+  final ScheduleOccurrence occurrence;
+  const _TodayEventRow({required this.occurrence});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final color = ScheduleUi.colorFor(occurrence.eventType);
+    final title = ScheduleUi.displayTitle(l10n, occurrence);
+    final timeLabel = occurrence.startsAt != null
+        ? DateFormat.Hm(Localizations.localeOf(context).languageCode)
+            .format(occurrence.startsAt!.toLocal())
+        : occurrence.timeOfDay;
+
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            ScheduleUi.iconFor(occurrence.eventType),
+            color: color,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.scheduleEventToday(title),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: color == DiraColors.sageMist
+                      ? DiraColors.sageDeep
+                      : color,
+                  height: 1.2,
+                ),
+              ),
+              if (timeLabel != null && timeLabel.isNotEmpty)
+                Text(
+                  timeLabel,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: DiraColors.sageDark,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

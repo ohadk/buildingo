@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiError, getCurrentUser, withErrorHandling } from "@/lib/auth/session";
+import { findActiveBuildingByAddress } from "@/lib/find-building-by-address";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -13,6 +14,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
  *
  * Search mode:
  *   ?city=תל אביב&address=דיזנגוף 10   → matching buildings
+ *   ?exact=1&city=…&address=…[&country=…] → identity lookup (hash + soft match)
  */
 export const GET = withErrorHandling(async (req: NextRequest) => {
   await getCurrentUser(req);
@@ -47,8 +49,37 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
   const city = p.get("city")?.trim() ?? "";
   const address = p.get("address")?.trim() ?? "";
+  const country = p.get("country")?.trim() || "ישראל";
   if (city.length < 2 && address.length < 2) {
     throw new ApiError(400, "Provide a city or address to search");
+  }
+
+  const exact = p.get("exact") === "1" || p.get("exact") === "true";
+
+  if (exact) {
+    if (city.length < 2 || address.length < 2) {
+      throw new ApiError(400, "exact search requires city and address");
+    }
+    try {
+      const { building, canonical } = await findActiveBuildingByAddress({
+        city,
+        address,
+        country,
+      });
+      return NextResponse.json({
+        buildings: building ? [building] : [],
+        addressHash: canonical.addressHash,
+        canonical: {
+          city: canonical.city,
+          address: canonical.address,
+          country: canonical.country,
+          name: canonical.name,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ApiError(500, message);
+    }
   }
 
   let query = db
@@ -56,8 +87,6 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     .select("id, name, address, city, country, require_join_docs, fee_method")
     .eq("is_active", true)
     .limit(8);
-  // City comes from our own autocomplete, so match it exactly; the
-  // address may be partial while typing.
   if (city) query = query.eq("city", city);
   if (address) query = query.ilike("address", `%${address}%`);
 

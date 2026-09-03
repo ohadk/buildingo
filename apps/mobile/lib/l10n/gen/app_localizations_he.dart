@@ -38,6 +38,12 @@ class AppLocalizationsHe extends AppLocalizations {
   String get pleaseWait => 'רק רגע…';
 
   @override
+  String get splashTagline => 'הבניין שלכם, יחד';
+
+  @override
+  String get splashLoading => 'מכינים הכל…';
+
+  @override
   String get verifyAndSignIn => 'אימות והתחברות';
 
   @override
@@ -57,6 +63,54 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get myProfile => 'הפרופיל שלי';
+
+  @override
+  String get settingsTitle => 'הגדרות';
+
+  @override
+  String get settingsNotificationsSection => 'התראות';
+
+  @override
+  String get settingsNotificationsNote =>
+      'התראות באנר (Push) עדיין לא פעילות. כשהאפליקציה פתוחה, עדכונים מופיעים בזמן אמת. המתגים כאן שומרים את ההעדפות שלכם לכשיופעלו התראות מערכת.';
+
+  @override
+  String get settingsNotifyTickets => 'קריאות ותחזוקה';
+
+  @override
+  String get settingsNotifyTicketsHint => 'קריאות חדשות ועדכוני סטטוס';
+
+  @override
+  String get settingsNotifyAnnouncements => 'הודעות ועד';
+
+  @override
+  String get settingsNotifyAnnouncementsHint => 'הודעות מהוועד לדיירים';
+
+  @override
+  String get settingsNotifyPayments => 'תשלומים ודמי ועד';
+
+  @override
+  String get settingsNotifyPaymentsHint => 'תזכורות גבייה ועדכוני תשלום';
+
+  @override
+  String get settingsNotifyMessages => 'הודעות בניין';
+
+  @override
+  String get settingsNotifyMessagesHint => 'עדכונים כלליים מהבניין';
+
+  @override
+  String get settingsPrivacySection => 'פרטיות';
+
+  @override
+  String get settingsPrivacyBody =>
+      'Buildingo בנויה לקהילת הבניין שלכם. אנחנו אוספים רק מה שנדרש לניהול הבניין — בלי פרסומות ובלי מכירת מידע אישי.';
+
+  @override
+  String get settingsPrivacyBullets =>
+      '• מספר טלפון — להתחברות וליצירת קשר כדייר\n• שם ואימייל (אופציונלי) — מוצגים במדריך הדיירים\n• פרטי דירה ומסמכים שאתם מעלים (למשל ארנונה) — לדמי ועד ולאישור הוועד\n• מיקום — רק אם תבחרו ״שימוש במיקום הנוכחי״ בעת הזנת כתובת\n• שדות רגישים מוצפנים במנוחה בשרתים שלנו';
+
+  @override
+  String get settingsPrivacyPolicyLink => 'מדיניות הפרטיות';
 
   @override
   String get menu => 'תפריט';
@@ -860,6 +914,19 @@ class AppLocalizationsHe extends AppLocalizations {
   String get postalCodeOptional => 'מיקוד (רשות)';
 
   @override
+  String get findZipCode => 'מצא מיקוד';
+
+  @override
+  String get lookingUpZip => 'מחפש מיקוד…';
+
+  @override
+  String get zipLookupFailed => 'לא מצאנו מיקוד לכתובת הזו. אפשר להזין ידנית.';
+
+  @override
+  String get zipLookupUnavailable =>
+      'חיפוש מיקוד לא זמין כרגע (שירות AI). אפשר להזין ידנית.';
+
+  @override
   String get apartmentsCount => 'דירות';
 
   @override
@@ -1164,7 +1231,7 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get locationFilledHint =>
-      'הוצע לפי המיקום הנוכחי — אשרו עיר ורחוב מהרשימה.';
+      'מולא לפי המיקום הנוכחי — אפשר לערוך כל שדה.';
 
   @override
   String get locationOutsideIsrael =>
@@ -1173,6 +1240,17 @@ class AppLocalizationsHe extends AppLocalizations {
   @override
   String get locationUnavailable =>
       'לא הצלחנו לקרוא את המיקום. אפשר למלא את הכתובת ידנית.';
+
+  @override
+  String addressAlreadyRegistered(String name) {
+    return 'כבר קיים בניין בכתובת המדויקת הזו ($name). לא ניתן ליצור בניין נוסף כאן — בקשו להצטרף אליו.';
+  }
+
+  @override
+  String get addressAlreadyRegisteredTitle => 'הכתובת כבר תפוסה';
+
+  @override
+  String get gotIt => 'הבנתי';
 
   @override
   String get entrancesCountLabel => 'כניסות';
@@ -1262,7 +1340,7 @@ class AppLocalizationsHe extends AppLocalizations {
   String get openingBalanceLabel => 'יתרת קופה נוכחית (₪)';
 
   @override
-  String get openingBalanceHint => 'רשות — אפשר להשאיר 0.';
+  String get openingBalanceHint => 'רשות — אפשר להשאיר ריק.';
 
   @override
   String get openingBalanceSkip => 'להתחיל מאפס';
@@ -1641,6 +1719,14 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get scheduleTomorrow => 'מחר';
+
+  @override
+  String get happeningToday => 'קורה היום';
+
+  @override
+  String scheduleEventToday(String title) {
+    return '$title היום';
+  }
 
   @override
   String get scheduleRecurring => 'חוזר מדי שבוע';

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { ApiError, getCurrentUser, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
 import { env } from "@/lib/env";
+import { findActiveBuildingByAddress } from "@/lib/find-building-by-address";
+import { canonicalizeBuildingAddress } from "@/lib/building-address";
 import { normalizeParkingSpots } from "@/lib/parking";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { activateTenancy } from "@/lib/tenancy";
@@ -125,26 +127,43 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const body = createSchema.parse(await req.json());
   const db = supabaseAdmin();
 
-  // Guard against duplicates: same address+city already registered.
-  const { data: existing } = await db
-    .from("buildings")
-    .select("id")
-    .ilike("address", body.address.trim())
-    .ilike("city", body.city.trim())
-    .maybeSingle();
-  if (existing) {
-    throw new ApiError(409, "A building at this address already exists — ask to join it instead");
+  let canonical;
+  try {
+    canonical = canonicalizeBuildingAddress({
+      city: body.city,
+      address: body.address,
+      country: body.country,
+    });
+  } catch {
+    throw new ApiError(400, "Invalid city or address");
   }
 
-  const name = `${body.address.trim()}, ${body.city.trim()}`;
+  // Guard against duplicates via normalized address (single source of truth).
+  try {
+    const { building: existing } = await findActiveBuildingByAddress({
+      city: canonical.city,
+      address: canonical.address,
+      country: canonical.country,
+    });
+    if (existing) {
+      throw new ApiError(
+        409,
+        "A building at this address already exists — ask to join it instead",
+      );
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+  }
+
+  const { address, city, country, name } = canonical;
 
   const { data: building, error } = await db
     .from("buildings")
     .insert({
       name,
-      address: body.address.trim(),
-      city: body.city.trim(),
-      country: body.country,
+      address,
+      city,
+      country,
       postal_code: body.postalCode ?? null,
       district: body.district?.trim() || null,
       fee_method: body.feeMethod,
@@ -163,8 +182,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     })
     .select("*")
     .single();
-  // 23505 = unique violation on uq_buildings_active_address: another
-  // request registered this address between our pre-check and the insert.
+  // 23505 = unique violation on uq_buildings_active_address_hash
   if (error?.code === "23505") {
     throw new ApiError(409, "A building at this address already exists — ask to join it instead");
   }

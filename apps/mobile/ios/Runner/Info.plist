@@ -54,6 +54,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Buildingo needs camera access to photograph maintenance faults and scan documents such as Arnona bills.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Buildingo uses your location only while you use the app, to suggest your building’s city and street during setup. We do not track your location in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Buildingo uses your location to suggest your building’s city and street during setup.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

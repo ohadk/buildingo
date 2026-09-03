@@ -15,6 +15,7 @@ import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/welcome_choice_screen.dart';
+import 'widgets/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,8 +45,13 @@ class DiraApp extends StatelessWidget {
           title: 'Buildingo',
           debugShowCheckedModeBanner: false,
           theme: buildDiraTheme(),
-          locale: locales.locale,
+          locale: locales.locale ?? const Locale('he'),
           supportedLocales: AppLocalizations.supportedLocales,
+          localeResolutionCallback: (device, supported) {
+            if (locales.locale != null) return locales.locale;
+            // App default is Hebrew unless the user picked another language.
+            return const Locale('he');
+          },
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const AuthGate(),
         ),
@@ -63,7 +69,7 @@ class AuthGate extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _Splash();
+          return const SplashScreen();
         }
         if (snapshot.data == null) return const LoginScreen();
         return const _SessionGate();
@@ -95,7 +101,7 @@ class _SessionGateState extends State<_SessionGate> {
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
     if (session.loading || (session.user == null && session.error == null)) {
-      return const _Splash();
+      return const SplashScreen();
     }
     if (session.error != null && session.user == null) {
       return Scaffold(
@@ -133,37 +139,5 @@ class _SessionGateState extends State<_SessionGate> {
       return const OnboardingScreen();
     }
     return const MainShell();
-  }
-}
-
-class _Splash extends StatelessWidget {
-  const _Splash();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: heroGradient),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.home_work_rounded, size: 64, color: DiraColors.brick),
-              SizedBox(height: 12),
-              Text(
-                'Buildingo',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: DiraColors.ink,
-                ),
-              ),
-              SizedBox(height: 24),
-              CircularProgressIndicator(color: DiraColors.brick),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

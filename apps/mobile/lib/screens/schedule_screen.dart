@@ -49,6 +49,14 @@ class ScheduleUi {
         _ => l10n.scheduleOther,
       };
 
+  static String displayTitle(
+    AppLocalizations l10n,
+    ScheduleOccurrence occurrence,
+  ) {
+    final t = occurrence.title.trim();
+    return t.isEmpty ? defaultTitle(l10n, occurrence.eventType) : t;
+  }
+
   static String recurrenceLabel(AppLocalizations l10n, String recurrence) =>
       switch (recurrence) {
         'daily' => l10n.scheduleDaily,
