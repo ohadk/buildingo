@@ -61,8 +61,9 @@ class ApiClient {
       _resolvedPublicWebUrl = fromDefine.replaceAll(RegExp(r'/+$'), '');
       return _resolvedPublicWebUrl!;
     }
-    // Last resort: product marketing domain (not localhost API).
-    _resolvedPublicWebUrl = 'https://buildingo.com';
+    // Last resort: App Hosting origin (not the old Netlify buildingo.com site).
+    _resolvedPublicWebUrl =
+        'https://buildingo-api--buildingo-6ff54.us-central1.hosted.app';
     return _resolvedPublicWebUrl!;
   }
 

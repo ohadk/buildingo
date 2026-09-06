@@ -136,12 +136,18 @@ flutter run --dart-define=API_BASE_URL=http://<your-mac-ip>:3000
 ```
 
 Notes for phone auth on device:
-- **Android**: add your debug SHA-256 to the Firebase project
+- **Android**: add your debug/release SHA-256 to the Firebase project
   (Console → Project settings → Android app) and download the refreshed
   `google-services.json`; Play Integrity backs OTP on real devices.
-- **iOS**: enable push notifications or the reCAPTCHA fallback (add the
-  `REVERSED_CLIENT_ID` URL scheme from `GoogleService-Info.plist` once the
-  OAuth client exists). Firebase test numbers work in the simulator.
+- **iOS (required for TestFlight / App Store SMS)**:
+  1. Apple Developer → Keys → create an **APNs Auth Key** (.p8).
+  2. Firebase Console → Project settings → Cloud Messaging → Apple app
+     `com.buildingo.buildingoMobile` → upload that .p8 (Key ID + Team ID).
+  3. Enable **Push Notifications** on the App ID (Identifiers).
+  4. After Google Sign-In (or an iOS OAuth client) exists, re-download
+     `GoogleService-Info.plist` and add its `REVERSED_CLIENT_ID` as a URL
+     scheme in `Info.plist` (reCAPTCHA fallback when silent push fails).
+  Firebase test numbers still work in the simulator without APNs.
 
 ### 4. Hosting (landing + super-admin + API)
 

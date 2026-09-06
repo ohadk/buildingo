@@ -35,18 +35,51 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const user = await requireRole(req, "vaad", "super_admin");
   const body = createSchema.parse(await req.json());
 
-  const { data, error } = await supabaseAdmin()
+  const baseRow = {
+    building_id: user.building_id,
+    title: body.title,
+    body: body.body,
+    event_date: body.eventDate ?? null,
+    category: body.category ?? "update",
+    created_by: user.id,
+  };
+
+  let { data, error } = await supabaseAdmin()
     .from("announcements")
-    .insert({
-      building_id: user.building_id,
-      title: body.title,
-      body: body.body,
-      event_date: body.eventDate ?? null,
-      category: body.category ?? "update",
-      created_by: user.id,
-    })
+    .insert(baseRow)
     .select("*")
     .single();
+
+  // Soft-fail if migration 0020 / 0033 isn't applied yet — still publish the message.
+  if (error) {
+    const msg = error.message.toLowerCase();
+    const missingEventDate =
+      msg.includes("event_date") &&
+      (msg.includes("schema cache") || msg.includes("column") || msg.includes("could not find"));
+    const missingCategory =
+      msg.includes("category") &&
+      (msg.includes("schema cache") || msg.includes("column") || msg.includes("could not find"));
+
+    if (missingEventDate || missingCategory) {
+      const fallback: Record<string, unknown> = {
+        building_id: baseRow.building_id,
+        title: baseRow.title,
+        body: baseRow.body,
+        created_by: baseRow.created_by,
+      };
+      if (!missingCategory) fallback.category = baseRow.category;
+      if (!missingEventDate) fallback.event_date = baseRow.event_date;
+
+      const retry = await supabaseAdmin()
+        .from("announcements")
+        .insert(fallback)
+        .select("*")
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
+  }
+
   if (error) {
     const msg = error.message.toLowerCase();
     if (msg.includes("event_date") && (msg.includes("schema cache") || msg.includes("column"))) {

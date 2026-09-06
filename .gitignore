@@ -18,3 +18,5 @@ npm-debug.log*
 !.env.example
 firebase-service-account.json
 *firebase-adminsdk*.json
+AuthKey_*.p8
+*.p8

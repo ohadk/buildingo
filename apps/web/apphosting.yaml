@@ -33,8 +33,10 @@ env:
     availability: [BUILD, RUNTIME]
 
   # ── Public URLs / support ────────────────────────────────────────
+  # Must be the App Hosting origin until buildingo.com is mapped to it.
+  # (buildingo.com currently still serves a separate Netlify site.)
   - variable: PUBLIC_WEB_URL
-    value: https://buildingo.com
+    value: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_SUPPORT_EMAIL
     value: support@buildingo.com

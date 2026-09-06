@@ -18,7 +18,8 @@ export function GET(req: NextRequest) {
     process.env.PLAY_STORE_URL?.trim() ||
     "https://play.google.com/store/search?q=Buildingo&c=apps";
   const site =
-    process.env.PUBLIC_WEB_URL?.replace(/\/$/, "") || "https://buildingo.com";
+    process.env.PUBLIC_WEB_URL?.replace(/\/$/, "") ||
+    "https://buildingo-api--buildingo-6ff54.us-central1.hosted.app";
 
   const isIos = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);

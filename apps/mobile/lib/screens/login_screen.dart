@@ -40,8 +40,11 @@ class _LoginScreenState extends State<LoginScreen> {
       verificationFailed: (e) {
         setState(() {
           _busy = false;
-          _error =
-              e.message ?? (mounted ? context.l10n.verificationFailed : '');
+          // Prefer code+message so Firebase CONFIG/APNs issues are diagnosable.
+          final detail = [e.code, e.message].whereType<String>().where((s) => s.isNotEmpty).join(': ');
+          _error = detail.isNotEmpty
+              ? detail
+              : (mounted ? context.l10n.verificationFailed : '');
         });
       },
       codeSent: (verificationId, _) {
@@ -69,9 +72,15 @@ class _LoginScreenState extends State<LoginScreen> {
       await FirebaseAuth.instance.signInWithCredential(credential);
       // AuthGate takes over from here (token exchange + routing)
     } on FirebaseAuthException catch (e) {
-      setState(
-        () => _error = e.message ?? (mounted ? context.l10n.invalidCode : ''),
-      );
+      setState(() {
+        final detail = [e.code, e.message]
+            .whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .join(': ');
+        _error = detail.isNotEmpty
+            ? detail
+            : (mounted ? context.l10n.invalidCode : '');
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
