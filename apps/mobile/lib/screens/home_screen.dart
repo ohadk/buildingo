@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 import '../core/api_client.dart';
+import '../core/announcement_categories.dart';
 import '../core/models.dart';
 import '../core/realtime.dart';
 import '../core/session.dart';
@@ -756,17 +757,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         .where((a) => isAnnouncementOnHomeBoard(a, locale: locale))
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    final cards = <_BoardCardData>[
+    final cards = [
       for (final a in relevant.take(8))
         _BoardCardData(
           title: a.title,
-          body: a.body.isNotEmpty ? a.body : l10n.announcementTag,
-          publishedLabel: DateFormat(
-            'd MMM yyyy',
-            locale,
-          ).format(a.createdAt.toLocal()),
-          icon: _boardIconFor(a.title),
-          color: _boardColorFor(a.title),
+          body: a.body.isNotEmpty
+              ? a.body
+              : (a.category != null && a.category!.isNotEmpty
+                      ? AnnouncementCategory.byId(a.category)
+                      : AnnouncementCategory.inferFromTitle(a.title))
+                  .label(l10n),
+          category: a.category != null && a.category!.isNotEmpty
+              ? AnnouncementCategory.byId(a.category)
+              : AnnouncementCategory.inferFromTitle(a.title),
           onTap: () => showAnnouncementDetail(context, a),
         ),
     ];
@@ -805,37 +808,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
     ];
-  }
-
-  IconData _boardIconFor(String title) {
-    final t = title.toLowerCase();
-    if (t.contains('אסיפ') || t.contains('meeting') || t.contains('assembly')) {
-      return Icons.groups_rounded;
-    }
-    if (t.contains('תחזוק') ||
-        t.contains('ירוק') ||
-        t.contains('maintenance') ||
-        t.contains('clean')) {
-      return Icons.eco_rounded;
-    }
-    if (t.contains('calendar') || t.contains('לוח')) {
-      return Icons.calendar_month_rounded;
-    }
-    return Icons.campaign_rounded;
-  }
-
-  Color _boardColorFor(String title) {
-    final t = title.toLowerCase();
-    if (t.contains('אסיפ') || t.contains('meeting') || t.contains('assembly')) {
-      return DiraColors.goldDark;
-    }
-    if (t.contains('תחזוק') ||
-        t.contains('ירוק') ||
-        t.contains('maintenance') ||
-        t.contains('clean')) {
-      return DiraColors.sageDark;
-    }
-    return DiraColors.brick;
   }
 }
 
@@ -1414,17 +1386,13 @@ class _TicketsEmptyState extends StatelessWidget {
 class _BoardCardData {
   final String title;
   final String body;
-  final String publishedLabel;
-  final IconData icon;
-  final Color color;
+  final AnnouncementCategory category;
   final VoidCallback onTap;
 
   const _BoardCardData({
     required this.title,
     required this.body,
-    required this.publishedLabel,
-    required this.icon,
-    required this.color,
+    required this.category,
     required this.onTap,
   });
 }
@@ -1437,6 +1405,7 @@ class _BoardMessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cat = data.category;
     return Container(
       width: 168,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
@@ -1455,34 +1424,16 @@ class _BoardMessageCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: data.color.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(data.icon, size: 18, color: data.color),
-              ),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  data.publishedLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: DiraColors.inkSoft,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: cat.color,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(cat.icon, size: 20, color: Colors.white),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             data.title,
             maxLines: 2,
@@ -1512,18 +1463,20 @@ class _BoardMessageCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  l10n.seeDetails,
-                  style: const TextStyle(
+                  cat.actionLabel(l10n),
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: DiraColors.brick,
+                    color: cat.color,
                   ),
                 ),
                 const SizedBox(width: 2),
-                const Icon(
-                  Icons.chevron_right,
+                Icon(
+                  Directionality.of(context) == TextDirection.rtl
+                      ? Icons.chevron_left
+                      : Icons.chevron_right,
                   size: 16,
-                  color: DiraColors.brick,
+                  color: cat.color,
                 ),
               ],
             ),

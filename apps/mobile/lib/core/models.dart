@@ -506,6 +506,7 @@ class Announcement {
   final String title;
   final String body;
   final String? attachmentPath;
+  final String? category;
   final DateTime? eventDate;
   final DateTime createdAt;
 
@@ -514,6 +515,7 @@ class Announcement {
       title = j['title'],
       body = j['body'],
       attachmentPath = j['attachment_path'],
+      category = j['category']?.toString(),
       eventDate = j['event_date'] != null
           ? DateTime.parse(j['event_date'] as String)
           : null,

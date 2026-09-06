@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiException implements Exception {
@@ -10,14 +11,27 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+/// Production App Hosting backend. Release/TestFlight builds must hit this
+/// (or an explicit `--dart-define=API_BASE_URL=…`), never localhost.
+const String kProductionApiBaseUrl =
+    'https://buildingo-api--buildingo-6ff54.us-central1.hosted.app';
+
 /// Thin wrapper around the Next.js backend. Every request carries the
 /// caller's Firebase ID token as a Bearer header; the server verifies it
 /// with the Admin SDK and enforces role/building scoping.
 class ApiClient {
-  static const baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:3000',
-  );
+  static const _envBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  /// Resolved API origin (no trailing slash).
+  /// - Explicit `--dart-define=API_BASE_URL=…` always wins.
+  /// - Release/profile default to the hosted production API.
+  /// - Debug defaults to local Next.js.
+  static String get baseUrl {
+    final fromEnv = _envBaseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (kReleaseMode || kProfileMode) return kProductionApiBaseUrl;
+    return 'http://localhost:3000';
+  }
 
   /// Origin used for user-facing links (join/share). Prefer the server
   /// `PUBLIC_WEB_URL` (loaded via [/api/config]); dart-define is a fallback
@@ -91,10 +105,12 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> get(String path) async {
-    final res = await http.get(
-      Uri.parse('$baseUrl$path'),
-      headers: await _headers(json: false),
-    );
+    final res = await http
+        .get(
+          Uri.parse('$baseUrl$path'),
+          headers: await _headers(json: false),
+        )
+        .timeout(const Duration(seconds: 20));
     return _decode(res);
   }
 

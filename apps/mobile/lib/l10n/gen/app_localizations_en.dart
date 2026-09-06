@@ -800,6 +800,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get announcementSubtitle => 'Will be sent to all building residents';
 
   @override
+  String get announcementCategoryLabel => 'Message type';
+
+  @override
+  String get boardCatUpdate => 'Important update';
+
+  @override
+  String get boardCatMeeting => 'Residents meeting';
+
+  @override
+  String get boardCatMaintenance => 'Maintenance';
+
+  @override
+  String get boardCatTip => 'Tip';
+
+  @override
+  String get boardCatOther => 'Other';
+
+  @override
+  String get boardActionDetails => 'Details';
+
+  @override
+  String get boardActionRead => 'Read';
+
+  @override
+  String get boardActionView => 'View';
+
+  @override
   String get publishAnnouncement => 'Publish message';
 
   @override

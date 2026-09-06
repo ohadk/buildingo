@@ -9,6 +9,10 @@ const createSchema = z.object({
   title: z.string().min(2).max(255),
   body: z.string().min(1),
   eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  category: z
+    .enum(["update", "meeting", "maintenance", "tip", "other"])
+    .optional()
+    .default("update"),
 });
 
 /** GET /api/announcements — the building's community board. */
@@ -38,6 +42,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       title: body.title,
       body: body.body,
       event_date: body.eventDate ?? null,
+      category: body.category ?? "update",
       created_by: user.id,
     })
     .select("*")
@@ -48,6 +53,12 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       throw new ApiError(
         503,
         "Announcement dates are not enabled yet. Run migration 0020_announcement_event_date.sql in the Supabase SQL editor, then try again.",
+      );
+    }
+    if (msg.includes("category") && (msg.includes("schema cache") || msg.includes("column"))) {
+      throw new ApiError(
+        503,
+        "Announcement categories are not enabled yet. Run migration 0033_announcement_category.sql in the Supabase SQL editor, then try again.",
       );
     }
     throw new ApiError(500, error.message);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../core/announcement_categories.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
@@ -65,6 +66,10 @@ class _AnnouncementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cat = announcement.category != null &&
+            announcement.category!.isNotEmpty
+        ? AnnouncementCategory.byId(announcement.category)
+        : AnnouncementCategory.inferFromTitle(announcement.title);
     final published = DateFormat(
       'd MMM yyyy',
       locale,
@@ -93,24 +98,41 @@ class _AnnouncementTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(
-                    Icons.campaign_rounded,
-                    size: 18,
-                    color: DiraColors.brick,
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: cat.color,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(cat.icon, size: 18, color: Colors.white),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      announcement.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cat.label(l10n),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: cat.color,
+                          ),
+                        ),
+                        Text(
+                          announcement.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 announcement.body,
                 maxLines: 3,
@@ -146,6 +168,9 @@ Future<void> showAnnouncementDetail(
 ) {
   final l10n = context.l10n;
   final locale = Localizations.localeOf(context).languageCode;
+  final cat = announcement.category != null && announcement.category!.isNotEmpty
+      ? AnnouncementCategory.byId(announcement.category)
+      : AnnouncementCategory.inferFromTitle(announcement.title);
   final published = DateFormat(
     'd MMM yyyy',
     locale,
@@ -181,7 +206,36 @@ Future<void> showAnnouncementDetail(
               ),
             ),
             const SizedBox(height: 18),
-            Text(announcement.title, style: heading(fontSize: 20)),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: cat.color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(cat.icon, size: 20, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cat.label(l10n),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: cat.color,
+                        ),
+                      ),
+                      Text(announcement.title, style: heading(fontSize: 20)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             Text(
               l10n.boardPublishedOn(published),

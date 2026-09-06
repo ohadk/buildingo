@@ -798,6 +798,33 @@ class AppLocalizationsHe extends AppLocalizations {
   String get announcementSubtitle => 'תישלח לכל דיירי הבניין';
 
   @override
+  String get announcementCategoryLabel => 'סוג ההודעה';
+
+  @override
+  String get boardCatUpdate => 'עדכון חשוב';
+
+  @override
+  String get boardCatMeeting => 'אסיפת דיירים';
+
+  @override
+  String get boardCatMaintenance => 'תחזוקה';
+
+  @override
+  String get boardCatTip => 'טיפ';
+
+  @override
+  String get boardCatOther => 'אחר';
+
+  @override
+  String get boardActionDetails => 'לפרטים';
+
+  @override
+  String get boardActionRead => 'לקריאה';
+
+  @override
+  String get boardActionView => 'לצפייה';
+
+  @override
   String get publishAnnouncement => 'פרסום ההודעה';
 
   @override

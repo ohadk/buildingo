@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +22,9 @@ import 'widgets/splash_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await initRealtime();
+  // Never block first paint on Realtime/config — a bad API URL used to hang
+  // App Review on the splash screen ("app did not load").
+  unawaited(initRealtime());
   await initializeDateFormatting('he');
   await initializeDateFormatting('en');
   final localeController = LocaleController();

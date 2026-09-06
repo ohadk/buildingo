@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "דירה — ניהול בניין משותף",
+  title: {
+    default: "Buildingo — ניהול בניין משותף",
+    template: "%s — Buildingo",
+  },
   description:
-    "ניהול בניין משותף: דמי ועד, תחזוקה עם שיגור ספקים אוטומטי מבוסס AI, אסיפות דיירים, הצבעות וארכיון מסמכים.",
+    "אפליקציה לוועד ולדיירים: דמי ועד, תקלות עם שיגור סוכן AI לספקים, הודעות, דיירים, מסמכים ואסיפות.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

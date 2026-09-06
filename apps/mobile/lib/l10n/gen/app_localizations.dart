@@ -1568,6 +1568,60 @@ abstract class AppLocalizations {
   /// **'Will be sent to all building residents'**
   String get announcementSubtitle;
 
+  /// No description provided for @announcementCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Message type'**
+  String get announcementCategoryLabel;
+
+  /// No description provided for @boardCatUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Important update'**
+  String get boardCatUpdate;
+
+  /// No description provided for @boardCatMeeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Residents meeting'**
+  String get boardCatMeeting;
+
+  /// No description provided for @boardCatMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get boardCatMaintenance;
+
+  /// No description provided for @boardCatTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get boardCatTip;
+
+  /// No description provided for @boardCatOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get boardCatOther;
+
+  /// No description provided for @boardActionDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get boardActionDetails;
+
+  /// No description provided for @boardActionRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get boardActionRead;
+
+  /// No description provided for @boardActionView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get boardActionView;
+
   /// No description provided for @publishAnnouncement.
   ///
   /// In en, this message translates to:

@@ -16,9 +16,11 @@ function loadServiceAccount(): object {
     return JSON.parse(raw);
   }
   // Local development: key file referenced from .env.local.
-  return JSON.parse(
-    readFileSync(/*turbopackIgnore: true*/ resolve(process.cwd(), env.firebaseServiceAccountPath), "utf8"),
+  const keyPath = resolve(
+    /*turbopackIgnore: true*/ process.cwd(),
+    env.firebaseServiceAccountPath,
   );
+  return JSON.parse(readFileSync(keyPath, "utf8"));
 }
 
 function getAdminApp(): App {

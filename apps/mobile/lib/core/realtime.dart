@@ -22,7 +22,9 @@ bool get realtimeEnabled => _publishableKey.isNotEmpty;
 Future<void> initRealtime() async {
   if (_publishableKey.isEmpty) {
     try {
-      final cfg = await api.get('/api/config');
+      final cfg = await api
+          .get('/api/config')
+          .timeout(const Duration(seconds: 8));
       final key = cfg['supabasePublishableKey']?.toString() ?? '';
       if (key.isNotEmpty) _publishableKey = key;
     } catch (_) {

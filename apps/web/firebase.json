@@ -1,0 +1,14 @@
+{
+  "apphosting": {
+    "backendId": "buildingo-api",
+    "rootDir": ".",
+    "ignore": [
+      "**/node_modules/**",
+      "**/.next/**",
+      ".firebase/**",
+      "firebase-service-account.json",
+      "**/.env.local",
+      "certs/**"
+    ]
+  }
+}

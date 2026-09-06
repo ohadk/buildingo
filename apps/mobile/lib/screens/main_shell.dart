@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 import '../core/api_client.dart';
+import '../core/announcement_categories.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
@@ -194,6 +195,7 @@ class _AnnouncementSheet extends StatefulWidget {
 class _AnnouncementSheetState extends State<_AnnouncementSheet> {
   final _title = TextEditingController();
   final _body = TextEditingController();
+  AnnouncementCategory _category = AnnouncementCategory.update;
   DateTime? _eventDate;
   bool _busy = false;
   String? _error;
@@ -236,6 +238,7 @@ class _AnnouncementSheetState extends State<_AnnouncementSheet> {
       await api.post('/api/announcements', {
         'title': _title.text.trim(),
         'body': _body.text.trim(),
+        'category': _category.id,
         if (_eventDate != null) 'eventDate': fmt.format(_eventDate!),
       });
       if (mounted) Navigator.pop(context, true);
@@ -304,6 +307,37 @@ class _AnnouncementSheetState extends State<_AnnouncementSheet> {
               ],
             ),
             const SizedBox(height: 18),
+            Text(
+              l10n.announcementCategoryLabel,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final cat in AnnouncementCategory.all)
+                  ChoiceChip(
+                    avatar: Icon(
+                      cat.icon,
+                      size: 17,
+                      color: _category.id == cat.id
+                          ? cat.color
+                          : DiraColors.inkSoft,
+                    ),
+                    label: Text(cat.label(l10n)),
+                    selected: _category.id == cat.id,
+                    selectedColor: cat.color.withValues(alpha: 0.18),
+                    onSelected: (v) {
+                      if (v) setState(() => _category = cat);
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: _title,
               onChanged: (_) => setState(() {}),

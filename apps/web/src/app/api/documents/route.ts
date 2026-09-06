@@ -51,15 +51,27 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     paymentsQuery = paymentsQuery.eq("apartment_id", user.apartment_id);
   }
 
+  type PaymentReceiptRow = {
+    id: string;
+    apartment_id: string | null;
+    month: number;
+    year: number;
+    receipt_path: string | null;
+    payment_date: string | null;
+    updated_at: string | null;
+    created_at: string | null;
+    apartments: { apartment_number: string | number } | null;
+  };
+
   const [{ data: docs, error: docsErr }, paymentsResult] = await Promise.all([
     docsQuery,
     skipPaymentReceipts
-      ? Promise.resolve({ data: [] as unknown[], error: null })
+      ? Promise.resolve({ data: [] as PaymentReceiptRow[], error: null })
       : paymentsQuery,
   ]);
   if (docsErr) throw new ApiError(500, docsErr.message);
   if (paymentsResult.error) throw new ApiError(500, paymentsResult.error.message);
-  const payments = paymentsResult.data;
+  const payments = (paymentsResult.data ?? []) as PaymentReceiptRow[];
 
   const vaultDocs = (docs ?? []).map((d) => ({
     ...d,
@@ -67,8 +79,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     source: "document",
   }));
 
-  const receiptDocs = (payments ?? []).map((p) => {
-    const path = p.receipt_path as string;
+  const receiptDocs = payments.map((p) => {
+    const path = p.receipt_path ?? "";
     const when =
       p.payment_date ??
       p.updated_at ??

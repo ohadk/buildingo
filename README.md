@@ -143,15 +143,47 @@ Notes for phone auth on device:
   `REVERSED_CLIENT_ID` URL scheme from `GoogleService-Info.plist` once the
   OAuth client exists). Firebase test numbers work in the simulator.
 
-### 4. Hosting
+### 4. Hosting (landing + super-admin + API)
 
-- **Web → Firebase App Hosting** (same Google project):
-  `firebase init apphosting` in `apps/web`, set the env vars from
-  `.env.local` as server secrets, and provide the service account via
-  `FIREBASE_SERVICE_ACCOUNT_JSON` (base64) instead of the file path.
+The Next.js app (`apps/web`) deploys with **Firebase App Hosting** on
+project `buildingo-6ff54`. That requires the **Blaze** billing plan
+(Console → Usage and billing → Modify plan).
+
+```bash
+# From repo root (after Blaze is enabled):
+firebase use buildingo-6ff54
+
+# One-time: create the backend (skip if buildingo-api already exists)
+firebase apphosting:backends:create \
+  --backend buildingo-api \
+  --primary-region us-central1 \
+  --root-dir apps/web \
+  --app 1:848466124816:web:00f734d593d6821065aa95
+
+# One-time: store secrets in Secret Manager
+firebase apphosting:secrets:set SUPABASE_SECRET_KEY
+firebase apphosting:secrets:set ANTHROPIC_API_KEY
+firebase apphosting:secrets:set FIREBASE_SERVICE_ACCOUNT_JSON   # paste JSON or base64
+firebase apphosting:secrets:set CONTACT_EMAIL                   # support form inbox
+
+# Ship a rollout (builds from the linked git repo / local config)
+firebase apphosting:rollouts:create buildingo-api
+```
+
+Non-secret env lives in `apps/web/apphosting.yaml`. After deploy, point
+mobile `API_BASE_URL` at the App Hosting URL (release builds default to
+`https://buildingo-api--buildingo-6ff54.us-central1.hosted.app`), and map
+custom domain `buildingo.com` in Firebase Console → App Hosting → Domain.
+
+```bash
+cd apps/mobile
+flutter build ipa --release \
+  --dart-define=API_BASE_URL=https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
+```
+
 - **DB/Storage → Supabase** (already hosted).
-- **Mobile** ships through the app stores; point `API_BASE_URL` at the
-  App Hosting URL.
+- Classic Hosting site `https://buildingo-6ff54.web.app` exists but cannot
+  run the Next.js API/admin by itself — use App Hosting.
 
 ### 5. Test users
 

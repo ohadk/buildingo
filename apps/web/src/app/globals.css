@@ -114,3 +114,96 @@ h4 {
 .hero-wash {
   background: linear-gradient(160deg, #e8b9ac, #f3d9d1 70%);
 }
+
+/* Landing marketing surface */
+.landing-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 20%, rgba(233, 185, 172, 0.55), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 10%, rgba(217, 179, 130, 0.35), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 90%, rgba(107, 138, 107, 0.18), transparent 55%),
+    linear-gradient(165deg, #faf3e0 0%, #f2e8d6 45%, #eef2ea 100%);
+}
+
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes landing-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.landing-rise {
+  animation: landing-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-rise-delay-1 {
+  animation-delay: 0.12s;
+}
+
+.landing-rise-delay-2 {
+  animation-delay: 0.24s;
+}
+
+.landing-rise-delay-3 {
+  animation-delay: 0.36s;
+}
+
+.landing-rise-delay-4 {
+  animation-delay: 0.48s;
+}
+
+.landing-phone-float {
+  animation: landing-float 6s ease-in-out infinite;
+}
+
+.landing-glow {
+  animation: landing-glow 5s ease-in-out infinite;
+}
+
+.landing-section-band {
+  background:
+    linear-gradient(180deg, transparent, rgba(238, 242, 234, 0.65) 8%, rgba(238, 242, 234, 0.65) 92%, transparent),
+    var(--color-cream-100);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-rise,
+  .landing-phone-float,
+  .landing-glow {
+    animation: none;
+  }
+}
