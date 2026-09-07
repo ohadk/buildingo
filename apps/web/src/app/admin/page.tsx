@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/card";
-import { AddBuildingButton, AssignVaadButton } from "./actions";
+import { AddBuildingButton, AssignVaadButton, DeleteBuildingButton } from "./actions";
 import { formatPhoneDisplay } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -185,6 +185,10 @@ export default async function AdminPage() {
                           >
                             כניסה
                           </Link>
+                          <DeleteBuildingButton
+                            building={{ id: b.id, name: b.name, address: b.address }}
+                            userCount={b.users.length}
+                          />
                         </div>
                       </td>
                     </tr>

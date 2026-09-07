@@ -27,6 +27,7 @@ export type AuditAction =
   | "vendor_updated"
   | "vendor_deleted"
   | "building_created"
+  | "building_deleted"
   | "vaad_invited"
   | "tenant_transferred"
   | "fee_updated"

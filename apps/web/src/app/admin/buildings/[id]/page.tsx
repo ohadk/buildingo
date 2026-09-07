@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PRICE_PER_APARTMENT_ILS } from "@/lib/billing";
 import { formatDateHe, formatPhoneDisplay } from "@/lib/format";
-import { AssignVaadButton } from "../../actions";
+import { AssignVaadButton, DeleteBuildingButton } from "../../actions";
 import {
   SubscriptionControls,
   ToggleBuildingAccessButton,
@@ -165,7 +165,7 @@ export default async function BuildingDetailPage({
               : `דמי ועד ₪${b.price_per_sqm ?? 0} למ״ר`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <AssignVaadButton
             building={{ id: b.id, name: b.name, apartments: b.apartments }}
           />
@@ -173,6 +173,11 @@ export default async function BuildingDetailPage({
             buildingId={b.id}
             buildingName={b.name}
             isActive={b.is_active}
+          />
+          <DeleteBuildingButton
+            building={{ id: b.id, name: b.name, address: b.address }}
+            userCount={b.users.length}
+            redirectTo="/admin"
           />
         </div>
       </div>

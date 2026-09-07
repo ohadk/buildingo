@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { ApiError, getCurrentUser, requireRole, withErrorHandling } from "@/lib/auth/session";
+import { ApiError, requireRole, withErrorHandling } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
 import { feeChangeAnnouncementBody } from "@/lib/fees";
+import { adminAuth } from "@/lib/firebase/admin";
 import { notifyBuilding } from "@/lib/notify-building";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -129,5 +130,100 @@ export const PATCH = withErrorHandling(
     }
 
     return NextResponse.json({ building: data });
+  },
+);
+
+/**
+ * DELETE /api/buildings/[id] — super admin permanently removes a building
+ * and every user assigned to it (Vaad + tenants). Building-scoped rows
+ * cascade in Postgres; app user profiles + Firebase Auth accounts are
+ * cleaned up explicitly.
+ */
+export const DELETE = withErrorHandling(
+  async (_req: NextRequest, ctx: { params: Promise<{ id: string }> }) => {
+    const actor = await requireRole(_req, "super_admin");
+    const { id } = await ctx.params;
+    const db = supabaseAdmin();
+
+    const { data: building, error: bErr } = await db
+      .from("buildings")
+      .select("id, name, address, city")
+      .eq("id", id)
+      .maybeSingle();
+    if (bErr) throw new ApiError(500, bErr.message);
+    if (!building) throw new ApiError(404, "Building not found");
+
+    const { data: members, error: uErr } = await db
+      .from("users")
+      .select("id, firebase_uid, role, full_name")
+      .eq("building_id", id);
+    if (uErr) throw new ApiError(500, uErr.message);
+
+    const userIds = (members ?? []).map((u) => u.id as string);
+    const firebaseUids = (members ?? [])
+      .map((u) => u.firebase_uid as string)
+      .filter(Boolean);
+
+    // Break non-cascading FKs that would block user deletion after the
+    // building (and its CASCADE children) are gone.
+    if (userIds.length > 0) {
+      await Promise.all([
+        db.from("join_requests").update({ decided_by: null }).in("decided_by", userIds),
+        db.from("schedule_events").update({ created_by: null }).in("created_by", userIds),
+        db.from("announcements").update({ created_by: null }).in("created_by", userIds),
+        db.from("documents").update({ uploaded_by: null }).in("uploaded_by", userIds),
+        db.from("meetings").update({ created_by: null }).in("created_by", userIds),
+        db.from("expenses").update({ created_by: null }).in("created_by", userIds),
+      ]);
+    }
+
+    const { error: delBuildingErr } = await db.from("buildings").delete().eq("id", id);
+    if (delBuildingErr) throw new ApiError(500, delBuildingErr.message);
+
+    if (userIds.length > 0) {
+      // Leftover rows that reference users without ON DELETE CASCADE
+      // (should be rare after the building cascade, but block user delete).
+      await Promise.all([
+        db.from("invitations").delete().in("created_by", userIds),
+        db.from("tickets").delete().in("reported_by", userIds),
+        db.from("vote_ballots").delete().in("user_id", userIds),
+        db.from("ticket_events").delete().in("actor", userIds),
+      ]);
+
+      const { error: delUsersErr } = await db.from("users").delete().in("id", userIds);
+      if (delUsersErr) throw new ApiError(500, delUsersErr.message);
+    }
+
+    // Best-effort Firebase Auth cleanup so the phone can re-register cleanly.
+    await Promise.all(
+      firebaseUids.map((uid) =>
+        adminAuth()
+          .deleteUser(uid)
+          .catch((err) =>
+            console.error("[buildings DELETE] Firebase Auth delete failed", uid, err),
+          ),
+      ),
+    );
+
+    void logAudit({
+      buildingId: null,
+      actorId: actor.id,
+      action: "building_deleted",
+      entityType: "building",
+      entityId: id,
+      details: {
+        name: building.name,
+        address: building.address,
+        city: building.city,
+        usersRemoved: userIds.length,
+        roles: (members ?? []).map((u) => u.role),
+      },
+    });
+
+    return NextResponse.json({
+      deleted: true,
+      buildingId: id,
+      usersRemoved: userIds.length,
+    });
   },
 );

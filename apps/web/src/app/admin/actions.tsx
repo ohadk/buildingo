@@ -419,3 +419,100 @@ export function AssignVaadButton({ building }: { building: BuildingOption }) {
     </>
   );
 }
+
+/** Permanently delete a building and all users assigned to it. */
+export function DeleteBuildingButton({
+  building,
+  userCount,
+  redirectTo,
+}: {
+  building: { id: string; name: string; address: string };
+  userCount: number;
+  /** When set (e.g. from the building detail page), navigate here after delete. */
+  redirectTo?: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const expected = building.address.trim();
+  const confirmed = confirmText.trim() === expected;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!confirmed) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/buildings/${building.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setError(data.error ?? "מחיקת הבניין נכשלה");
+      return;
+    }
+    setOpen(false);
+    setConfirmText("");
+    if (redirectTo) {
+      router.push(redirectTo);
+      router.refresh();
+      return;
+    }
+    router.refresh();
+  }
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="text-brick-700 hover:bg-terracotta-100"
+        onClick={() => setOpen(true)}
+      >
+        מחיקה
+      </Button>
+      <Modal open={open} onClose={() => !busy && setOpen(false)} title="מחיקת בניין לצמיתות">
+        <form onSubmit={submit} className="space-y-4">
+          <p className="text-sm leading-relaxed text-ink-600">
+            פעולה זו בלתי הפיכה. יימחקו הבניין <b>{building.name}</b>, כל הדירות,
+            הנתונים הקשורים, וכל המשתמשים שמשויכים אליו
+            {userCount > 0 ? ` (${userCount} דיירים/ועד)` : ""}.
+          </p>
+          <div className="space-y-1">
+            <Label>
+              לאישור, הקלידו את הכתובת: <span className="font-semibold text-ink-900">{expected}</span>
+            </Label>
+            <Input
+              required
+              autoComplete="off"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={expected}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={busy || !confirmed}
+              className="flex-1 bg-brick-600 hover:bg-brick-700"
+            >
+              {busy ? "מוחק…" : "מחק בניין ודיירים"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setOpen(false)}
+              className="flex-1"
+            >
+              ביטול
+            </Button>
+          </div>
+          {error && <p className="text-sm text-brick-600">{error}</p>}
+        </form>
+      </Modal>
+    </>
+  );
+}
