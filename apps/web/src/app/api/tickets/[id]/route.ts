@@ -230,6 +230,46 @@ export const PATCH = withErrorHandling(
   },
 );
 
+/** DELETE /api/tickets/:id — Vaad or the reporter removes a ticket. */
+export const DELETE = withErrorHandling(
+  async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const user = await getCurrentUser(req);
+    if (!user.building_id) throw new ApiError(409, "Not mapped to a building");
+    const { id } = await params;
+
+    const db = supabaseAdmin();
+    const { data: existing, error: loadError } = await db
+      .from("tickets")
+      .select("id, building_id, title, reported_by")
+      .eq("id", id)
+      .eq("building_id", user.building_id)
+      .maybeSingle();
+    if (loadError || !existing) {
+      throw new ApiError(404, "Ticket not found in your building");
+    }
+
+    const isVaad = user.role === "vaad" || user.role === "super_admin";
+    const isReporter = existing.reported_by === user.id;
+    if (!isVaad && !isReporter) {
+      throw new ApiError(403, "Not allowed to delete this ticket");
+    }
+
+    const { error } = await db.from("tickets").delete().eq("id", id);
+    if (error) throw new ApiError(500, error.message);
+
+    await logAudit({
+      buildingId: existing.building_id,
+      actorId: user.id,
+      action: "ticket_deleted",
+      entityType: "ticket",
+      entityId: id,
+      details: { title: existing.title },
+    });
+
+    return NextResponse.json({ ok: true });
+  },
+);
+
 async function upsertTicketExpense(
   db: ReturnType<typeof supabaseAdmin>,
   args: {

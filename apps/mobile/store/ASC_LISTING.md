@@ -186,11 +186,13 @@ Firebase Console → **Authentication** → **Sign-in method** → **Phone** →
 ### 2. Paste into App Store Connect → App Review Information → Notes
 
 ```
-Phone sign-in (no SMS needed — Firebase test number):
+Phone sign-in (no SMS / WhatsApp delivery needed — test number):
 1. Open the app → enter phone +972 50-123-4567
-2. Tap Send code
+2. Tap "Send code via WhatsApp" (default) — no message is sent for this test number
 3. Enter verification code: 123456
 4. Continue onboarding / join with invite if prompted
+
+Optional: use "Send via SMS instead" with the same phone + code 123456 (Firebase test number).
 
 Production API: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
 Support: https://buildingo.com/support

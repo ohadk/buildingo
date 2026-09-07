@@ -34,6 +34,10 @@ bool _isSafeProductionOrigin(String url) {
       RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(host)) {
     return false;
   }
+  // Old Netlify marketing site — /join and the API are not hosted there.
+  if (host == 'buildingo.com' || host == 'www.buildingo.com') {
+    return false;
+  }
   return true;
 }
 
@@ -68,6 +72,11 @@ class ApiClient {
   );
 
   static String? _resolvedPublicWebUrl;
+
+  /// Clears the cached share origin (e.g. after fixing PUBLIC_WEB_URL).
+  static void clearResolvedPublicWebUrl() {
+    _resolvedPublicWebUrl = null;
+  }
 
   /// Shareable web origin (no trailing slash).
   static Future<String> resolvePublicWebUrl() async {

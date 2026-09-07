@@ -9,6 +9,35 @@ const updateSchema = z.object({
   notes: z.string().max(2000).nullable().optional(),
   timeOfDay: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable().optional(),
   isActive: z.boolean().optional(),
+  eventType: z
+    .enum([
+      "garbage",
+      "cleaning",
+      "bulk_waste",
+      "gardening",
+      "pest",
+      "water_tank",
+      "other",
+    ])
+    .optional(),
+  recurrence: z
+    .enum([
+      "once",
+      "daily",
+      "weekly",
+      "biweekly",
+      "monthly",
+      "quarterly",
+      "yearly",
+    ])
+    .optional(),
+  dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
+  dayOfMonth: z.number().int().min(1).max(31).nullable().optional(),
+  specificDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
 });
 
 async function findScoped(id: string, buildingId: string | null, isSuperAdmin: boolean) {
@@ -36,8 +65,19 @@ export const PATCH = withErrorHandling(
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (body.title != null) patch.title = body.title;
     if (body.notes !== undefined) patch.notes = body.notes;
-    if (body.timeOfDay !== undefined) patch.time_of_day = body.timeOfDay;
+    if (body.timeOfDay !== undefined) {
+      patch.time_of_day = body.timeOfDay
+        ? body.timeOfDay.length === 5
+          ? body.timeOfDay
+          : body.timeOfDay.slice(0, 5)
+        : null;
+    }
     if (body.isActive != null) patch.is_active = body.isActive;
+    if (body.eventType != null) patch.event_type = body.eventType;
+    if (body.recurrence != null) patch.recurrence = body.recurrence;
+    if (body.dayOfWeek !== undefined) patch.day_of_week = body.dayOfWeek;
+    if (body.dayOfMonth !== undefined) patch.day_of_month = body.dayOfMonth;
+    if (body.specificDate !== undefined) patch.specific_date = body.specificDate;
 
     const { data, error } = await supabaseAdmin()
       .from("schedule_events")

@@ -15,40 +15,50 @@ env:
   # ── Firebase client config (inlined into the bundle at build time) ──
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyDlCxUQLNbD3V-ZXfme1YQ5g5cbW5sC4-E
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: buildingo-6ff54.firebaseapp.com
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     value: buildingo-6ff54
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: 1:848466124816:web:00f734d593d6821065aa95
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
     value: "848466124816"
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
     value: buildingo-6ff54.firebasestorage.app
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
 
   # ── Public URLs / support ────────────────────────────────────────
   # Must be the App Hosting origin until buildingo.com is mapped to it.
   # (buildingo.com currently still serves a separate Netlify site.)
   - variable: PUBLIC_WEB_URL
     value: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
   - variable: NEXT_PUBLIC_SUPPORT_EMAIL
     value: support@buildingo.com
-    availability: [BUILD, RUNTIME]
+    availability: [ BUILD, RUNTIME ]
 
   # ── Server-side config ───────────────────────────────────────────
   - variable: SUPABASE_URL
     value: https://wcybxiwnewryvazqpxzg.supabase.co
-    availability: [RUNTIME]
+    availability: [ RUNTIME ]
   - variable: SENDGRID_FROM_EMAIL
-    value: dispatch@dira.app
-    availability: [RUNTIME]
+    value: ohad@kazav.net
+    availability: [ RUNTIME ]
+  - variable: TWILIO_WHATSAPP_FROM
+    value: "+15186760512"
+    availability: [ RUNTIME ]
+  # Content Template: "{{1}} is your verification code… expires in 15 minutes."
+  - variable: TWILIO_WHATSAPP_OTP_TEMPLATE_SID
+    value: HX807725b66798d33aed376c31cefdd9b1
+    availability: [ RUNTIME ]
+  - variable: TWILIO_PAYMENT_TEMPLATE_SID
+    value: HX807725b66798d33aed376c31cefdd9b1
+    availability: [ RUNTIME ]
 
   # ── Secrets (Cloud Secret Manager) ───────────────────────────────
   - variable: SUPABASE_SECRET_KEY
@@ -57,7 +67,12 @@ env:
     secret: ANTHROPIC_API_KEY
   - variable: FIREBASE_SERVICE_ACCOUNT_JSON
     secret: FIREBASE_SERVICE_ACCOUNT_JSON
-  # Optional later: firebase apphosting:secrets:set CONTACT_EMAIL
-  # then add:
+  - variable: TWILIO_ACCOUNT_SID
+    secret: TWILIO_ACCOUNT_SID
+  - variable: TWILIO_AUTH_TOKEN
+    secret: TWILIO_AUTH_TOKEN
+  - variable: SENDGRID_API_KEY
+    secret: SENDGRID_API_KEY
+  # Optional: CONTACT_EMAIL / SENDGRID_TO_EMAIL
   # - variable: CONTACT_EMAIL
   #   secret: CONTACT_EMAIL

@@ -262,10 +262,20 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
         onCost: _openCostSheet,
         onProgress: _openProgressSheet,
         onEdit: _openEditSheet,
+        onDelete: _deleteTicket,
         onRefresh: () => _load(silent: true),
       ),
     );
     if (mounted) await _load(silent: true);
+  }
+
+  Future<void> _deleteTicket(Ticket ticket) async {
+    await api.delete('/api/tickets/${ticket.id}');
+    if (!mounted) return;
+    setState(() => _tickets.removeWhere((t) => t.id == ticket.id));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.ticketDeleted)),
+    );
   }
 
   Widget _buildTicketList(
@@ -538,6 +548,7 @@ class _TicketDetailSheet extends StatefulWidget {
   final Future<void> Function(Ticket ticket) onCost;
   final Future<void> Function(Ticket ticket) onProgress;
   final Future<void> Function(Ticket ticket) onEdit;
+  final Future<void> Function(Ticket ticket) onDelete;
   final Future<void> Function() onRefresh;
 
   const _TicketDetailSheet({
@@ -552,6 +563,7 @@ class _TicketDetailSheet extends StatefulWidget {
     required this.onCost,
     required this.onProgress,
     required this.onEdit,
+    required this.onDelete,
     required this.onRefresh,
   });
 
@@ -645,7 +657,7 @@ class _TicketDetailSheetState extends State<_TicketDetailSheet> {
                       ],
                     ),
                   ),
-                  if (widget.canEdit)
+                  if (widget.canEdit) ...[
                     IconButton(
                       tooltip: l10n.ticketEdit,
                       onPressed: () async {
@@ -656,6 +668,44 @@ class _TicketDetailSheetState extends State<_TicketDetailSheet> {
                       icon: const Icon(Icons.edit_outlined),
                       color: DiraColors.brick,
                     ),
+                    IconButton(
+                      tooltip: l10n.deleteTicket,
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (dCtx) => AlertDialog(
+                            title: Text(l10n.deleteTicket),
+                            content: Text(l10n.deleteTicketConfirm),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dCtx, false),
+                                child: Text(l10n.cancel),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(dCtx, true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: DiraColors.brickDark,
+                                ),
+                                child: Text(l10n.delete),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true || !mounted) return;
+                        try {
+                          await widget.onDelete(_ticket);
+                          if (mounted) Navigator.pop(context);
+                        } on ApiException catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.message)),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                      color: DiraColors.brickDark,
+                    ),
+                  ],
                 ],
               ),
               if (_ticket.description.trim().isNotEmpty) ...[

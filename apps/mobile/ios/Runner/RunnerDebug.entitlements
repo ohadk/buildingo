@@ -5,5 +5,10 @@
 	<!-- Required for Firebase Phone Auth silent APNs verification (debug). -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Universal Links → https://…/open/* opens Buildingo. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:buildingo-api--buildingo-6ff54.us-central1.hosted.app</string>
+	</array>
 </dict>
 </plist>

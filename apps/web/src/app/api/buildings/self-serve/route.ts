@@ -348,7 +348,9 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     }
   }
 
-  const origin = env.publicWebUrl ?? req.nextUrl.origin;
+  const origin =
+    env.publicWebUrl ||
+    "https://buildingo-api--buildingo-6ff54.us-central1.hosted.app";
   const joinLink = `${origin}/join/${building.join_code}`;
   await logAudit({
     buildingId: building.id,

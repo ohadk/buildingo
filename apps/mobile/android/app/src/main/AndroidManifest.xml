@@ -36,6 +36,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- App Links: https://…/open/* → open Buildingo (payments, etc.). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="buildingo-api--buildingo-6ff54.us-central1.hosted.app"
+                    android:pathPrefix="/open"/>
+            </intent-filter>
+            <!-- Custom scheme fallback (landing page / WhatsApp in-app browser). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="buildingo"/>
+            </intent-filter>
         </activity>
         <meta-data
             android:name="flutterEmbedding"

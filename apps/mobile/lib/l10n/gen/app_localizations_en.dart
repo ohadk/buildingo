@@ -29,6 +29,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String enterWhatsAppCodeSentTo(String phone) {
+    return 'Enter the WhatsApp code we sent to $phone';
+  }
+
+  @override
+  String get sendCodeViaWhatsApp => 'Send code via WhatsApp';
+
+  @override
+  String get sendViaSmsInstead => 'Send via SMS instead';
+
+  @override
+  String get sendViaWhatsAppInstead => 'Send via WhatsApp instead';
+
+  @override
   String get phoneNumber => 'Phone number';
 
   @override
@@ -64,6 +78,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get authErrorSmsSendFailed =>
       'Couldn\'t send the verification code. Please try again in a moment.';
+
+  @override
+  String get authErrorWhatsAppSendFailed =>
+      'Couldn\'t send the WhatsApp code. Please try again, or use SMS instead.';
 
   @override
   String get authErrorSmsUnavailable =>
@@ -441,6 +459,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ticketEdited => 'Ticket updated';
+
+  @override
+  String get deleteTicket => 'Delete ticket';
+
+  @override
+  String get deleteTicketConfirm =>
+      'Remove this ticket permanently? This cannot be undone.';
+
+  @override
+  String get ticketDeleted => 'Ticket deleted';
+
+  @override
+  String get auditTicketDeleted => 'Ticket deleted';
+
+  @override
+  String get editScheduleEvent => 'Edit schedule event';
+
+  @override
+  String get editMeeting => 'Edit assembly';
+
+  @override
+  String get deleteScheduleEvent => 'Delete from schedule';
+
+  @override
+  String get deleteScheduleEventConfirm =>
+      'Remove this item from the building schedule?';
+
+  @override
+  String get scheduleEventUpdated => 'Schedule updated';
+
+  @override
+  String get scheduleEventDeleted => 'Removed from schedule';
+
+  @override
+  String get auditMeetingUpdated => 'Assembly updated';
+
+  @override
+  String get auditMeetingDeleted => 'Assembly deleted';
 
   @override
   String get ticketUpdateProgress => 'Update progress';
@@ -865,6 +921,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get announcementPublished => 'The message was published to residents';
+
+  @override
+  String get editBoardMessage => 'Edit board message';
+
+  @override
+  String get deleteBoardMessage => 'Delete message';
+
+  @override
+  String get deleteBoardMessageConfirm =>
+      'Remove this message from the building board? Residents will no longer see it.';
+
+  @override
+  String get announcementUpdated => 'Message updated';
+
+  @override
+  String get announcementDeleted => 'Message deleted';
+
+  @override
+  String get auditAnnouncementUpdated => 'Announcement updated';
+
+  @override
+  String get auditAnnouncementDeleted => 'Announcement deleted';
 
   @override
   String get agenda => 'Agenda';
@@ -1620,8 +1698,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get collectedThisMonth => 'Collected this month';
 
   @override
-  String collectionHeroSub(String total, String pct) {
-    return 'of $total · $pct% collected';
+  String get remainingThisMonth => 'Still to collect';
+
+  @override
+  String collectionHeroSub(String collected, String pct) {
+    return '$collected collected · $pct%';
   }
 
   @override
@@ -1888,6 +1969,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get agentsComingSoonFootnote =>
       'Available in the next Buildingo release — stay tuned.';
+
+  @override
+  String get paymentsComingSoonBadge => 'Coming soon';
+
+  @override
+  String get paymentsComingSoonTitle => 'Pay building dues in the app';
+
+  @override
+  String get paymentsComingSoonBody =>
+      'You opened Buildingo from your payment reminder. In-app payment is on the way — for now you can review dues in the Payments tab, or pay as usual outside the app.';
 
   @override
   String get agentDispatchComingSoon =>

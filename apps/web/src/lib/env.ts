@@ -30,7 +30,11 @@ export const env = {
   },
   /** Where "contact us" (subscription) requests are emailed. */
   get contactEmail() {
-    return process.env.CONTACT_EMAIL || null;
+    return (
+      process.env.CONTACT_EMAIL ||
+      process.env.SENDGRID_TO_EMAIL ||
+      null
+    );
   },
   sendgrid: {
     get apiKey() {
@@ -53,6 +57,14 @@ export const env = {
     get whatsappFrom() {
       return process.env.TWILIO_WHATSAPP_FROM || null;
     },
+    /** WhatsApp Content Template SID for OTP (Twilio Content API). */
+    get whatsappOtpTemplateSid() {
+      return (
+        process.env.TWILIO_WHATSAPP_OTP_TEMPLATE_SID ||
+        process.env.TWILIO_PAYMENT_TEMPLATE_SID ||
+        null
+      );
+    },
   },
   waha: {
     get url() {
@@ -70,8 +82,17 @@ export const env = {
       return process.env.WAHA_WEBHOOK_SECRET || null;
     },
   },
-  /** Public origin for webhooks (e.g. https://app.buildingo.com). */
+  /** Public origin for webhooks + shareable join links. */
   get publicWebUrl() {
-    return process.env.PUBLIC_WEB_URL?.replace(/\/$/, "") || null;
+    const raw = process.env.PUBLIC_WEB_URL?.replace(/\/$/, "") || null;
+    if (!raw) return null;
+    // Old Netlify marketing site — /join and the API are not hosted there.
+    try {
+      const host = new URL(raw).hostname.toLowerCase();
+      if (host === "buildingo.com" || host === "www.buildingo.com") return null;
+    } catch {
+      return null;
+    }
+    return raw;
   },
 };

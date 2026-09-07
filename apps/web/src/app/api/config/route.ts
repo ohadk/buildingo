@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { env } from "@/lib/env";
+
+const APP_HOSTING_ORIGIN =
+  "https://buildingo-api--buildingo-6ff54.us-central1.hosted.app";
 
 /**
  * GET /api/config — non-secret client bootstrap (Realtime publishable key,
@@ -12,14 +16,14 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     null;
-  const publicWebUrl =
-    process.env.PUBLIC_WEB_URL?.replace(/\/$/, "") || null;
+  // Prefer env helper (rejects stale Netlify buildingo.com); fall back to App Hosting.
+  const publicWebUrl = env.publicWebUrl || APP_HOSTING_ORIGIN;
   return NextResponse.json({
     supabaseUrl: process.env.SUPABASE_URL ?? null,
     supabasePublishableKey,
     realtimeEnabled: Boolean(supabasePublishableKey),
     publicWebUrl,
     /** Smart store link: /app detects iOS vs Android. */
-    appDownloadUrl: publicWebUrl ? `${publicWebUrl}/app` : null,
+    appDownloadUrl: `${publicWebUrl}/app`,
   });
 }
