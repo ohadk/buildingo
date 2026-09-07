@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/theme.dart';
 import '../core/user_preferences.dart';
 import '../l10n/l10n.dart';
+import '../widgets/app_version_label.dart';
 
 /// Personal settings: notification preferences + privacy explanation.
 class SettingsScreen extends StatefulWidget {
@@ -177,6 +178,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 28),
+                const AppVersionLabel(),
               ],
             ),
     );

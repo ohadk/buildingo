@@ -166,3 +166,45 @@ Capture more tabs (Payments / Residents / Docs) in Simulator before submit if yo
 ### App Review rejection note (Guideline 2.1 — “app did not load”)
 
 Cause: the submitted IPA was talking to `http://localhost:3000`, so App Review’s devices could not reach the backend and hung on launch. Fixed by defaulting release builds to the App Hosting URL and not blocking startup on `/api/config`.
+
+---
+
+## App Review — phone sign-in (required)
+
+Firebase sometimes blocks real SMS to certain Israeli numbers (`Error code: 39`). **Do not rely on real SMS for Apple reviewers.**
+
+### 1. Add a Firebase test phone (no real SMS)
+
+Firebase Console → **Authentication** → **Sign-in method** → **Phone** → **Phone numbers for testing**:
+
+| Phone number | Verification code |
+|---|---|
+| `+972501234567` | `123456` |
+
+(Use any unused +972 test number + a 6-digit code you choose.)
+
+### 2. Paste into App Store Connect → App Review Information → Notes
+
+```
+Phone sign-in (no SMS needed — Firebase test number):
+1. Open the app → enter phone +972 50-123-4567
+2. Tap Send code
+3. Enter verification code: 123456
+4. Continue onboarding / join with invite if prompted
+
+Production API: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
+Support: https://buildingo.com/support
+Privacy: https://buildingo.com/privacy
+```
+
+Update the number/code in the notes to match what you configured in Firebase.
+
+### 3. Build the App Store IPA
+
+```bash
+cd apps/mobile
+flutter build ipa --release \
+  --dart-define=API_BASE_URL=https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
+```
+
+Upload `build/ios/ipa/*.ipa` with Transporter / Xcode Organizer. Do **not** Archive right after a localhost debug run.

@@ -16,6 +16,27 @@ class ApiException implements Exception {
 const String kProductionApiBaseUrl =
     'https://buildingo-api--buildingo-6ff54.us-central1.hosted.app';
 
+bool _isSafeProductionOrigin(String url) {
+  final u = Uri.tryParse(url);
+  if (u == null || u.host.isEmpty) return false;
+  if (u.scheme != 'https') return false;
+  final host = u.host.toLowerCase();
+  if (host == 'localhost' ||
+      host == '127.0.0.1' ||
+      host == '0.0.0.0' ||
+      host.endsWith('.local')) {
+    return false;
+  }
+  // Private / link-local LAN ranges — never ship these in release.
+  if (host.startsWith('10.') ||
+      host.startsWith('192.168.') ||
+      host.startsWith('169.254.') ||
+      RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(host)) {
+    return false;
+  }
+  return true;
+}
+
 /// Thin wrapper around the Next.js backend. Every request carries the
 /// caller's Firebase ID token as a Bearer header; the server verifies it
 /// with the Admin SDK and enforces role/building scoping.
@@ -23,13 +44,18 @@ class ApiClient {
   static const _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   /// Resolved API origin (no trailing slash).
-  /// - Explicit `--dart-define=API_BASE_URL=…` always wins.
-  /// - Release/profile default to the hosted production API.
-  /// - Debug defaults to local Next.js.
+  /// - Explicit `--dart-define=API_BASE_URL=…` wins in debug.
+  /// - Release/profile always use a safe HTTPS origin (production default).
+  ///   Stale Xcode `DART_DEFINES` with localhost/LAN are ignored.
   static String get baseUrl {
     final fromEnv = _envBaseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+    if (kReleaseMode || kProfileMode) {
+      if (fromEnv.isNotEmpty && _isSafeProductionOrigin(fromEnv)) {
+        return fromEnv;
+      }
+      return kProductionApiBaseUrl;
+    }
     if (fromEnv.isNotEmpty) return fromEnv;
-    if (kReleaseMode || kProfileMode) return kProductionApiBaseUrl;
     return 'http://localhost:3000';
   }
 
@@ -49,21 +75,22 @@ class ApiClient {
     try {
       final cfg = await api.get('/api/config');
       final fromServer = (cfg['publicWebUrl'] as String?)?.trim();
-      if (fromServer != null && fromServer.isNotEmpty) {
+      if (fromServer != null &&
+          fromServer.isNotEmpty &&
+          _isSafeProductionOrigin(fromServer.replaceAll(RegExp(r'/+$'), ''))) {
         _resolvedPublicWebUrl = fromServer.replaceAll(RegExp(r'/+$'), '');
         return _resolvedPublicWebUrl!;
       }
     } catch (_) {
       /* fall through */
     }
-    final fromDefine = publicWebUrl.trim();
-    if (fromDefine.isNotEmpty) {
-      _resolvedPublicWebUrl = fromDefine.replaceAll(RegExp(r'/+$'), '');
+    final fromDefine = publicWebUrl.trim().replaceAll(RegExp(r'/+$'), '');
+    if (fromDefine.isNotEmpty && _isSafeProductionOrigin(fromDefine)) {
+      _resolvedPublicWebUrl = fromDefine;
       return _resolvedPublicWebUrl!;
     }
     // Last resort: App Hosting origin (not the old Netlify buildingo.com site).
-    _resolvedPublicWebUrl =
-        'https://buildingo-api--buildingo-6ff54.us-central1.hosted.app';
+    _resolvedPublicWebUrl = kProductionApiBaseUrl;
     return _resolvedPublicWebUrl!;
   }
 

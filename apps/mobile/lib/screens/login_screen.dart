@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../core/auth_errors.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/app_version_label.dart';
 import '../widgets/phone_field.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,23 +17,75 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  /// Optional dual-sim / manual-test prefills (`--dart-define=TEST_PHONE=+972…`).
-  static const _testPhone = String.fromEnvironment('TEST_PHONE');
-  static const _testOtp = String.fromEnvironment('TEST_OTP');
+  /// Dual-sim / manual QA only — never prefill in release / App Store builds.
+  static const _testPhoneDefine = String.fromEnvironment('TEST_PHONE');
+  static const _testOtpDefine = String.fromEnvironment('TEST_OTP');
+  static String get _testPhone =>
+      kDebugMode ? _testPhoneDefine : '';
+  static String get _testOtp => kDebugMode ? _testOtpDefine : '';
 
-  String _phoneE164 = _testPhone;
-  final _codeController = TextEditingController(
-    text: _testOtp.isEmpty ? '' : _testOtp,
+  String _phoneE164 = '';
+  bool _phoneValid = false;
+  late final TextEditingController _codeController = TextEditingController(
+    text: _testOtp,
   );
   String? _verificationId;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // Debug QA prefills only — production login always starts empty.
+    if (_testPhone.isNotEmpty) {
+      _phoneE164 = _testPhone;
+      _phoneValid = PhoneField.isValid(_testPhone);
+    }
+  }
 
   Future<void> _sendCode() async {
     setState(() {
       _busy = true;
       _error = null;
     });
+    debugPrint('Phone auth sendCode phone=$_phoneE164');
+
+    // Debug-only diagnostic path. Never compile into App Store via FORCE_REAL alone.
+    const forceReal = bool.fromEnvironment('FORCE_REAL_PHONE_AUTH');
+    if (kDebugMode && forceReal) {
+      try {
+        const channel = MethodChannel('buildingo/apns');
+        final raw = await channel.invokeMethod<Map>('verifyPhone', _phoneE164);
+        // ignore: avoid_print
+        print('Native verifyPhone result=$raw');
+        if (raw != null && raw['ok'] == true) {
+          final id = raw['verificationId'] as String?;
+          if (id != null && mounted) {
+            setState(() {
+              _busy = false;
+              _verificationId = id;
+            });
+            return;
+          }
+        }
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _error = authErrorMessage(
+            FirebaseAuthException(
+              code: 'internal-error',
+              message: '${raw?['error'] ?? raw}',
+            ),
+            context.l10n,
+          );
+        });
+        return;
+      } catch (e) {
+        // ignore: avoid_print
+        print('Native verifyPhone channel error=$e');
+      }
+    }
+
     await FirebaseAuth.instance.verifyPhoneNumber(
       phoneNumber: _phoneE164,
       verificationCompleted: (credential) async {
@@ -38,16 +93,21 @@ class _LoginScreenState extends State<LoginScreen> {
         await FirebaseAuth.instance.signInWithCredential(credential);
       },
       verificationFailed: (e) {
+        // ignore: avoid_print
+        print(
+          'Phone auth verificationFailed '
+          'code=${e.code} message=${e.message} '
+          'stack=${e.stackTrace}',
+        );
+        if (!mounted) return;
         setState(() {
           _busy = false;
-          // Prefer code+message so Firebase CONFIG/APNs issues are diagnosable.
-          final detail = [e.code, e.message].whereType<String>().where((s) => s.isNotEmpty).join(': ');
-          _error = detail.isNotEmpty
-              ? detail
-              : (mounted ? context.l10n.verificationFailed : '');
+          _error = authErrorMessage(e, context.l10n);
         });
       },
       codeSent: (verificationId, _) {
+        // ignore: avoid_print
+        print('Phone auth codeSent verificationIdLen=${verificationId.length}');
         setState(() {
           _busy = false;
           _verificationId = verificationId;
@@ -72,15 +132,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await FirebaseAuth.instance.signInWithCredential(credential);
       // AuthGate takes over from here (token exchange + routing)
     } on FirebaseAuthException catch (e) {
-      setState(() {
-        final detail = [e.code, e.message]
-            .whereType<String>()
-            .where((s) => s.isNotEmpty)
-            .join(': ');
-        _error = detail.isNotEmpty
-            ? detail
-            : (mounted ? context.l10n.invalidCode : '');
-      });
+      if (!mounted) return;
+      setState(() => _error = authErrorMessage(e, context.l10n));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -91,6 +144,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final awaitingCode = _verificationId != null;
     final l10n = context.l10n;
     return Scaffold(
+      // Avoid rebuilding / reflowing the heavy brand stack with the keyboard;
+      // a tiny bottom spacer listens to viewInsets instead.
+      resizeToAvoidBottomInset: false,
       body: Container(
         decoration: const BoxDecoration(gradient: heroGradient),
         child: Stack(
@@ -155,32 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Brand mark + wordmark.
-                              Center(
-                                child: Container(
-                                  width: 96,
-                                  height: 96,
-                                  clipBehavior: Clip.antiAlias,
-                                  decoration: BoxDecoration(
-                                    color: DiraColors.creamCard,
-                                    borderRadius: BorderRadius.circular(28),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: DiraColors.brickDeep.withValues(
-                                          alpha: 0.22,
-                                        ),
-                                        blurRadius: 28,
-                                        offset: const Offset(0, 12),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Image.asset(
-                                    'assets/icon/app_icon_1024.png',
-                                    fit: BoxFit.cover,
-                                    filterQuality: FilterQuality.medium,
-                                  ),
-                                ),
-                              ),
+                              const _LoginBrandMark(),
                               const SizedBox(height: 18),
                               Text(
                                 'Buildingo',
@@ -274,11 +305,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ],
+                              const _KeyboardInsetPad(),
                             ],
                           ),
                         ),
                       ),
                     ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10, top: 4),
+                    child: AppVersionLabel(),
                   ),
                 ],
               ),
@@ -298,12 +334,20 @@ class _LoginScreenState extends State<LoginScreen> {
     const SizedBox(height: 20),
     PhoneField(
       initialValue: _testPhone.isEmpty ? null : _testPhone,
-      onChanged: (v) => setState(() => _phoneE164 = v),
+      enableAutofill: false,
+      onChanged: (v) {
+        _phoneE164 = v;
+        final valid = PhoneField.isValid(v);
+        // Only rebuild when the Send button enablement flips — not every digit.
+        if (valid != _phoneValid) {
+          setState(() => _phoneValid = valid);
+        }
+      },
     ),
     const SizedBox(height: 20),
     _primaryButton(
       label: l10n.sendCode,
-      enabled: !_busy && PhoneField.isValid(_phoneE164),
+      enabled: !_busy && _phoneValid,
       onPressed: _sendCode,
     ),
   ];
@@ -400,6 +444,53 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+/// Brand mark isolated so keyboard inset rebuilds don't re-decode the 1024 icon.
+class _LoginBrandMark extends StatelessWidget {
+  const _LoginBrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: RepaintBoundary(
+        child: Container(
+          width: 96,
+          height: 96,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: DiraColors.creamCard,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: DiraColors.brickDeep.withValues(alpha: 0.22),
+                blurRadius: 28,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Image.asset(
+            'assets/icon/app_icon_1024.png',
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.low,
+            // Decode near display size (3x) instead of full 1024² every rebuild.
+            cacheWidth: 288,
+            cacheHeight: 288,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Only this leaf rebuilds when the keyboard opens/closes.
+class _KeyboardInsetPad extends StatelessWidget {
+  const _KeyboardInsetPad();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(height: MediaQuery.viewInsetsOf(context).bottom);
+  }
+}
+
 /// A soft translucent circle used as a decorative backdrop element.
 class _Blob extends StatelessWidget {
   final double size;
@@ -409,10 +500,12 @@ class _Blob extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      child: RepaintBoundary(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
       ),
     );
   }

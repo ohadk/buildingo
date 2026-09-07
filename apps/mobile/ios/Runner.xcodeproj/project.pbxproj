@@ -12,6 +12,7 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		5A1B0C012F4A100100A1B001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5A1B0C002F4A100100A1B001 /* PrivacyInfo.xcprivacy */; };
 		5A1B0C042F4A100100A1B004 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 5A1B0C022F4A100100A1B002 /* InfoPlist.strings */; };
+		5A1B0C082F4A300100A1B008 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5A1B0C072F4A300100A1B007 /* GoogleService-Info.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -63,6 +64,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5A1B0C002F4A100100A1B001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5A1B0C062F4A200100A1B006 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
+		5A1B0C072F4A300100A1B007 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		5A1B0C032F4A100100A1B003 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		5A1B0C052F4A100100A1B005 /* he */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = he; path = he.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -126,6 +128,7 @@
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
 				5A1B0C062F4A200100A1B006 /* Runner.entitlements */,
+				5A1B0C072F4A300100A1B007 /* GoogleService-Info.plist */,
 				5A1B0C002F4A100100A1B001 /* PrivacyInfo.xcprivacy */,
 				5A1B0C022F4A100100A1B002 /* InfoPlist.strings */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
@@ -241,6 +244,7 @@
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				5A1B0C012F4A100100A1B001 /* PrivacyInfo.xcprivacy in Resources */,
 				5A1B0C042F4A100100A1B004 /* InfoPlist.strings in Resources */,
+				5A1B0C082F4A300100A1B008 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

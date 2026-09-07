@@ -194,6 +194,60 @@ abstract class AppLocalizations {
   /// **'Invalid code'**
   String get invalidCode;
 
+  /// No description provided for @authErrorGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get authErrorGeneric;
+
+  /// No description provided for @authErrorSmsSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the verification code. Please try again in a moment.'**
+  String get authErrorSmsSendFailed;
+
+  /// No description provided for @authErrorSmsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'SMS to this number isn\'t available right now (carrier or rate limit). Wait a few minutes, try another Israeli number, or try again later.'**
+  String get authErrorSmsUnavailable;
+
+  /// No description provided for @authErrorInvalidPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'That phone number doesn\'t look right. Check the country code and try again.'**
+  String get authErrorInvalidPhone;
+
+  /// No description provided for @authErrorTooManyRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please wait a few minutes and try again.'**
+  String get authErrorTooManyRequests;
+
+  /// No description provided for @authErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection. Check your network and try again.'**
+  String get authErrorNetwork;
+
+  /// No description provided for @authErrorInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'That code isn\'t valid. Please check it and try again.'**
+  String get authErrorInvalidCode;
+
+  /// No description provided for @authErrorSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This code expired. Request a new one.'**
+  String get authErrorSessionExpired;
+
+  /// No description provided for @authErrorNotEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone sign-in is temporarily unavailable. Please try again later.'**
+  String get authErrorNotEnabled;
+
   /// No description provided for @completeProfile.
   ///
   /// In en, this message translates to:

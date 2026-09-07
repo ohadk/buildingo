@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
@@ -22,6 +24,21 @@ import 'widgets/splash_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Simulator / debug: skip APNs + reCAPTCHA app verification so Firebase
+  // test phone numbers work without the production push/OAuth setup.
+  // Never enable this in release — real devices need APNs (or reCAPTCHA).
+  // Pass --dart-define=FORCE_REAL_PHONE_AUTH=true to test real SMS in debug.
+  const forceRealPhoneAuth = bool.fromEnvironment('FORCE_REAL_PHONE_AUTH');
+  if (kDebugMode && !forceRealPhoneAuth) {
+    await FirebaseAuth.instance.setSettings(
+      appVerificationDisabledForTesting: true,
+    );
+  }
+  if (kDebugMode && forceRealPhoneAuth) {
+    // ignore: avoid_print
+    print('FORCE_REAL_PHONE_AUTH=true (APNs/reCAPTCHA path enabled)');
+    unawaited(_logApnsStatus());
+  }
   // Never block first paint on Realtime/config — a bad API URL used to hang
   // App Review on the splash screen ("app did not load").
   unawaited(initRealtime());
@@ -30,6 +47,22 @@ Future<void> main() async {
   final localeController = LocaleController();
   await localeController.load();
   runApp(DiraApp(localeController: localeController));
+}
+
+Future<void> _logApnsStatus() async {
+  const channel = MethodChannel('buildingo/apns');
+  for (var i = 0; i < 8; i++) {
+    try {
+      final status = await channel.invokeMethod<String>('status');
+      // ignore: avoid_print
+      print('APNs status[$i]=$status');
+      if (status != null && status != 'pending') return;
+    } catch (e) {
+      // ignore: avoid_print
+      print('APNs status[$i] error=$e');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+  }
 }
 
 class DiraApp extends StatelessWidget {
@@ -57,6 +90,27 @@ class DiraApp extends StatelessWidget {
             return const Locale('he');
           },
           localizationsDelegates: AppLocalizations.localizationsDelegates,
+          // Firebase Phone Auth reCAPTCHA returns via a deep link like
+          // `/link?deep_link_id=...`. Ignore it so MaterialApp doesn't crash
+          // (native Firebase Auth already consumes the callback).
+          onGenerateRoute: (settings) {
+            final name = settings.name ?? '';
+            if (name.contains('/link') ||
+                name.contains('firebaseauth') ||
+                name.contains('deep_link_id')) {
+              return MaterialPageRoute<void>(
+                builder: (_) => const SizedBox.shrink(),
+                settings: settings,
+              );
+            }
+            return null;
+          },
+          onUnknownRoute: (settings) {
+            return MaterialPageRoute<void>(
+              builder: (_) => const SizedBox.shrink(),
+              settings: settings,
+            );
+          },
           home: const AuthGate(),
         ),
       ),

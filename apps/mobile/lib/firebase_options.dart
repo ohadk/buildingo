@@ -43,5 +43,7 @@ class DefaultFirebaseOptions {
     projectId: 'buildingo-6ff54',
     storageBucket: 'buildingo-6ff54.firebasestorage.app',
     iosBundleId: 'com.buildingo.buildingoMobile',
+    iosClientId:
+        '848466124816-33aujl620g0h6f4ioo41g6meiqav08r2.apps.googleusercontent.com',
   );
 }

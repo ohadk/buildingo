@@ -59,6 +59,38 @@ class AppLocalizationsHe extends AppLocalizations {
   String get invalidCode => 'קוד שגוי';
 
   @override
+  String get authErrorGeneric => 'משהו השתבש. נסו שוב.';
+
+  @override
+  String get authErrorSmsSendFailed =>
+      'לא הצלחנו לשלוח את קוד האימות. נסו שוב בעוד רגע.';
+
+  @override
+  String get authErrorSmsUnavailable =>
+      'לא ניתן לשלוח SMS למספר הזה כרגע (ספק או הגבלת ניסיונות). המתינו כמה דקות, נסו מספר אחר, או נסו שוב מאוחר יותר.';
+
+  @override
+  String get authErrorInvalidPhone =>
+      'מספר הטלפון לא נראה תקין. בדקו את קידומת המדינה ונסו שוב.';
+
+  @override
+  String get authErrorTooManyRequests =>
+      'יותר מדי ניסיונות. המתינו כמה דקות ונסו שוב.';
+
+  @override
+  String get authErrorNetwork => 'אין חיבור לאינטרנט. בדקו את הרשת ונסו שוב.';
+
+  @override
+  String get authErrorInvalidCode => 'הקוד אינו תקין. בדקו אותו ונסו שוב.';
+
+  @override
+  String get authErrorSessionExpired => 'הקוד פג תוקף. בקשו קוד חדש.';
+
+  @override
+  String get authErrorNotEnabled =>
+      'התחברות עם טלפון אינה זמינה כרגע. נסו שוב מאוחר יותר.';
+
+  @override
   String get completeProfile => 'השלמת פרופיל';
 
   @override

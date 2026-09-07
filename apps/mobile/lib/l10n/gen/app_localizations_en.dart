@@ -59,6 +59,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invalidCode => 'Invalid code';
 
   @override
+  String get authErrorGeneric => 'Something went wrong. Please try again.';
+
+  @override
+  String get authErrorSmsSendFailed =>
+      'Couldn\'t send the verification code. Please try again in a moment.';
+
+  @override
+  String get authErrorSmsUnavailable =>
+      'SMS to this number isn\'t available right now (carrier or rate limit). Wait a few minutes, try another Israeli number, or try again later.';
+
+  @override
+  String get authErrorInvalidPhone =>
+      'That phone number doesn\'t look right. Check the country code and try again.';
+
+  @override
+  String get authErrorTooManyRequests =>
+      'Too many attempts. Please wait a few minutes and try again.';
+
+  @override
+  String get authErrorNetwork =>
+      'No internet connection. Check your network and try again.';
+
+  @override
+  String get authErrorInvalidCode =>
+      'That code isn\'t valid. Please check it and try again.';
+
+  @override
+  String get authErrorSessionExpired => 'This code expired. Request a new one.';
+
+  @override
+  String get authErrorNotEnabled =>
+      'Phone sign-in is temporarily unavailable. Please try again later.';
+
+  @override
   String get completeProfile => 'Complete your profile';
 
   @override

@@ -49,11 +49,16 @@ class PhoneField extends StatefulWidget {
 
   /// Pre-fills the field from an existing E.164 number (edit flows).
   final String? initialValue;
+
+  /// When false, iOS will not suggest / autofill a phone from Contacts.
+  final bool enableAutofill;
+
   const PhoneField({
     super.key,
     required this.onChanged,
     this.label,
     this.initialValue,
+    this.enableAutofill = true,
   });
 
   /// Shared validity rule used by every screen that collects a phone.
@@ -225,13 +230,19 @@ class _PhoneFieldState extends State<PhoneField> {
               controller: _local,
               keyboardType: TextInputType.phone,
               textDirection: TextDirection.ltr,
+              autocorrect: false,
+              enableSuggestions: false,
+              autofillHints: widget.enableAutofill
+                  ? const [AutofillHints.telephoneNumber]
+                  : const <String>[],
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[\d\s-]')),
               ],
               onChanged: (_) => _reformat(),
               decoration: InputDecoration(
                 labelText: widget.label ?? context.l10n.phoneNumber,
-                hintText: _country.iso == 'IL' ? '054-776-0683' : null,
+                // Neutral placeholder — avoid a number that looks "prefilled".
+                hintText: _country.iso == 'IL' ? '05X-XXX-XXXX' : null,
                 errorText: showError ? context.l10n.invalidPhone : null,
               ),
             ),
