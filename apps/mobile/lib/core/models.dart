@@ -585,6 +585,8 @@ class ScheduleOccurrence {
   final DateTime occurrenceDate;
   final String? timeOfDay;
   final int? dayOfMonth;
+  final int? dayOfWeek;
+  final String? specificDate;
   final DateTime? startsAt;
 
   ScheduleOccurrence.fromJson(Map<String, dynamic> j)
@@ -592,13 +594,19 @@ class ScheduleOccurrence {
       eventType = j['event_type'],
       title = j['title'],
       notes = j['notes'],
-      recurrence = j['recurrence'],
+      recurrence = j['recurrence']?.toString() ?? 'once',
       occurrenceDate = DateTime.parse(j['occurrence_date']),
-      timeOfDay = j['time_of_day']?.toString().substring(0, 5),
+      timeOfDay = j['time_of_day'] == null
+          ? null
+          : j['time_of_day'].toString().substring(0, 5),
       dayOfMonth = j['day_of_month'],
+      dayOfWeek = j['day_of_week'],
+      specificDate = j['specific_date']?.toString(),
       startsAt = j['starts_at'] != null
           ? DateTime.parse(j['starts_at'] as String)
           : null;
 
   bool get isMeeting => eventType == 'meeting';
+  bool get isAnnouncement => eventType == 'announcement';
+  bool get isScheduleRule => !isMeeting && !isAnnouncement;
 }

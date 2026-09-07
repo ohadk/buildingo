@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { storeLinks } from "@/lib/store-links";
 
 /**
  * GET /app — single download link for WhatsApp / marketing.
@@ -7,19 +8,11 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * Configure (optional):
  *   APP_STORE_URL  — e.g. https://apps.apple.com/app/idXXXXXXXX
- *   PLAY_STORE_URL — e.g. https://play.google.com/store/apps/details?id=com.buildingo.buildingoMobile
+ *   PLAY_STORE_URL — e.g. https://play.google.com/store/apps/details?id=com.dira.dira_mobile
  */
 export function GET(req: NextRequest) {
   const ua = req.headers.get("user-agent") ?? "";
-  const appStore =
-    process.env.APP_STORE_URL?.trim() ||
-    "https://apps.apple.com/search?term=Buildingo&entity=software";
-  const playStore =
-    process.env.PLAY_STORE_URL?.trim() ||
-    "https://play.google.com/store/search?q=Buildingo&c=apps";
-  const site =
-    process.env.PUBLIC_WEB_URL?.replace(/\/$/, "") ||
-    "https://buildingo-api--buildingo-6ff54.us-central1.hosted.app";
+  const { appStore, playStore, site } = storeLinks();
 
   const isIos = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);

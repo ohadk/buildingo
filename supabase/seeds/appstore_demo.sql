@@ -1,0 +1,13 @@
+-- App Store / marketing screenshot demo data
+-- Target building: מייזנר 17, פתח תקווה
+-- id: 3f61059a-b9a9-4b8d-b452-224f04d05dc6
+--
+-- Applied live via API on 2026-09-07. Contents:
+--   • 4 Hebrew board announcements (this week + upcoming assembly)
+--   • 2 resident assemblies on the calendar (today + 18 Sep)
+--   • Open / in-progress / resolved tickets with timeline events
+--   • Extra expenses + a few September payments marked paid
+--
+-- Re-seed: run the Python helper from the repo (needs apps/web/.env.local):
+--   python3 scripts/seed_appstore_demo.py
+-- (script lives next to this file once added; for now data is already in Supabase.)

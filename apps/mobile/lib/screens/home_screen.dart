@@ -205,6 +205,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return list;
   }
 
+  /// Board messages shown on home (this week / last 7 days) — newest first.
+  List<Announcement> _homeBoardAnnouncements(String locale) {
+    return _announcements
+        .where((a) => isAnnouncementOnHomeBoard(a, locale: locale))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
   double _expectedMonthlyTotal(Building? building) {
     if (building == null || _apartments.isEmpty) return 0;
     double feeFor(DirectoryEntry a) {
@@ -505,6 +513,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         : expectedTotal;
     final collectedPct =
         totalDue > 0 ? (collected / totalDue * 100).round() : 0;
+    final remaining =
+        totalDue > 0 ? (totalDue - collected).clamp(0, totalDue) : 0.0;
     final ticketSub = _ticketTrendSub(l10n);
 
     return Container(
@@ -588,16 +598,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const SizedBox(width: 10),
                 if (isVaad)
                   _StatCard(
-                    label: l10n.collectedThisMonth,
-                    value: '₪${collected.toStringAsFixed(0)}',
+                    label: l10n.remainingThisMonth,
+                    value: '₪${remaining.toStringAsFixed(0)}',
                     sub: totalDue > 0
                         ? l10n.collectionHeroSub(
-                            '₪${totalDue.toStringAsFixed(0)}',
+                            '₪${collected.toStringAsFixed(0)}',
                             '$collectedPct',
                           )
                         : l10n.noApartmentsYet,
                     icon: Icons.credit_card_rounded,
-                    accent: collectedPct < 100 && totalDue > 0,
+                    accent: remaining > 0,
                     onTap: () => widget.onNavigate(1),
                   )
                 else
@@ -618,9 +628,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 12),
             _TodayScheduleBanner(
               events: _todayEvents,
-              onOpen: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ScheduleScreen()),
-              ),
+              onOpen: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+                );
+                if (mounted) _load(silent: true);
+              },
             ),
           ],
           if (isVaad && _joinRequests.isNotEmpty) ...[
@@ -630,11 +643,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onDecide: _decideJoin,
               onSeeAll: () => widget.onNavigate(2),
             ),
-          ] else if (_announcements.isNotEmpty) ...[
+          ] else if (_homeBoardAnnouncements(
+            Localizations.localeOf(context).languageCode,
+          ).isNotEmpty) ...[
             const SizedBox(height: 10),
-            _GoldBanner(
-              kicker: l10n.fromTheVaad,
-              title: _announcements.first.title,
+            Builder(
+              builder: (context) {
+                final latest = _homeBoardAnnouncements(
+                  Localizations.localeOf(context).languageCode,
+                ).first;
+                return _GoldBanner(
+                  kicker: l10n.fromTheVaad,
+                  title: latest.title,
+                  onTap: () async {
+                    final result =
+                        await showAnnouncementDetail(context, latest);
+                    if (result == null || !mounted) return;
+                    await _load(silent: true);
+                  },
+                );
+              },
             ),
           ],
         ],
@@ -753,10 +781,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Widget> _boardSection(BuildContext context) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).languageCode;
-    final relevant = _announcements
-        .where((a) => isAnnouncementOnHomeBoard(a, locale: locale))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final relevant = _homeBoardAnnouncements(locale);
     final cards = [
       for (final a in relevant.take(8))
         _BoardCardData(
@@ -770,7 +795,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           category: a.category != null && a.category!.isNotEmpty
               ? AnnouncementCategory.byId(a.category)
               : AnnouncementCategory.inferFromTitle(a.title),
-          onTap: () => showAnnouncementDetail(context, a),
+          onTap: () async {
+            final result = await showAnnouncementDetail(context, a);
+            if (result == null || !mounted) return;
+            final messenger = ScaffoldMessenger.of(context);
+            final msg = result == AnnouncementDetailResult.deleted
+                ? context.l10n.announcementDeleted
+                : context.l10n.announcementUpdated;
+            await _load(silent: true);
+            if (!mounted) return;
+            messenger.showSnackBar(SnackBar(content: Text(msg)));
+          },
         ),
     ];
 
@@ -782,13 +817,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             : l10n.viewAllBoardMessages,
         onAction: _announcements.isEmpty
             ? null
-            : () => Navigator.of(context).push(
+            : () async {
+                final changed = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
                     builder: (_) => BoardMessagesScreen(
                       announcements: _announcements,
                     ),
                   ),
-                ),
+                );
+                if (changed == true && mounted) _load(silent: true);
+              },
       ),
       const SizedBox(height: 12),
       if (cards.isEmpty && !_loading)
@@ -1090,50 +1128,62 @@ class _JoinRequestsBanner extends StatelessWidget {
 class _GoldBanner extends StatelessWidget {
   final String kicker;
   final String title;
-  const _GoldBanner({required this.kicker, required this.title});
+  final VoidCallback? onTap;
+  const _GoldBanner({
+    required this.kicker,
+    required this.title,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: DiraColors.goldLight,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.campaign_rounded,
-            color: DiraColors.goldDark,
-            size: 22,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: DiraColors.goldLight,
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  kicker,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: DiraColors.goldDark.withValues(alpha: 0.8),
-                  ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.campaign_rounded,
+                color: DiraColors.goldDark,
+                size: 22,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kicker,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: DiraColors.goldDark.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: DiraColors.goldDark,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: DiraColors.goldDark,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

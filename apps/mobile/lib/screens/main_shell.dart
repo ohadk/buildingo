@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
-import '../core/api_client.dart';
-import '../core/announcement_categories.dart';
+import '../core/deep_links.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/announcement_composer_sheet.dart';
 import 'directory_screen.dart';
 import 'documents_screen.dart';
 import 'home_screen.dart';
 import 'maintenance_screen.dart' show NewTicketScreen;
 import 'agents_coming_soon_screen.dart';
 import 'meetings_screen.dart';
+import 'payments_coming_soon_screen.dart';
 import 'payments_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -23,6 +23,47 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  DeepLinkController? _deepLinks;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyDeepLink());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final deep = context.read<DeepLinkController>();
+    if (!identical(_deepLinks, deep)) {
+      _deepLinks?.removeListener(_applyDeepLink);
+      _deepLinks = deep;
+      _deepLinks!.addListener(_applyDeepLink);
+    }
+  }
+
+  @override
+  void dispose() {
+    _deepLinks?.removeListener(_applyDeepLink);
+    super.dispose();
+  }
+
+  void _applyDeepLink() {
+    final tab = _deepLinks?.takePendingTab();
+    if (tab == null || !mounted) return;
+    setState(() => _index = tab);
+    // Payment reminder links land on a Coming Soon page (in-app pay not live yet).
+    if (tab == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const PaymentsComingSoonScreen(),
+          ),
+        );
+      });
+    }
+  }
 
   /// The + button: tenants go straight to a new ticket; the Vaad picks
   /// between an announcement, a ticket, or a resident assembly.
@@ -95,15 +136,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   Future<void> _composeAnnouncement() async {
-    final sent = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: DiraColors.cream,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => const _AnnouncementSheet(),
-    );
+    final sent = await showAnnouncementComposer(context);
     if (sent == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.announcementPublished)),
@@ -178,214 +211,6 @@ class _MainShellState extends State<MainShell> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Bottom-sheet composer for a building-wide announcement (Vaad only).
-class _AnnouncementSheet extends StatefulWidget {
-  const _AnnouncementSheet();
-
-  @override
-  State<_AnnouncementSheet> createState() => _AnnouncementSheetState();
-}
-
-class _AnnouncementSheetState extends State<_AnnouncementSheet> {
-  final _title = TextEditingController();
-  final _body = TextEditingController();
-  AnnouncementCategory _category = AnnouncementCategory.update;
-  DateTime? _eventDate;
-  bool _busy = false;
-  String? _error;
-
-  bool get _valid =>
-      _title.text.trim().length >= 2 && _body.text.trim().length >= 2;
-
-  InputDecoration _boxDecoration(String label) => InputDecoration(
-    labelText: label,
-    alignLabelWithHint: true,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: BorderSide(color: DiraColors.ink.withValues(alpha: 0.14)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: DiraColors.brick, width: 1.5),
-    ),
-  );
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _eventDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 730)),
-    );
-    if (picked != null) setState(() => _eventDate = picked);
-  }
-
-  Future<void> _send() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final fmt = DateFormat('yyyy-MM-dd');
-      await api.post('/api/announcements', {
-        'title': _title.text.trim(),
-        'body': _body.text.trim(),
-        'category': _category.id,
-        if (_eventDate != null) 'eventDate': fmt.format(_eventDate!),
-      });
-      if (mounted) Navigator.pop(context, true);
-    } on ApiException catch (e) {
-      setState(() {
-        _busy = false;
-        _error = e.message;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final locale = Localizations.localeOf(context).languageCode;
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: DiraColors.ink.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 19,
-                  backgroundColor: DiraColors.goldLight,
-                  child: Icon(
-                    Icons.campaign_rounded,
-                    color: DiraColors.goldDark,
-                    size: 21,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.messageToBuilding, style: heading(fontSize: 19)),
-                      Text(
-                        l10n.announcementSubtitle,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: DiraColors.inkSoft,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text(
-              l10n.announcementCategoryLabel,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final cat in AnnouncementCategory.all)
-                  ChoiceChip(
-                    avatar: Icon(
-                      cat.icon,
-                      size: 17,
-                      color: _category.id == cat.id
-                          ? cat.color
-                          : DiraColors.inkSoft,
-                    ),
-                    label: Text(cat.label(l10n)),
-                    selected: _category.id == cat.id,
-                    selectedColor: cat.color.withValues(alpha: 0.18),
-                    onSelected: (v) {
-                      if (v) setState(() => _category = cat);
-                    },
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _title,
-              onChanged: (_) => setState(() {}),
-              textInputAction: TextInputAction.next,
-              decoration: _boxDecoration(l10n.titleLabel),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _body,
-              onChanged: (_) => setState(() {}),
-              maxLines: 5,
-              minLines: 4,
-              decoration: _boxDecoration(l10n.announcementBody),
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event_outlined, color: DiraColors.goldDark),
-              title: Text(l10n.announcementDateOptional),
-              subtitle: Text(
-                _eventDate == null
-                    ? l10n.announcementDateHint
-                    : DateFormat('EEEE, d MMMM yyyy', locale).format(_eventDate!),
-              ),
-              trailing: _eventDate == null
-                  ? const Icon(Icons.add)
-                  : IconButton(
-                      tooltip: l10n.clear,
-                      onPressed: () => setState(() => _eventDate = null),
-                      icon: const Icon(Icons.close),
-                    ),
-              onTap: _pickDate,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _busy || !_valid ? null : _send,
-              icon: const Icon(Icons.send_rounded, size: 18),
-              label: Text(_busy ? l10n.pleaseWait : l10n.publishAnnouncement),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: DiraColors.brick),
-                ),
-              ),
-          ],
         ),
       ),
     );

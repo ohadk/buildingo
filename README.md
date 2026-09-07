@@ -195,7 +195,10 @@ flutter build ipa --release \
 
 Firebase test phone numbers (Console → Authentication → Sign-in method →
 Phone). No real SMS is sent — the verification code for **all** of them
-is `111111`. The occupied ones live in the building
+is `111111`. The same numbers also **skip WhatsApp/Twilio** on
+`POST /api/auth/otp/send` (fixed code stored server-side for verify).
+App Review number `+972501234567` uses code `123456` (see
+`apps/mobile/store/ASC_LISTING.md`). The occupied ones live in the building
 **מייזנר 17, פתח תקווה**:
 
 | Phone | Role | Name | Apartment |

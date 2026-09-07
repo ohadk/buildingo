@@ -95,6 +95,21 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
         DiraColors.sageDark,
         l10n.auditMeetingCreated,
       ),
+      'meeting_updated' => (
+        Icons.edit_outlined,
+        DiraColors.goldDark,
+        l10n.auditMeetingUpdated,
+      ),
+      'meeting_deleted' => (
+        Icons.delete_outline,
+        DiraColors.brick,
+        l10n.auditMeetingDeleted,
+      ),
+      'ticket_deleted' => (
+        Icons.delete_outline,
+        DiraColors.brick,
+        l10n.auditTicketDeleted,
+      ),
       'meeting_closed' => (
         Icons.picture_as_pdf_rounded,
         DiraColors.inkSoft,
@@ -124,6 +139,16 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
         Icons.campaign_rounded,
         DiraColors.goldDark,
         l10n.auditAnnouncement,
+      ),
+      'announcement_updated' => (
+        Icons.edit_outlined,
+        DiraColors.goldDark,
+        l10n.auditAnnouncementUpdated,
+      ),
+      'announcement_deleted' => (
+        Icons.delete_outline,
+        DiraColors.brick,
+        l10n.auditAnnouncementDeleted,
       ),
       'vendor_added' => (
         Icons.engineering_rounded,

@@ -134,6 +134,30 @@ abstract class AppLocalizations {
   /// **'Enter the code we sent to {phone}'**
   String enterCodeSentTo(String phone);
 
+  /// No description provided for @enterWhatsAppCodeSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the WhatsApp code we sent to {phone}'**
+  String enterWhatsAppCodeSentTo(String phone);
+
+  /// No description provided for @sendCodeViaWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code via WhatsApp'**
+  String get sendCodeViaWhatsApp;
+
+  /// No description provided for @sendViaSmsInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Send via SMS instead'**
+  String get sendViaSmsInstead;
+
+  /// No description provided for @sendViaWhatsAppInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Send via WhatsApp instead'**
+  String get sendViaWhatsAppInstead;
+
   /// No description provided for @phoneNumber.
   ///
   /// In en, this message translates to:
@@ -205,6 +229,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t send the verification code. Please try again in a moment.'**
   String get authErrorSmsSendFailed;
+
+  /// No description provided for @authErrorWhatsAppSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the WhatsApp code. Please try again, or use SMS instead.'**
+  String get authErrorWhatsAppSendFailed;
 
   /// No description provided for @authErrorSmsUnavailable.
   ///
@@ -895,6 +925,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ticket updated'**
   String get ticketEdited;
+
+  /// No description provided for @deleteTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete ticket'**
+  String get deleteTicket;
+
+  /// No description provided for @deleteTicketConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this ticket permanently? This cannot be undone.'**
+  String get deleteTicketConfirm;
+
+  /// No description provided for @ticketDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket deleted'**
+  String get ticketDeleted;
+
+  /// No description provided for @auditTicketDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket deleted'**
+  String get auditTicketDeleted;
+
+  /// No description provided for @editScheduleEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit schedule event'**
+  String get editScheduleEvent;
+
+  /// No description provided for @editMeeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit assembly'**
+  String get editMeeting;
+
+  /// No description provided for @deleteScheduleEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete from schedule'**
+  String get deleteScheduleEvent;
+
+  /// No description provided for @deleteScheduleEventConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this item from the building schedule?'**
+  String get deleteScheduleEventConfirm;
+
+  /// No description provided for @scheduleEventUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule updated'**
+  String get scheduleEventUpdated;
+
+  /// No description provided for @scheduleEventDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from schedule'**
+  String get scheduleEventDeleted;
+
+  /// No description provided for @auditMeetingUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Assembly updated'**
+  String get auditMeetingUpdated;
+
+  /// No description provided for @auditMeetingDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Assembly deleted'**
+  String get auditMeetingDeleted;
 
   /// No description provided for @ticketUpdateProgress.
   ///
@@ -1687,6 +1789,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The message was published to residents'**
   String get announcementPublished;
+
+  /// No description provided for @editBoardMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit board message'**
+  String get editBoardMessage;
+
+  /// No description provided for @deleteBoardMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete message'**
+  String get deleteBoardMessage;
+
+  /// No description provided for @deleteBoardMessageConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this message from the building board? Residents will no longer see it.'**
+  String get deleteBoardMessageConfirm;
+
+  /// No description provided for @announcementUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Message updated'**
+  String get announcementUpdated;
+
+  /// No description provided for @announcementDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Message deleted'**
+  String get announcementDeleted;
+
+  /// No description provided for @auditAnnouncementUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Announcement updated'**
+  String get auditAnnouncementUpdated;
+
+  /// No description provided for @auditAnnouncementDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Announcement deleted'**
+  String get auditAnnouncementDeleted;
 
   /// No description provided for @agenda.
   ///
@@ -3001,11 +3145,17 @@ abstract class AppLocalizations {
   /// **'Collected this month'**
   String get collectedThisMonth;
 
+  /// No description provided for @remainingThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Still to collect'**
+  String get remainingThisMonth;
+
   /// No description provided for @collectionHeroSub.
   ///
   /// In en, this message translates to:
-  /// **'of {total} · {pct}% collected'**
-  String collectionHeroSub(String total, String pct);
+  /// **'{collected} collected · {pct}%'**
+  String collectionHeroSub(String collected, String pct);
 
   /// No description provided for @noTicketsThisMonth.
   ///
@@ -3480,6 +3630,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Available in the next Buildingo release — stay tuned.'**
   String get agentsComingSoonFootnote;
+
+  /// No description provided for @paymentsComingSoonBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get paymentsComingSoonBadge;
+
+  /// No description provided for @paymentsComingSoonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay building dues in the app'**
+  String get paymentsComingSoonTitle;
+
+  /// No description provided for @paymentsComingSoonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You opened Buildingo from your payment reminder. In-app payment is on the way — for now you can review dues in the Payments tab, or pay as usual outside the app.'**
+  String get paymentsComingSoonBody;
 
   /// No description provided for @agentDispatchComingSoon.
   ///

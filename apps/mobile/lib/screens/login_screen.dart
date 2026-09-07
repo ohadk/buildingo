@@ -3,11 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../core/api_client.dart';
 import '../core/auth_errors.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import '../widgets/app_version_label.dart';
 import '../widgets/phone_field.dart';
+
+enum _LoginDelivery { whatsapp, sms }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,7 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
   late final TextEditingController _codeController = TextEditingController(
     text: _testOtp,
   );
+  /// Firebase SMS verification id (null for WhatsApp OTP).
   String? _verificationId;
+  bool _awaitingOtp = false;
+  _LoginDelivery _delivery = _LoginDelivery.whatsapp;
   bool _busy = false;
   String? _error;
 
@@ -48,8 +54,47 @@ class _LoginScreenState extends State<LoginScreen> {
       _busy = true;
       _error = null;
     });
-    debugPrint('Phone auth sendCode phone=$_phoneE164');
+    debugPrint(
+      'Phone auth sendCode phone=$_phoneE164 delivery=$_delivery',
+    );
 
+    if (_delivery == _LoginDelivery.whatsapp) {
+      await _sendWhatsAppCode();
+      return;
+    }
+    await _sendFirebaseSmsCode();
+  }
+
+  Future<void> _sendWhatsAppCode() async {
+    try {
+      await api.post('/api/auth/otp/send', {
+        'phone': _phoneE164,
+        'channel': 'whatsapp',
+      });
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _awaitingOtp = true;
+        _verificationId = null;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = e.status == 429
+            ? context.l10n.authErrorTooManyRequests
+            : context.l10n.authErrorWhatsAppSendFailed;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = context.l10n.authErrorNetwork;
+      });
+    }
+  }
+
+  Future<void> _sendFirebaseSmsCode() async {
     // Debug-only diagnostic path. Never compile into App Store via FORCE_REAL alone.
     const forceReal = bool.fromEnvironment('FORCE_REAL_PHONE_AUTH');
     if (kDebugMode && forceReal) {
@@ -64,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
             setState(() {
               _busy = false;
               _verificationId = id;
+              _awaitingOtp = true;
             });
             return;
           }
@@ -111,6 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _busy = false;
           _verificationId = verificationId;
+          _awaitingOtp = true;
         });
       },
       codeAutoRetrievalTimeout: (verificationId) {
@@ -125,23 +172,55 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: _codeController.text.trim(),
-      );
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      if (_delivery == _LoginDelivery.whatsapp) {
+        final res = await api.post('/api/auth/otp/verify', {
+          'phone': _phoneE164,
+          'code': _codeController.text.trim(),
+        });
+        final customToken = res['customToken'] as String?;
+        if (customToken == null || customToken.isEmpty) {
+          throw ApiException(500, 'Missing custom token');
+        }
+        await FirebaseAuth.instance.signInWithCustomToken(customToken);
+      } else {
+        final credential = PhoneAuthProvider.credential(
+          verificationId: _verificationId!,
+          smsCode: _codeController.text.trim(),
+        );
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      }
       // AuthGate takes over from here (token exchange + routing)
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      final l10n = context.l10n;
+      setState(() {
+        _error = e.status == 401
+            ? l10n.authErrorInvalidCode
+            : (e.message.isNotEmpty ? e.message : l10n.authErrorGeneric);
+      });
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() => _error = authErrorMessage(e, context.l10n));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = context.l10n.authErrorGeneric);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  void _resetToPhoneStep() {
+    setState(() {
+      _awaitingOtp = false;
+      _verificationId = null;
+      _codeController.clear();
+      _error = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final awaitingCode = _verificationId != null;
+    final awaitingCode = _awaitingOtp;
     final l10n = context.l10n;
     return Scaffold(
       // Avoid rebuilding / reflowing the heavy brand stack with the keyboard;
@@ -262,7 +341,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                         ),
                                     child: Column(
-                                      key: ValueKey(awaitingCode),
+                                      key: ValueKey(
+                                        '${awaitingCode}_${_delivery.name}',
+                                      ),
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
@@ -346,17 +427,44 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
     const SizedBox(height: 20),
     _primaryButton(
-      label: l10n.sendCode,
+      label: _delivery == _LoginDelivery.whatsapp
+          ? l10n.sendCodeViaWhatsApp
+          : l10n.sendCode,
       enabled: !_busy && _phoneValid,
       onPressed: _sendCode,
+    ),
+    const SizedBox(height: 4),
+    TextButton(
+      onPressed: _busy
+          ? null
+          : () => setState(() {
+              _delivery = _delivery == _LoginDelivery.whatsapp
+                  ? _LoginDelivery.sms
+                  : _LoginDelivery.whatsapp;
+              _error = null;
+            }),
+      style: TextButton.styleFrom(foregroundColor: DiraColors.brickDark),
+      child: Text(
+        _delivery == _LoginDelivery.whatsapp
+            ? l10n.sendViaSmsInstead
+            : l10n.sendViaWhatsAppInstead,
+      ),
     ),
   ];
 
   List<Widget> _codeStep(AppLocalizations l10n) => [
-    const Icon(Icons.sms_outlined, size: 34, color: DiraColors.sage),
+    Icon(
+      _delivery == _LoginDelivery.whatsapp
+          ? Icons.chat_outlined
+          : Icons.sms_outlined,
+      size: 34,
+      color: DiraColors.sage,
+    ),
     const SizedBox(height: 10),
     Text(
-      l10n.enterCodeSentTo(PhoneField.formatDisplay(_phoneE164)),
+      _delivery == _LoginDelivery.whatsapp
+          ? l10n.enterWhatsAppCodeSentTo(PhoneField.formatDisplay(_phoneE164))
+          : l10n.enterCodeSentTo(PhoneField.formatDisplay(_phoneE164)),
       textAlign: TextAlign.center,
       style: const TextStyle(color: DiraColors.inkSoft, fontSize: 14),
     ),
@@ -408,12 +516,7 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
     const SizedBox(height: 4),
     TextButton.icon(
-      onPressed: _busy
-          ? null
-          : () => setState(() {
-              _verificationId = null;
-              _codeController.clear();
-            }),
+      onPressed: _busy ? null : _resetToPhoneStep,
       style: TextButton.styleFrom(foregroundColor: DiraColors.brickDark),
       icon: const Icon(Icons.edit_outlined, size: 16),
       label: Text(l10n.useDifferentNumber),

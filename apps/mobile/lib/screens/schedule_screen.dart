@@ -9,6 +9,7 @@ import '../core/realtime.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
+import '../widgets/announcement_composer_sheet.dart';
 
 /// Icons and colors for building schedule event types.
 class ScheduleUi {
@@ -122,11 +123,23 @@ class ScheduleUi {
 class ScheduleEventTile extends StatelessWidget {
   final ScheduleOccurrence occurrence;
   final bool showRelativeDay;
+  final VoidCallback? onTap;
+  final bool canManage;
+  final VoidCallback? onEdit;
+  /// Confirm dialog + API delete. Return `true` only when the item was removed.
+  final Future<bool> Function()? onDelete;
+  /// Called after a successful delete (swipe or icon) so the parent can refresh.
+  final VoidCallback? onDeleted;
 
   const ScheduleEventTile({
     super.key,
     required this.occurrence,
     this.showRelativeDay = true,
+    this.onTap,
+    this.canManage = false,
+    this.onEdit,
+    this.onDelete,
+    this.onDeleted,
   });
 
   @override
@@ -141,69 +154,133 @@ class ScheduleEventTile extends StatelessWidget {
         ? DateFormat.Hm(locale).format(occurrence.startsAt!.toLocal())
         : occurrence.timeOfDay;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: color.withValues(alpha: 0.14),
-              child: Icon(
-                ScheduleUi.iconFor(occurrence.eventType),
-                color: color,
-                size: 20,
+    Future<void> deleteViaIcon() async {
+      final deleted = await onDelete?.call() ?? false;
+      if (deleted) onDeleted?.call();
+    }
+
+    final tile = Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: color.withValues(alpha: 0.14),
+                child: Icon(
+                  ScheduleUi.iconFor(occurrence.eventType),
+                  color: color,
+                  size: 20,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    occurrence.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    [
-                      when,
-                      ?timeLabel,
-                      if (occurrence.isMeeting) l10n.residentsAssembly,
-                      if (occurrence.eventType == 'announcement')
-                        l10n.announcementTag,
-                      if (!occurrence.isMeeting &&
-                          occurrence.eventType != 'announcement' &&
-                          occurrence.recurrence != 'once')
-                        ScheduleUi.recurrenceLabel(l10n, occurrence.recurrence),
-                    ].join(' · '),
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: DiraColors.inkSoft,
-                    ),
-                  ),
-                  if (occurrence.notes != null &&
-                      occurrence.notes!.trim().isNotEmpty) ...[
-                    const SizedBox(height: 4),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      occurrence.notes!,
+                      occurrence.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      [
+                        when,
+                        ?timeLabel,
+                        if (occurrence.isMeeting) l10n.residentsAssembly,
+                        if (occurrence.eventType == 'announcement')
+                          l10n.announcementTag,
+                        if (!occurrence.isMeeting &&
+                            occurrence.eventType != 'announcement' &&
+                            occurrence.recurrence != 'once')
+                          ScheduleUi.recurrenceLabel(
+                            l10n,
+                            occurrence.recurrence,
+                          ),
+                      ].join(' · '),
                       style: const TextStyle(
                         fontSize: 12.5,
                         color: DiraColors.inkSoft,
-                        height: 1.35,
                       ),
                     ),
+                    if (occurrence.notes != null &&
+                        occurrence.notes!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        occurrence.notes!,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: DiraColors.inkSoft,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+              if (canManage) ...[
+                IconButton(
+                  tooltip: l10n.edit,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                ),
+                IconButton(
+                  tooltip: l10n.delete,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  onPressed: onDelete == null ? null : deleteViaIcon,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: DiraColors.brickDark,
+                  ),
+                ),
+              ] else if (onTap != null)
+                const Padding(
+                  padding: EdgeInsetsDirectional.only(end: 8),
+                  child: Icon(
+                    // Forward affordance — mirrors in RTL.
+                    Icons.chevron_right,
+                    color: DiraColors.inkSoft,
+                    size: 20,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
+    );
+
+    if (!canManage || onDelete == null) return tile;
+
+    return Dismissible(
+      key: ValueKey(
+        '${occurrence.id}:${occurrence.occurrenceDate.toIso8601String()}',
+      ),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => onDelete!(),
+      onDismissed: (_) => onDeleted?.call(),
+      background: Container(
+        alignment: AlignmentDirectional.centerEnd,
+        padding: const EdgeInsetsDirectional.only(end: 20),
+        decoration: BoxDecoration(
+          color: DiraColors.brick,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white, size: 26),
+      ),
+      child: tile,
     );
   }
 }
@@ -318,6 +395,72 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
+  Future<void> _openOccurrence(ScheduleOccurrence o) async {
+    final result = await showScheduleOccurrenceDetail(context, o);
+    if (result == null || !mounted) return;
+    await _load();
+    if (!mounted) return;
+    final l10n = context.l10n;
+    final msg = switch (result) {
+      ScheduleDetailResult.deleted => l10n.scheduleEventDeleted,
+      ScheduleDetailResult.edited => l10n.scheduleEventUpdated,
+    };
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _editFromRow(ScheduleOccurrence o) async {
+    final saved = await _editOccurrence(context, o);
+    if (saved != true || !mounted) return;
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.scheduleEventUpdated)),
+    );
+  }
+
+  /// Dialog + API only — used by swipe/icon; refresh via [_onOccurrenceDeleted].
+  Future<bool> _confirmDeleteOccurrence(ScheduleOccurrence o) async {
+    final l10n = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dCtx) => AlertDialog(
+        title: Text(l10n.deleteScheduleEvent),
+        content: Text(l10n.deleteScheduleEventConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx, true),
+            style: TextButton.styleFrom(foregroundColor: DiraColors.brickDark),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return false;
+    try {
+      await _deleteOccurrence(o);
+      return true;
+    } on ApiException catch (e) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+      return false;
+    }
+  }
+
+  Future<void> _onOccurrenceDeleted() async {
+    if (!mounted) return;
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.scheduleEventDeleted)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -383,7 +526,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     children: [
                       IconButton(
                         onPressed: () => _shiftMonth(-1),
-                        icon: const Icon(Icons.chevron_left),
+                        icon: const Icon(Icons.arrow_back_ios_new, size: 18),
                       ),
                       Expanded(
                         child: Text(
@@ -394,7 +537,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                       IconButton(
                         onPressed: () => _shiftMonth(1),
-                        icon: const Icon(Icons.chevron_right),
+                        icon: const Icon(Icons.arrow_forward_ios, size: 18),
                       ),
                     ],
                   ),
@@ -481,13 +624,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                     100,
                                   ),
                                   itemCount: dayEvents.length,
-                                  itemBuilder: (_, i) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: ScheduleEventTile(
-                                      occurrence: dayEvents[i],
-                                      showRelativeDay: false,
-                                    ),
-                                  ),
+                                  itemBuilder: (_, i) {
+                                    final o = dayEvents[i];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      child: ScheduleEventTile(
+                                        occurrence: o,
+                                        showRelativeDay: false,
+                                        canManage: isVaad,
+                                        onTap: () => _openOccurrence(o),
+                                        onEdit: isVaad
+                                            ? () => _editFromRow(o)
+                                            : null,
+                                        onDelete: isVaad
+                                            ? () =>
+                                                _confirmDeleteOccurrence(o)
+                                            : null,
+                                        onDeleted: isVaad
+                                            ? () {
+                                                _onOccurrenceDeleted();
+                                              }
+                                            : null,
+                                      ),
+                                    );
+                                  },
                                 ),
                         ),
                 ),
@@ -639,7 +799,9 @@ class _MonthCalendarGrid extends StatelessWidget {
 
 class _ScheduleComposerSheet extends StatefulWidget {
   final DateTime? initialDate;
-  const _ScheduleComposerSheet({this.initialDate});
+  final ScheduleOccurrence? initialEvent;
+
+  const _ScheduleComposerSheet({this.initialDate, this.initialEvent});
 
   @override
   State<_ScheduleComposerSheet> createState() => _ScheduleComposerSheetState();
@@ -657,13 +819,40 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
   bool _busy = false;
   String? _error;
 
+  bool get _isEdit => widget.initialEvent != null;
+
   @override
   void initState() {
     super.initState();
-    final seed = widget.initialDate ?? DateTime.now();
-    _specificDate = DateTime(seed.year, seed.month, seed.day);
-    _dayOfWeek = _specificDate.weekday % 7;
-    _dayOfMonth = _specificDate.day;
+    final existing = widget.initialEvent;
+    if (existing != null) {
+      _eventType = existing.eventType;
+      _recurrence = existing.recurrence;
+      _dayOfWeek = existing.dayOfWeek ?? DateTime.now().weekday % 7;
+      _dayOfMonth = existing.dayOfMonth ?? DateTime.now().day;
+      final seed = existing.specificDate != null
+          ? DateTime.tryParse(existing.specificDate!)
+          : existing.occurrenceDate;
+      _specificDate = DateTime(
+        (seed ?? existing.occurrenceDate).year,
+        (seed ?? existing.occurrenceDate).month,
+        (seed ?? existing.occurrenceDate).day,
+      );
+      if (existing.timeOfDay != null && existing.timeOfDay!.length >= 4) {
+        final parts = existing.timeOfDay!.split(':');
+        _time = TimeOfDay(
+          hour: int.tryParse(parts[0]) ?? 8,
+          minute: int.tryParse(parts[1]) ?? 0,
+        );
+      }
+      _title.text = existing.title;
+      _notes.text = existing.notes ?? '';
+    } else {
+      final seed = widget.initialDate ?? DateTime.now();
+      _specificDate = DateTime(seed.year, seed.month, seed.day);
+      _dayOfWeek = _specificDate.weekday % 7;
+      _dayOfMonth = _specificDate.day;
+    }
   }
 
   @override
@@ -704,23 +893,29 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
     });
     final l10n = context.l10n;
     final fmt = DateFormat('yyyy-MM-dd');
+    final payload = {
+      'eventType': _eventType,
+      'title': _titleValue(l10n),
+      'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      'recurrence': _recurrence,
+      if (_recurrence == 'weekly' || _recurrence == 'biweekly')
+        'dayOfWeek': _dayOfWeek,
+      if (_recurrence == 'monthly') 'dayOfMonth': _dayOfMonth,
+      if (_recurrence == 'once') 'specificDate': fmt.format(_specificDate),
+      if (_recurrence == 'biweekly') 'specificDate': fmt.format(_specificDate),
+      if (_time != null)
+        'timeOfDay':
+            '${_time!.hour.toString().padLeft(2, '0')}:${_time!.minute.toString().padLeft(2, '0')}',
+    };
     try {
-      await api.post('/api/schedule-events', {
-        'eventType': _eventType,
-        'title': _titleValue(l10n),
-        'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-        'recurrence': _recurrence,
-        if (_recurrence == 'weekly' || _recurrence == 'biweekly')
-          'dayOfWeek': _dayOfWeek,
-        if (_recurrence == 'monthly') 'dayOfMonth': _dayOfMonth,
-        if (_recurrence == 'once')
-          'specificDate': fmt.format(_specificDate),
-        if (_recurrence == 'biweekly')
-          'specificDate': fmt.format(_specificDate),
-        if (_time != null)
-          'timeOfDay':
-              '${_time!.hour.toString().padLeft(2, '0')}:${_time!.minute.toString().padLeft(2, '0')}',
-      });
+      if (_isEdit) {
+        await api.patch(
+          '/api/schedule-events/${widget.initialEvent!.id}',
+          payload,
+        );
+      } else {
+        await api.post('/api/schedule-events', payload);
+      }
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) {
@@ -755,7 +950,10 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(l10n.addScheduleEvent, style: heading(fontSize: 20)),
+            Text(
+              _isEdit ? l10n.editScheduleEvent : l10n.addScheduleEvent,
+              style: heading(fontSize: 20),
+            ),
             const SizedBox(height: 14),
             Text(l10n.scheduleEventType, style: const TextStyle(fontSize: 12)),
             const SizedBox(height: 8),
@@ -874,6 +1072,386 @@ class _ScheduleComposerSheetState extends State<_ScheduleComposerSheet> {
               decoration: InputDecoration(labelText: l10n.scheduleNotesOptional),
             ),
             const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? l10n.pleaseWait : l10n.save),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: DiraColors.brick),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum ScheduleDetailResult { edited, deleted }
+
+Future<ScheduleDetailResult?> showScheduleOccurrenceDetail(
+  BuildContext context,
+  ScheduleOccurrence occurrence,
+) {
+  final isVaad = context.read<SessionController>().user?.isVaad ?? false;
+  final l10n = context.l10n;
+  final locale = Localizations.localeOf(context).languageCode;
+  final color = ScheduleUi.colorFor(occurrence.eventType);
+  final when = DateFormat(
+    'EEEE, d MMM yyyy',
+    locale,
+  ).format(occurrence.occurrenceDate);
+  final timeLabel = occurrence.startsAt != null
+      ? DateFormat.Hm(locale).format(occurrence.startsAt!.toLocal())
+      : occurrence.timeOfDay;
+
+  return showModalBottomSheet<ScheduleDetailResult>(
+    context: context,
+    backgroundColor: DiraColors.cream,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: DiraColors.ink.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: color.withValues(alpha: 0.14),
+                  child: Icon(
+                    ScheduleUi.iconFor(occurrence.eventType),
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(occurrence.title, style: heading(fontSize: 20)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              [
+                when,
+                if (timeLabel != null) timeLabel,
+                if (occurrence.isMeeting) l10n.residentsAssembly,
+                if (occurrence.isAnnouncement) l10n.announcementTag,
+              ].join(' · '),
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: DiraColors.inkSoft,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (occurrence.notes != null &&
+                occurrence.notes!.trim().isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                occurrence.notes!,
+                style: const TextStyle(fontSize: 15, height: 1.45),
+              ),
+            ],
+            if (isVaad) ...[
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final saved = await _editOccurrence(ctx, occurrence);
+                        if (saved == true && ctx.mounted) {
+                          Navigator.pop(ctx, ScheduleDetailResult.edited);
+                        }
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: Text(l10n.edit),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: DiraColors.brickDark,
+                        side: const BorderSide(color: DiraColors.brick),
+                      ),
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: ctx,
+                          builder: (dCtx) => AlertDialog(
+                            title: Text(l10n.deleteScheduleEvent),
+                            content: Text(l10n.deleteScheduleEventConfirm),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dCtx, false),
+                                child: Text(l10n.cancel),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(dCtx, true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: DiraColors.brickDark,
+                                ),
+                                child: Text(l10n.delete),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true || !ctx.mounted) return;
+                        try {
+                          await _deleteOccurrence(occurrence);
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx, ScheduleDetailResult.deleted);
+                          }
+                        } on ApiException catch (e) {
+                          if (!ctx.mounted) return;
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text(e.message)),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: Text(l10n.delete),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Future<bool?> _editOccurrence(
+  BuildContext context,
+  ScheduleOccurrence occurrence,
+) async {
+  if (occurrence.isAnnouncement) {
+    final a = Announcement.fromJson({
+      'id': occurrence.id,
+      'title': occurrence.title,
+      'body': occurrence.notes ?? '',
+      'event_date': DateFormat('yyyy-MM-dd').format(occurrence.occurrenceDate),
+      'created_at': DateTime.now().toIso8601String(),
+      'category': 'update',
+    });
+    return showAnnouncementComposer(context, initial: a);
+  }
+
+  if (occurrence.isMeeting) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DiraColors.cream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _MeetingEditSheet(occurrence: occurrence),
+    );
+  }
+
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: DiraColors.cream,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => _ScheduleComposerSheet(initialEvent: occurrence),
+  );
+}
+
+Future<void> _deleteOccurrence(ScheduleOccurrence occurrence) async {
+  if (occurrence.isAnnouncement) {
+    await api.delete('/api/announcements/${occurrence.id}');
+    return;
+  }
+  if (occurrence.isMeeting) {
+    await api.delete('/api/meetings/${occurrence.id}');
+    return;
+  }
+  await api.delete('/api/schedule-events/${occurrence.id}');
+}
+
+class _MeetingEditSheet extends StatefulWidget {
+  final ScheduleOccurrence occurrence;
+  const _MeetingEditSheet({required this.occurrence});
+
+  @override
+  State<_MeetingEditSheet> createState() => _MeetingEditSheetState();
+}
+
+class _MeetingEditSheetState extends State<_MeetingEditSheet> {
+  late final TextEditingController _title;
+  late final TextEditingController _agenda;
+  late final TextEditingController _location;
+  late DateTime _date;
+  late TimeOfDay _time;
+  bool _busy = false;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final o = widget.occurrence;
+    _title = TextEditingController(text: o.title);
+    _agenda = TextEditingController();
+    _location = TextEditingController(text: o.notes ?? '');
+    final start = o.startsAt?.toLocal() ?? o.occurrenceDate;
+    _date = DateTime(start.year, start.month, start.day);
+    _time = TimeOfDay(hour: start.hour, minute: start.minute);
+    _loadMeeting();
+  }
+
+  Future<void> _loadMeeting() async {
+    try {
+      final data = await api.get('/api/meetings');
+      final list = (data['meetings'] ?? []) as List;
+      final match = list.cast<Map>().where((m) => m['id'] == widget.occurrence.id);
+      if (match.isNotEmpty) {
+        final m = match.first;
+        _agenda.text = (m['agenda'] ?? '').toString();
+        if (m['location'] != null) _location.text = m['location'].toString();
+      }
+    } catch (_) {
+      /* keep defaults from occurrence */
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _agenda.dispose();
+    _location.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_title.text.trim().length < 2 || _agenda.text.trim().length < 2) {
+      setState(() => _error = context.l10n.authErrorGeneric);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final local = DateTime(
+      _date.year,
+      _date.month,
+      _date.day,
+      _time.hour,
+      _time.minute,
+    );
+    try {
+      await api.patch('/api/meetings/${widget.occurrence.id}', {
+        'title': _title.text.trim(),
+        'agenda': _agenda.text.trim(),
+        'meetingDate': local.toUtc().toIso8601String(),
+        'location': _location.text.trim().isEmpty
+            ? null
+            : _location.text.trim(),
+      });
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = e.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(48),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l10n.editMeeting, style: heading(fontSize: 20)),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _title,
+              decoration: InputDecoration(labelText: l10n.titleLabel),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _agenda,
+              maxLines: 4,
+              decoration: InputDecoration(labelText: l10n.agenda),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _location,
+              decoration: InputDecoration(labelText: l10n.meetingLocationLabel),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.scheduleDate),
+              subtitle: Text(
+                DateFormat('EEEE, d MMMM yyyy', locale).format(_date),
+              ),
+              trailing: const Icon(Icons.calendar_today_outlined),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                  lastDate: DateTime.now().add(const Duration(days: 730)),
+                );
+                if (picked != null) setState(() => _date = picked);
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.scheduleTimeOptional),
+              subtitle: Text(_time.format(context)),
+              trailing: const Icon(Icons.schedule_outlined),
+              onTap: () async {
+                final picked = await showTimePicker(
+                  context: context,
+                  initialTime: _time,
+                );
+                if (picked != null) setState(() => _time = picked);
+              },
+            ),
             ElevatedButton(
               onPressed: _busy ? null : _save,
               child: Text(_busy ? l10n.pleaseWait : l10n.save),

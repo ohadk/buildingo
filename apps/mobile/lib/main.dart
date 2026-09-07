@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
+import 'core/deep_links.dart';
 import 'core/realtime.dart';
 import 'core/session.dart';
 import 'core/theme.dart';
@@ -46,7 +47,11 @@ Future<void> main() async {
   await initializeDateFormatting('en');
   final localeController = LocaleController();
   await localeController.load();
-  runApp(DiraApp(localeController: localeController));
+  final deepLinks = DeepLinkController();
+  unawaited(deepLinks.start());
+  runApp(
+    DiraApp(localeController: localeController, deepLinks: deepLinks),
+  );
 }
 
 Future<void> _logApnsStatus() async {
@@ -67,7 +72,12 @@ Future<void> _logApnsStatus() async {
 
 class DiraApp extends StatelessWidget {
   final LocaleController localeController;
-  const DiraApp({super.key, required this.localeController});
+  final DeepLinkController deepLinks;
+  const DiraApp({
+    super.key,
+    required this.localeController,
+    required this.deepLinks,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +86,7 @@ class DiraApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SessionController()),
         ChangeNotifierProvider(create: (_) => TicketsController()),
         ChangeNotifierProvider.value(value: localeController),
+        ChangeNotifierProvider.value(value: deepLinks),
       ],
       child: Consumer<LocaleController>(
         builder: (context, locales, _) => MaterialApp(
@@ -93,6 +104,7 @@ class DiraApp extends StatelessWidget {
           // Firebase Phone Auth reCAPTCHA returns via a deep link like
           // `/link?deep_link_id=...`. Ignore it so MaterialApp doesn't crash
           // (native Firebase Auth already consumes the callback).
+          // Keep FlutterDeepLinkingEnabled=false; app_links handles /open/*.
           onGenerateRoute: (settings) {
             final name = settings.name ?? '';
             if (name.contains('/link') ||

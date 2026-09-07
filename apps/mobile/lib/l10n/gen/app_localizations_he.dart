@@ -29,6 +29,20 @@ class AppLocalizationsHe extends AppLocalizations {
   }
 
   @override
+  String enterWhatsAppCodeSentTo(String phone) {
+    return 'הזינו את קוד ה-WhatsApp ששלחנו אל $phone';
+  }
+
+  @override
+  String get sendCodeViaWhatsApp => 'שליחת קוד ב-WhatsApp';
+
+  @override
+  String get sendViaSmsInstead => 'שליחה ב-SMS במקום';
+
+  @override
+  String get sendViaWhatsAppInstead => 'שליחה ב-WhatsApp במקום';
+
+  @override
   String get phoneNumber => 'מספר טלפון';
 
   @override
@@ -64,6 +78,10 @@ class AppLocalizationsHe extends AppLocalizations {
   @override
   String get authErrorSmsSendFailed =>
       'לא הצלחנו לשלוח את קוד האימות. נסו שוב בעוד רגע.';
+
+  @override
+  String get authErrorWhatsAppSendFailed =>
+      'לא הצלחנו לשלוח קוד ב-WhatsApp. נסו שוב, או בחרו SMS.';
 
   @override
   String get authErrorSmsUnavailable =>
@@ -439,6 +457,42 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get ticketEdited => 'הקריאה עודכנה';
+
+  @override
+  String get deleteTicket => 'מחיקת קריאה';
+
+  @override
+  String get deleteTicketConfirm => 'למחוק את הקריאה לצמיתות? לא ניתן לשחזר.';
+
+  @override
+  String get ticketDeleted => 'הקריאה נמחקה';
+
+  @override
+  String get auditTicketDeleted => 'קריאה נמחקה';
+
+  @override
+  String get editScheduleEvent => 'עריכת אירוע בלוח';
+
+  @override
+  String get editMeeting => 'עריכת אסיפה';
+
+  @override
+  String get deleteScheduleEvent => 'מחיקה מהלוח';
+
+  @override
+  String get deleteScheduleEventConfirm => 'להסיר את הפריט מלוח הבניין?';
+
+  @override
+  String get scheduleEventUpdated => 'הלוח עודכן';
+
+  @override
+  String get scheduleEventDeleted => 'הוסר מהלוח';
+
+  @override
+  String get auditMeetingUpdated => 'אסיפה עודכנה';
+
+  @override
+  String get auditMeetingDeleted => 'אסיפה נמחקה';
 
   @override
   String get ticketUpdateProgress => 'עדכון התקדמות';
@@ -861,6 +915,28 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get announcementPublished => 'ההודעה פורסמה לדיירים';
+
+  @override
+  String get editBoardMessage => 'עריכת הודעה';
+
+  @override
+  String get deleteBoardMessage => 'מחיקת הודעה';
+
+  @override
+  String get deleteBoardMessageConfirm =>
+      'להסיר את ההודעה מלוח הבניין? הדיירים לא יראו אותה יותר.';
+
+  @override
+  String get announcementUpdated => 'ההודעה עודכנה';
+
+  @override
+  String get announcementDeleted => 'ההודעה נמחקה';
+
+  @override
+  String get auditAnnouncementUpdated => 'הודעה עודכנה';
+
+  @override
+  String get auditAnnouncementDeleted => 'הודעה נמחקה';
 
   @override
   String get agenda => 'סדר יום';
@@ -1607,8 +1683,11 @@ class AppLocalizationsHe extends AppLocalizations {
   String get collectedThisMonth => 'נגבו החודש';
 
   @override
-  String collectionHeroSub(String total, String pct) {
-    return 'מתוך $total · $pct% נגבה';
+  String get remainingThisMonth => 'נותר לגבייה';
+
+  @override
+  String collectionHeroSub(String collected, String pct) {
+    return 'נגבו $collected · $pct%';
   }
 
   @override
@@ -1870,6 +1949,16 @@ class AppLocalizationsHe extends AppLocalizations {
   @override
   String get agentsComingSoonFootnote =>
       'זמין בגרסת בילדינגו הבאה — המשך יבוא.';
+
+  @override
+  String get paymentsComingSoonBadge => 'בקרוב';
+
+  @override
+  String get paymentsComingSoonTitle => 'תשלום דמי ועד באפליקציה';
+
+  @override
+  String get paymentsComingSoonBody =>
+      'פתחתם את בילדינגו מתזכורת התשלום. תשלום מתוך האפליקציה בדרך — בינתיים אפשר לראות חיובים בלשונית תשלומים, או לשלם כרגיל מחוץ לאפליקציה.';
 
   @override
   String get agentDispatchComingSoon =>
