@@ -20,3 +20,13 @@ firebase-service-account.json
 *firebase-adminsdk*.json
 AuthKey_*.p8
 *.p8
+
+# local tooling / deploy caches
+.firebase/
+supabase/.temp/
+apps/web/.firebase/
+
+# screenshot work artifacts (keep final ASC folders)
+**/store/screenshots/_align_preview/
+**/store/screenshots/**/_backup_pre_align/
+**/store/screenshots/**/_backup*/
