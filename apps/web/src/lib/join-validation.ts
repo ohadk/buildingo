@@ -29,7 +29,6 @@ export async function validateJoinSubmission(
 
   const existingSqm =
     apartment?.size_sqm != null ? Number(apartment.size_sqm) : null;
-  const perSqm = building.fee_method === "per_sqm";
 
   if (building.require_join_docs && (!input.docPath || !input.arnonaDocPath)) {
     throw new ApiError(
@@ -38,15 +37,8 @@ export async function validateJoinSubmission(
     );
   }
 
-  if (perSqm && existingSqm == null) {
-    if (!input.arnonaDocPath) {
-      throw new ApiError(400, "חשבון ארנונה נדרש כדי לקבוע את גודל הדירה (מ\"ר)");
-    }
-    if (input.sizeSqm == null || input.sizeSqm <= 0) {
-      throw new ApiError(400, "יש להזין את גודל הדירה במ\"ר (מחשבון הארנונה)");
-    }
-  }
-
+  // Docs / sqm are optional unless the Vaad toggled require_join_docs.
+  // Per-sqm buildings can still accept a size when provided; Vaad can fill later.
   const sizeSqm = existingSqm ?? input.sizeSqm ?? null;
   return { building, sizeSqm };
 }

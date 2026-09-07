@@ -26,7 +26,8 @@ class DirectoryScreen extends StatefulWidget {
   State<DirectoryScreen> createState() => _DirectoryScreenState();
 }
 
-class _DirectoryScreenState extends State<DirectoryScreen> {
+class _DirectoryScreenState extends State<DirectoryScreen>
+    with WidgetsBindingObserver {
   List<DirectoryEntry> _entries = [];
   List<JoinRequest> _joinRequests = [];
 
@@ -38,25 +39,42 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   String _query = '';
   bool _loading = true;
   StreamSubscription<String>? _realtimeSub;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
     _realtimeSub = realtime.listen({
       'users',
       'join_requests',
       'invitations',
-    }, _load);
+      'apartments',
+      'tenancies',
+    }, () => _load(silent: true));
+    // Directory had no poll fallback — if Realtime misses an event the
+    // Vaad never saw the new tenant until a full app restart.
+    _pollTimer = Timer.periodic(
+      Duration(seconds: realtimeEnabled ? 15 : 5),
+      (_) => _load(silent: true),
+    );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _realtimeSub?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _load() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load(silent: true);
+  }
+
+  Future<void> _load({bool silent = false}) async {
     final isVaad = context.read<SessionController>().user?.isVaad ?? false;
     try {
       final data = await api.get('/api/directory');
@@ -76,7 +94,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         _loading = false;
       });
     } on ApiException {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && !silent) setState(() => _loading = false);
     }
 
     if (!isVaad || !mounted) return;
@@ -94,17 +112,33 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   }
 
   Future<void> _decide(JoinRequest request, bool approve) async {
+    // Optimistic remove so Approve/Reject feels instant.
+    setState(() {
+      _joinRequests =
+          _joinRequests.where((r) => r.id != request.id).toList();
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            approve
+                ? context.l10n.joinApprovedSnack(request.fullName ?? '')
+                : context.l10n.joinRejectedSnack(request.fullName ?? ''),
+          ),
+        ),
+      );
+    }
     try {
       await api.patch('/api/join-requests/${request.id}', {
         'action': approve ? 'approve' : 'reject',
       });
-      await _load();
+      if (mounted) await _load(silent: true);
     } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+      await _load(silent: true);
     }
   }
 

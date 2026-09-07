@@ -4,6 +4,7 @@ import { ApiError, getCurrentUser, requireRole, withErrorHandling } from "@/lib/
 import { logAudit } from "@/lib/audit";
 import { assertBuildingCapacity } from "@/lib/billing";
 import { validateJoinSubmission } from "@/lib/join-validation";
+import { insertJoinRequest } from "@/lib/join-request-insert";
 import { normalizeParkingSpots } from "@/lib/parking";
 import {
   decryptJoinRequestRow,
@@ -100,9 +101,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .eq("user_id", user.id)
     .eq("status", "pending");
 
-  const { data: request, error } = await db
-    .from("join_requests")
-    .insert({
+  const { data: request, error } = await insertJoinRequest(db, {
       building_id: building.id,
       user_id: user.id,
       apartment_number: body.apartmentNumber,
@@ -116,9 +115,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       doc_path: body.docPath ?? null,
       arnona_doc_path: body.arnonaDocPath ?? null,
       size_sqm: sizeSqm,
-    })
-    .select("*")
-    .single();
+    });
   if (error) throw new ApiError(500, error.message);
 
   await db
@@ -126,7 +123,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .update(userPiiStorageFields({ fullName: body.fullName, email: body.email ?? null }))
     .eq("id", user.id);
 
-  await logAudit({
+    await logAudit({
     buildingId: building.id,
     actorId: user.id,
     action: "join_requested",
@@ -134,6 +131,14 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     entityId: request.id,
     details: { name: body.fullName, apartment: body.apartmentNumber },
   });
+
+  void import("@/lib/notify-vaad").then(({ notifyVaadOfJoinRequest }) =>
+    notifyVaadOfJoinRequest({
+      buildingId: building.id,
+      requesterName: body.fullName,
+      apartmentNumber: body.apartmentNumber,
+    }),
+  );
 
   return NextResponse.json({ joinRequest: decryptJoinRequestRow(request) }, { status: 201 });
 });

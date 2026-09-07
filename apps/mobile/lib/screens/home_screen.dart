@@ -49,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer? _pollTimer;
   final Set<String> _seenAnnouncementIds = {};
   bool _announcementBaselineReady = false;
+  final Set<String> _seenJoinRequestIds = {};
+  bool _joinRequestBaselineReady = false;
   TicketsController? _ticketsInbox;
   int _lastPendingCount = 0;
 
@@ -63,12 +65,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       'announcements',
       'payments',
       'join_requests',
+      'users',
       'schedule_events',
       'meetings',
     }, () => _load(silent: true));
     // Fallback when Realtime isn't configured: keep the board live.
+    // Poll faster while Vaad has pending join requests so nothing is missed.
     _pollTimer = Timer.periodic(
-      Duration(seconds: realtimeEnabled ? 25 : 6),
+      Duration(seconds: realtimeEnabled ? 20 : 5),
       (_) => _load(silent: true),
     );
     // When an optimistic create finishes, refresh so the real ticket appears.
@@ -123,6 +127,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           .map((a) => Announcement.fromJson(a as Map<String, dynamic>))
           .toList();
       _notifyNewAnnouncements(nextAnnouncements);
+      final nextJoins = isVaad
+          ? ((core[3]['joinRequests'] ?? []) as List)
+              .map((e) => JoinRequest.fromJson(e))
+              .toList()
+          : <JoinRequest>[];
+      _notifyNewJoinRequests(nextJoins);
       final todayEvents = ((todayRaw['occurrences'] ?? []) as List)
           .map((e) => ScheduleOccurrence.fromJson(e as Map<String, dynamic>))
           .where((o) => o.eventType != 'announcement')
@@ -135,11 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _payments = ((core[2]['payments'] ?? []) as List)
             .map((p) => Payment.fromJson(p))
             .toList();
-        _joinRequests = isVaad
-            ? ((core[3]['joinRequests'] ?? []) as List)
-                  .map((e) => JoinRequest.fromJson(e))
-                  .toList()
-            : [];
+        _joinRequests = nextJoins;
         _apartments = isVaad
             ? ((core[4]['directory'] ?? []) as List)
                 .map((e) => DirectoryEntry.fromJson(e))
@@ -253,32 +259,77 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return l10n.ticketsDownVsLastMonth('${pct.abs()}');
   }
 
+  void _notifyNewJoinRequests(List<JoinRequest> next) {
+    final pending = next.where((r) => r.status == 'pending').toList();
+    final ids = pending.map((r) => r.id).toSet();
+    if (!_joinRequestBaselineReady) {
+      _seenJoinRequestIds
+        ..clear()
+        ..addAll(ids);
+      _joinRequestBaselineReady = true;
+      return;
+    }
+    final fresh =
+        pending.where((r) => !_seenJoinRequestIds.contains(r.id)).toList();
+    _seenJoinRequestIds
+      ..clear()
+      ..addAll(ids);
+    if (fresh.isEmpty || !mounted) return;
+    final newest = fresh.first;
+    final l10n = context.l10n;
+    final name = (newest.fullName ?? '').trim();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: DiraColors.goldDark,
+        duration: const Duration(seconds: 6),
+        content: Text(
+          name.isEmpty
+              ? l10n.newJoinRequestSnackGeneric
+              : l10n.newJoinRequestSnack(name),
+          style: const TextStyle(color: Colors.white),
+        ),
+        action: SnackBarAction(
+          label: l10n.joinRequestsTitle,
+          textColor: Colors.white,
+          onPressed: () => widget.onNavigate(2),
+        ),
+      ),
+    );
+  }
+
   Future<void> _decideJoin(JoinRequest request, bool approve) async {
+    // Optimistic: remove from banner immediately so Approve feels instant.
+    setState(() {
+      _joinRequests =
+          _joinRequests.where((r) => r.id != request.id).toList();
+      _seenJoinRequestIds.remove(request.id);
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            approve
+                ? context.l10n.joinApprovedSnack(request.fullName ?? '')
+                : context.l10n.joinRejectedSnack(request.fullName ?? ''),
+          ),
+        ),
+      );
+    }
     try {
       await api.patch('/api/join-requests/${request.id}', {
         'action': approve ? 'approve' : 'reject',
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              approve
-                  ? context.l10n.joinApprovedSnack(request.fullName ?? '')
-                  : context.l10n.joinRejectedSnack(request.fullName ?? ''),
-            ),
-          ),
-        );
-      }
-      await _load();
+      if (mounted) await _load(silent: true);
     } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+      await _load(silent: true);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

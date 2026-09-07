@@ -2249,6 +2249,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String newJoinRequestSnack(String name) {
+    return 'New join request from $name';
+  }
+
+  @override
+  String get newJoinRequestSnackGeneric => 'New join request awaiting approval';
+
+  @override
   String get viewArnonaDoc => 'View Arnona bill';
 
   @override

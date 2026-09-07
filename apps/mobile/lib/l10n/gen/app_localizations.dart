@@ -4129,6 +4129,18 @@ abstract class AppLocalizations {
   /// **'{name}\'s request was rejected'**
   String joinRejectedSnack(String name);
 
+  /// No description provided for @newJoinRequestSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'New join request from {name}'**
+  String newJoinRequestSnack(String name);
+
+  /// No description provided for @newJoinRequestSnackGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'New join request awaiting approval'**
+  String get newJoinRequestSnackGeneric;
+
   /// No description provided for @viewArnonaDoc.
   ///
   /// In en, this message translates to:

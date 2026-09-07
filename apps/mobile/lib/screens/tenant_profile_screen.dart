@@ -129,17 +129,10 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
   }
 
   bool get _valid {
-    final base =
-        _name.text.trim().length >= 2 &&
+    return _name.text.trim().length >= 2 &&
         int.tryParse(_apartment.text.trim()) != null &&
         (_email.text.trim().isEmpty || _email.text.contains('@')) &&
         (!widget.requireDocs || (_arnonaDoc != null && _residenceDoc != null));
-    if (!_perSqm || !_requiresSqmInput) return base;
-    if (_knownSqm != null) return base;
-    return base &&
-        _arnonaDoc != null &&
-        _effectiveSqm != null &&
-        _effectiveSqm! > 0;
   }
 
   Future<void> _pickDoc(void Function(PlatformFile) assign) async {
@@ -451,9 +444,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            widget.requireDocs || _requiresSqmInput
-                ? l10n.docsSectionRequired
-                : l10n.docsSection,
+            widget.requireDocs ? l10n.docsSectionRequired : l10n.docsSection,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: DiraColors.brickDark,
@@ -473,7 +464,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
             file: _arnonaDoc,
             label: l10n.attachArnona,
             hint: l10n.arnonaHint,
-            required: widget.requireDocs || _requiresSqmInput,
+            required: widget.requireDocs,
             busy: _busy || _extractingSqm,
             onPick: _onArnonaPicked,
           ),

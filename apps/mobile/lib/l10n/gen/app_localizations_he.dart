@@ -2229,6 +2229,14 @@ class AppLocalizationsHe extends AppLocalizations {
   }
 
   @override
+  String newJoinRequestSnack(String name) {
+    return 'בקשת הצטרפות חדשה מ־$name';
+  }
+
+  @override
+  String get newJoinRequestSnackGeneric => 'בקשת הצטרפות חדשה ממתינה לאישור';
+
+  @override
   String get viewArnonaDoc => 'צפייה בחשבון הארנונה';
 
   @override
