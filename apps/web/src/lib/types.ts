@@ -1,4 +1,5 @@
 export type UserRole = "super_admin" | "vaad" | "tenant";
+export type AccountStatus = "active" | "suspended" | "deleted";
 export type PaymentStatus = "pending" | "paid" | "overdue";
 export type TicketStatus = "open" | "approved" | "in_progress" | "resolved" | "rejected";
 export type InviteStatus = "pending" | "accepted" | "expired" | "revoked";
@@ -18,6 +19,11 @@ export interface AppUser {
   avatar_path?: string | null;
   onboarded_at: string | null;
   is_active: boolean;
+  account_status: AccountStatus;
+  status_reason?: string | null;
+  status_changed_at?: string | null;
+  /** Soft-delete timestamp when account_status is deleted. */
+  deleted_at?: string | null;
 }
 
 export type FeeMethod = "fixed" | "per_sqm";

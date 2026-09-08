@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/session.dart';
 import '../core/theme.dart';
 import '../core/user_preferences.dart';
 import '../l10n/l10n.dart';
 import '../widgets/app_version_label.dart';
 
-/// Personal settings: notification preferences + privacy explanation.
+/// Personal settings: notification preferences + privacy + account deletion.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
-  static const privacyPolicyUrl = 'https://buildingo.com/privacy';
+  static const privacyPolicyUrl =
+      'https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/privacy';
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -18,6 +21,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   UserPreferences? _prefs;
   bool _loading = true;
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -37,6 +41,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _openPrivacyPolicy() async {
     final uri = Uri.parse(SettingsScreen.privacyPolicyUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteAccountConfirmTitle),
+        content: Text(l10n.deleteAccountConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: DiraColors.brick),
+            child: Text(l10n.deleteAccountConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      await context.read<SessionController>().deleteAccount();
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.deleteAccountFailed)),
+      );
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
   }
 
   @override
@@ -175,6 +216,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: _openPrivacyPolicy,
                       icon: const Icon(Icons.open_in_new_rounded, size: 18),
                       label: Text(l10n.settingsPrivacyPolicyLink),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  l10n.settingsAccountSection,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: DiraColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _PrefCard(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(
+                        Icons.delete_forever_outlined,
+                        color: DiraColors.brick,
+                      ),
+                      title: Text(
+                        l10n.deleteAccount,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: DiraColors.brick,
+                        ),
+                      ),
+                      subtitle: Text(
+                        l10n.deleteAccountConfirmBody,
+                        style: const TextStyle(fontSize: 12.5, height: 1.35),
+                      ),
+                      trailing: _deleting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : null,
+                      onTap: _deleting ? null : _confirmDeleteAccount,
                     ),
                   ],
                 ),

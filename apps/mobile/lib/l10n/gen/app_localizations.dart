@@ -380,6 +380,48 @@ abstract class AppLocalizations {
   /// **'Open privacy policy'**
   String get settingsPrivacyPolicyLink;
 
+  /// No description provided for @settingsAccountSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get settingsAccountSection;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccountConfirmTitle;
+
+  /// No description provided for @deleteAccountConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone. Your account will be permanently deleted and you will not be able to restore it. Your profile data will be removed from the app.'**
+  String get deleteAccountConfirmBody;
+
+  /// No description provided for @deleteAccountConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my account'**
+  String get deleteAccountConfirmAction;
+
+  /// No description provided for @deleteAccountFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete the account. Please try again.'**
+  String get deleteAccountFailed;
+
+  /// No description provided for @deletingAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting…'**
+  String get deletingAccount;
+
   /// No description provided for @menu.
   ///
   /// In en, this message translates to:
@@ -4188,6 +4230,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Access for this building has been suspended. Contact us to restore it — all data is kept.'**
   String get accessBlockedBody;
+
+  /// No description provided for @accountSuspendedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account suspended'**
+  String get accountSuspendedTitle;
+
+  /// No description provided for @accountSuspendedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been suspended. Contact support if you believe this is a mistake.'**
+  String get accountSuspendedBody;
 
   /// No description provided for @pricingLine.
   ///

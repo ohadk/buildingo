@@ -7,11 +7,12 @@ import { normalizePhone } from "@/lib/pii";
  */
 const TEST_PHONE_CODES: Record<string, string> = {
   "+972547788999": "111111", // super admin
-  "+972547760683": "111111", // Vaad
-  "+972548899656": "111111", // tenant
-  "+972548899653": "111111", // free
-  "+972547777777": "111111", // free
-  "+972501234567": "123456", // App Store review
+  "+972547760683": "111111", // Vaad · מייזנר 17 · apt 2
+  "+972548899656": "111111", // tenant · מייזנר 17 · apt 3
+  "+972501234567": "123456", // tenant · מייזנר 17 · apt 1 (App Review)
+  "+972548899653": "111111", // tenant · מייזנר 17 · apt 4
+  "+972547777777": "111111", // spare test phone
+  "+972501234568": "123456", // spare test phone
 };
 
 export function testOtpCodeFor(phone: string): string | null {

@@ -167,27 +167,52 @@ export function SubscriptionControls({
 export function ToggleUserAccessButton({
   userId,
   userName,
-  isActive,
+  accountStatus,
 }: {
   userId: string;
   userName: string;
-  isActive: boolean;
+  accountStatus: "active" | "suspended" | "deleted";
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const isActive = accountStatus === "active";
 
   async function toggle() {
-    if (
-      isActive &&
-      !window.confirm(`להשבית את הגישה של ${userName}? הם לא יוכלו להתחבר עד להפעלה מחדש.`)
-    ) {
+    if (accountStatus === "deleted") return;
+    if (isActive) {
+      const reason = window.prompt(
+        `להשעות את ${userName}?\nהמשתמש יוכל להתחבר אבל יראה מסך חסימה.\nסיבה (תוצג למשתמש):`,
+        "החשבון הושעה על ידי מנהל המערכת",
+      );
+      if (reason == null) return;
+      setBusy(true);
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountStatus: "suspended",
+          reason: reason.trim() || "החשבון הושעה על ידי מנהל המערכת",
+        }),
+      });
+      setBusy(false);
+      if (!res.ok) {
+        const data = await res.json();
+        window.alert(data.error ?? "הפעולה נכשלה");
+        return;
+      }
+      router.refresh();
       return;
     }
+
+    if (!window.confirm(`להפעיל מחדש את ${userName}?`)) return;
     setBusy(true);
     const res = await fetch(`/api/users/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !isActive }),
+      body: JSON.stringify({
+        accountStatus: "active",
+        reason: "Reactivated by super admin",
+      }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -196,6 +221,10 @@ export function ToggleUserAccessButton({
       return;
     }
     router.refresh();
+  }
+
+  if (accountStatus === "deleted") {
+    return <span className="text-xs text-ink-400">—</span>;
   }
 
   return (
@@ -208,7 +237,7 @@ export function ToggleUserAccessButton({
           : "rounded-lg border border-sage-500 px-3 py-1 text-xs font-medium text-sage-700 hover:bg-sage-100"
       }
     >
-      {busy ? "…" : isActive ? "השבתה" : "הפעלה"}
+      {busy ? "…" : isActive ? "השעיה" : "הפעלה"}
     </button>
   );
 }

@@ -11,6 +11,10 @@ class AppUser {
   final int numOccupants;
   final DateTime? onboardedAt;
 
+  /// active | suspended | deleted
+  final String accountStatus;
+  final String? statusReason;
+
   /// Short-lived signed URL for the profile picture (null when unset).
   final String? avatarUrl;
 
@@ -26,10 +30,14 @@ class AppUser {
       onboardedAt = j['onboarded_at'] != null
           ? DateTime.parse(j['onboarded_at'])
           : null,
+      accountStatus = (j['account_status'] as String?) ??
+          ((j['is_active'] == false) ? 'suspended' : 'active'),
+      statusReason = j['status_reason'] as String?,
       avatarUrl = j['avatar_url'];
 
   bool get isVaad => role == 'vaad';
   bool get needsOnboarding => onboardedAt == null && role != 'super_admin';
+  bool get isSuspended => accountStatus == 'suspended';
 }
 
 class Building {

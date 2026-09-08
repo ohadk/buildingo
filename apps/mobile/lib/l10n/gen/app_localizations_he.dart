@@ -163,6 +163,28 @@ class AppLocalizationsHe extends AppLocalizations {
   String get settingsPrivacyPolicyLink => 'מדיניות הפרטיות';
 
   @override
+  String get settingsAccountSection => 'חשבון';
+
+  @override
+  String get deleteAccount => 'מחיקת חשבון';
+
+  @override
+  String get deleteAccountConfirmTitle => 'למחוק את החשבון?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'פעולה זו אינה ניתנת לשחזור. החשבון יימחק לצמיתות ולא תוכלו לשחזר אותו. נתוני הפרופיל שלכם יוסרו מהאפליקציה.';
+
+  @override
+  String get deleteAccountConfirmAction => 'מחק את החשבון שלי';
+
+  @override
+  String get deleteAccountFailed => 'לא ניתן למחוק את החשבון. נסו שוב.';
+
+  @override
+  String get deletingAccount => 'מוחק…';
+
+  @override
   String get menu => 'תפריט';
 
   @override
@@ -2262,6 +2284,13 @@ class AppLocalizationsHe extends AppLocalizations {
   @override
   String get accessBlockedBody =>
       'הגישה של הבניין הושהתה. צרו קשר כדי לשחזר אותה — כל המידע נשמר.';
+
+  @override
+  String get accountSuspendedTitle => 'החשבון מושעה';
+
+  @override
+  String get accountSuspendedBody =>
+      'החשבון שלכם הושעה. אם לדעתכם זו טעות — צרו קשר עם התמיכה.';
 
   @override
   String get pricingLine => '₪4.90 לדירה / לחודש';

@@ -186,17 +186,42 @@ Firebase Console → **Authentication** → **Sign-in method** → **Phone** →
 ### 2. Paste into App Store Connect → App Review Information → Notes
 
 ```
-Phone sign-in (no SMS / WhatsApp delivery needed — test number):
-1. Open the app → enter phone +972 50-123-4567
-2. Tap "Send code via WhatsApp" (default) — no message is sent for this test number
-3. Enter verification code: 123456
-4. Continue onboarding / join with invite if prompted
+Buildingo is a building (HOA) management app for residents and the Vaad (committee).
 
-Optional: use "Send via SMS instead" with the same phone + code 123456 (Firebase test number).
+Business model: The iOS app is free. Building SaaS is sold to buildings outside the
+app (contact / offline). In-app “payments” track real-world building dues
+(Guideline 3.1.3(e)), not digital unlocks — no IAP.
 
+DEMO BUILDING (pre-seeded — no invite needed):
+מייזנר 17, פתח תקווה · 2 floors · 4 apartments
+
+Phone sign-in (Firebase test numbers — no SMS / WhatsApp delivery):
+
+Vaad (apartment 2):
+1. Open the app → enter phone +972 54-776-0683
+2. Tap "Send code via WhatsApp" (default) — no message is sent
+3. Enter verification code: 111111
+4. You land in the demo building with announcements, payments, tickets, meetings
+
+Tenant (apartment 3) — optional second account:
+Phone +972 54-889-9656 · code 111111
+
+Other demo tenants:
+  +972501234567 / 123456 (apt 1)
+  +972548899653 / 111111 (apt 4)
+
+Account deletion (Guideline 5.1.1(v)) — please use a tenant demo account, not the Vaad:
+1. Sign in with +972 50-123-4567 / 123456 (apt 1)
+2. Open Home → profile (avatar) → Settings
+3. Scroll to Account → Delete account
+4. Confirm the irreversible deletion dialog
+5. You are signed out; the account cannot be restored
+(We will re-seed this demo user after review if needed.)
+
+UGC: Announcements/tickets are limited to the user’s building; Vaad can moderate.
+Abuse/support: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/support
+Privacy: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/privacy
 Production API: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
-Support: https://buildingo.com/support
-Privacy: https://buildingo.com/privacy
 ```
 
 Update the number/code in the notes to match what you configured in Firebase.

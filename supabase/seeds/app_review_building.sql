@@ -1,0 +1,11 @@
+-- מייזנר 17 — App Review / QA layout (single building)
+-- id: 3f61059a-b9a9-4b8d-b452-224f04d05dc6
+-- Layout: 2 floors × 2 apartments (1–2 floor 1, 3–4 floor 2)
+--
+-- Residents:
+--   Apt 2 · Vaad   · +972547760683 / 111111 · אוהד קצב
+--   Apt 3 · Tenant · +972548899656 / 111111 · אבנר נתניהו
+--   Apt 1 · Tenant · +972501234567 / 123456 · דנה כהן
+--   Apt 4 · Tenant · +972548899653 / 111111 · יוסי לוי
+--
+-- Applied live 2026-09-08 (trimmed from 36 apts; extra demo building removed).

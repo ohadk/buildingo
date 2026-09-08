@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase/admin";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { decryptUserRow } from "@/lib/pii";
-import type { AppUser, UserRole } from "@/lib/types";
+import type { AccountStatus, AppUser, UserRole } from "@/lib/types";
 
 export const SESSION_COOKIE = "dira_session";
 export const SESSION_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
@@ -57,32 +57,69 @@ export function buildingBlockReason(
   return null;
 }
 
+export type AccessBlockReason =
+  | "blocked"
+  | "trial_expired"
+  | "account_suspended";
+
 const USER_WITH_PLAN =
   "*, buildings!users_building_id_fkey(is_active, plan_status, trial_ends_at)";
 
+function accountStatusOf(row: { account_status?: AccountStatus; is_active?: boolean; deleted_at?: string | null }): AccountStatus {
+  if (row.account_status) return row.account_status;
+  if (row.deleted_at) return "deleted";
+  if (row.is_active === false) return "suspended";
+  return "active";
+}
+
 /**
- * Like getCurrentUser but never rejects a blocked/expired building —
- * returns the reason instead so /api/auth/me can show a friendly screen.
+ * Like getCurrentUser but never rejects a blocked building or suspended
+ * account — returns reasons so /api/auth/me can show a friendly screen.
+ * Deleted accounts are rejected (must re-register).
  */
 export async function getCurrentUserWithAccess(
   req: NextRequest,
-): Promise<{ user: AppUser; blockedReason: "blocked" | "trial_expired" | null }> {
+): Promise<{
+  user: AppUser;
+  blockedReason: AccessBlockReason | null;
+}> {
   const uid = await resolveFirebaseUid(req);
   const { data, error } = await supabaseAdmin()
     .from("users")
     .select(USER_WITH_PLAN)
     .eq("firebase_uid", uid)
+    .neq("account_status", "deleted")
+    .is("deleted_at", null)
     .maybeSingle();
   if (error) throw new ApiError(500, error.message);
-  if (!data || !data.is_active) throw new ApiError(403, "No active profile for this account");
+  if (!data) throw new ApiError(403, "No active profile for this account");
+
+  const status = accountStatusOf(data);
+  if (status === "deleted") {
+    throw new ApiError(403, "No active profile for this account");
+  }
+
   const { buildings, ...user } = data as AppUser & { buildings: BuildingPlanRow | null };
+  const appUser = decryptUserRow({
+    ...user,
+    account_status: status,
+  }) as AppUser;
+
+  if (status === "suspended") {
+    return { user: appUser, blockedReason: "account_suspended" };
+  }
+
   const blockedReason =
-    user.role === "super_admin" ? null : buildingBlockReason(buildings);
-  return { user: decryptUserRow(user) as AppUser, blockedReason };
+    appUser.role === "super_admin" ? null : buildingBlockReason(buildings);
+  return { user: appUser, blockedReason };
 }
 
+/** Requires a fully usable account (not suspended, building not blocked). */
 export async function getCurrentUser(req: NextRequest): Promise<AppUser> {
   const { user, blockedReason } = await getCurrentUserWithAccess(req);
+  if (blockedReason === "account_suspended") {
+    throw new ApiError(403, user.status_reason || "Account is suspended");
+  }
   if (blockedReason === "blocked") {
     throw new ApiError(403, "Building access is suspended");
   }
@@ -114,6 +151,8 @@ export async function getSessionUser(): Promise<AppUser | null> {
       .from("users")
       .select(USER_WITH_PLAN)
       .eq("firebase_uid", decoded.uid)
+      .eq("account_status", "active")
+      .is("deleted_at", null)
       .maybeSingle();
     if (!data || !data.is_active) return null;
     const { buildings, ...user } = data as AppUser & { buildings: BuildingPlanRow | null };

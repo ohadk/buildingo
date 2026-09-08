@@ -37,6 +37,9 @@ interface BuildingDetail {
     apartment_id: string | null;
     onboarded_at: string | null;
     is_active: boolean;
+    account_status: "active" | "suspended" | "deleted";
+    status_reason: string | null;
+    deleted_at: string | null;
     created_at: string;
   }[];
   invitations: {
@@ -76,7 +79,7 @@ export default async function BuildingDetailPage({
       `id, name, address, city, country, postal_code, fee_method, fixed_monthly_fee,
        price_per_sqm, is_active, plan_status, trial_ends_at, created_at,
        apartments(id, apartment_number, floor),
-       users!users_building_id_fkey(id, full_name, phone_number, email, role, apartment_id, onboarded_at, is_active, created_at),
+       users!users_building_id_fkey(id, full_name, phone_number, email, role, apartment_id, onboarded_at, is_active, account_status, status_reason, deleted_at, created_at),
        invitations(id, status, role, phone_number, apartment_id),
        tickets(id, title, status, agent_status, agent_log, created_at)`,
     )
@@ -86,9 +89,13 @@ export default async function BuildingDetailPage({
   if (!data) notFound();
   const b = data as unknown as BuildingDetail;
 
-  const connectedTenants = b.users.filter((u) => u.is_active && u.onboarded_at);
+  const connectedTenants = b.users.filter(
+    (u) => u.account_status === "active" && u.onboarded_at,
+  );
   const occupiedApartments = new Set(
-    b.users.filter((u) => u.apartment_id).map((u) => u.apartment_id),
+    b.users
+      .filter((u) => u.apartment_id && u.account_status !== "deleted")
+      .map((u) => u.apartment_id),
   );
   const openTickets = b.tickets.filter((t) =>
     ["open", "approved", "in_progress"].includes(t.status),
@@ -112,7 +119,11 @@ export default async function BuildingDetailPage({
   const apartmentNumber = (apartmentId: string | null) =>
     b.apartments.find((a) => a.id === apartmentId)?.apartment_number;
 
-  const vaadMembers = b.users.filter((u) => u.role === "vaad");
+  const vaadMembers = b.users.filter(
+    (u) => u.role === "vaad" && u.account_status !== "deleted",
+  );
+  const deletedUsers = b.users.filter((u) => u.account_status === "deleted");
+  const activeResidents = b.users.filter((u) => u.account_status !== "deleted");
   const pendingVaadInvites = awaitingInvitees.filter((i) => i.role === "vaad");
   const trialDaysLeft = Math.ceil(
     (new Date(b.trial_ends_at).getTime() - Date.now()) / 86_400_000,
@@ -260,9 +271,9 @@ export default async function BuildingDetailPage({
                       <span className="font-semibold text-ink-900">
                         {v.full_name || "ממתין להשלמת פרופיל"}
                       </span>
-                      {!v.is_active ? (
+                      {!v.is_active || v.account_status === "suspended" ? (
                         <span className="rounded-full bg-terracotta-100 px-2.5 py-0.5 text-xs font-semibold text-brick-600">
-                          מושבת
+                          מושעה
                         </span>
                       ) : v.onboarded_at ? (
                         <span className="rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-semibold text-sage-700">
@@ -318,7 +329,7 @@ export default async function BuildingDetailPage({
 
       <section>
         <h2 className="mb-3 text-xl font-bold text-ink-900">
-          דיירים ({b.users.length + awaitingInvitees.length})
+          דיירים ({activeResidents.length + awaitingInvitees.length})
         </h2>
         <Card>
           <div className="overflow-x-auto">
@@ -334,7 +345,7 @@ export default async function BuildingDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {b.users
+                {activeResidents
                   .slice()
                   .sort((a, z) => (apartmentNumber(a.apartment_id) ?? 999) - (apartmentNumber(z.apartment_id) ?? 999))
                   .map((u) => (
@@ -359,9 +370,12 @@ export default async function BuildingDetailPage({
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        {!u.is_active ? (
-                          <span className="rounded-full bg-terracotta-100 px-3 py-1 text-xs font-semibold text-brick-600">
-                            מושבת
+                        {u.account_status === "suspended" ? (
+                          <span
+                            className="rounded-full bg-terracotta-100 px-3 py-1 text-xs font-semibold text-brick-600"
+                            title={u.status_reason ?? undefined}
+                          >
+                            מושעה
                           </span>
                         ) : u.onboarded_at ? (
                           <span className="rounded-full bg-sage-100 px-3 py-1 text-xs font-semibold text-sage-700">
@@ -377,7 +391,7 @@ export default async function BuildingDetailPage({
                         <ToggleUserAccessButton
                           userId={u.id}
                           userName={u.full_name || formatPhoneDisplay(u.phone_number)}
-                          isActive={u.is_active}
+                          accountStatus={u.account_status}
                         />
                       </td>
                     </tr>
@@ -406,7 +420,7 @@ export default async function BuildingDetailPage({
                     <td className="px-5 py-3 text-ink-400">—</td>
                   </tr>
                 ))}
-                {b.users.length === 0 && awaitingInvitees.length === 0 && (
+                {activeResidents.length === 0 && awaitingInvitees.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-5 py-8 text-center text-ink-400">
                       אין דיירים רשומים עדיין — שייכו חבר ועד כדי להתחיל.
@@ -418,6 +432,54 @@ export default async function BuildingDetailPage({
           </div>
         </Card>
       </section>
+
+      {deletedUsers.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-xl font-bold text-ink-900">
+            חשבונות שנמחקו ({deletedUsers.length})
+          </h2>
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-cream-200 text-right text-ink-600">
+                    <th className="px-5 py-3 font-semibold">שם</th>
+                    <th className="px-5 py-3 font-semibold">טלפון</th>
+                    <th className="px-5 py-3 font-semibold">תפקיד</th>
+                    <th className="px-5 py-3 font-semibold">תאריך מחיקה</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deletedUsers
+                    .slice()
+                    .sort((a, z) => (z.deleted_at ?? "").localeCompare(a.deleted_at ?? ""))
+                    .map((u) => (
+                      <tr key={u.id} className="border-b border-cream-200 last:border-0">
+                        <td className="px-5 py-3 font-semibold text-ink-900">
+                          {u.full_name || "—"}
+                        </td>
+                        <td dir="ltr" className="px-5 py-3 text-right text-ink-600">
+                          {formatPhoneDisplay(u.phone_number)}
+                        </td>
+                        <td className="px-5 py-3 text-ink-600">
+                          {u.role === "vaad" ? "ועד" : "דייר"}
+                        </td>
+                        <td className="px-5 py-3 text-ink-600">
+                          <span className="rounded-full bg-terracotta-100 px-3 py-1 text-xs font-semibold text-brick-600">
+                            נמחק · {formatDateHe(u.deleted_at ?? u.created_at)}
+                          </span>
+                          {u.status_reason && (
+                            <div className="mt-1 text-xs text-ink-400">{u.status_reason}</div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-xl font-bold text-ink-900">

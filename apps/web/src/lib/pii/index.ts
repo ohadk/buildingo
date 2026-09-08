@@ -30,4 +30,5 @@ export {
   findUserByPhone,
   phoneMatchesStored,
   revokePendingInvitesForPhone,
+  revokeAllPendingInvitesForPhone,
 } from "./queries";

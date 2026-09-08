@@ -6,20 +6,31 @@ import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import '../widgets/phone_field.dart';
 
-/// Shown when the building's subscription lapsed: either the 14-day
-/// trial ended or the super admin blocked access. There is no in-app
-/// purchase — the Vaad reaches out through the contact form and we
-/// activate the subscription (₪4.90 per apartment / month) manually.
+/// Shown when access is frozen: building trial/blocked, or the user's
+/// account was suspended by a super admin.
 class BlockedScreen extends StatelessWidget {
-  /// 'trial_expired' | 'blocked'
+  /// 'trial_expired' | 'blocked' | 'account_suspended'
   final String reason;
   const BlockedScreen({super.key, required this.reason});
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final session = context.read<SessionController>();
+    final session = context.watch<SessionController>();
     final trialExpired = reason == 'trial_expired';
+    final accountSuspended = reason == 'account_suspended';
+    final title = accountSuspended
+        ? l10n.accountSuspendedTitle
+        : trialExpired
+            ? l10n.trialEndedTitle
+            : l10n.accessBlockedTitle;
+    final body = accountSuspended
+        ? (session.statusReason?.trim().isNotEmpty == true
+            ? session.statusReason!.trim()
+            : l10n.accountSuspendedBody)
+        : trialExpired
+            ? l10n.trialEndedBody
+            : l10n.accessBlockedBody;
 
     return Scaffold(
       body: Container(
@@ -46,13 +57,13 @@ class BlockedScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  trialExpired ? l10n.trialEndedTitle : l10n.accessBlockedTitle,
+                  title,
                   textAlign: TextAlign.center,
                   style: heading(fontSize: 24),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  trialExpired ? l10n.trialEndedBody : l10n.accessBlockedBody,
+                  body,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: DiraColors.inkSoft,
@@ -93,12 +104,14 @@ class BlockedScreen extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => _openContactForm(context),
-                  icon: const Icon(Icons.mail_outline_rounded),
-                  label: Text(l10n.contactUs),
-                ),
-                const SizedBox(height: 8),
+                if (!accountSuspended) ...[
+                  ElevatedButton.icon(
+                    onPressed: () => _openContactForm(context),
+                    icon: const Icon(Icons.mail_outline_rounded),
+                    label: Text(l10n.contactUs),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 OutlinedButton.icon(
                   onPressed: () => session.refreshMe(),
                   icon: const Icon(Icons.refresh),

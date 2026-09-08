@@ -65,6 +65,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     apartment: apartment.data,
     joinRequest: joinRequest.data,
     blockedReason,
+    statusReason: user.status_reason ?? null,
     monthlyFeePreview,
   });
 });

@@ -28,8 +28,31 @@ async function lookupByPhoneHash(
 }
 
 export async function findUserByPhone(db: Db, phone: string) {
-  const { data, error } = await lookupByPhoneHash(db, "users", phone);
-  if (error) return { data: null, error };
+  const normalized = normalizePhone(phone);
+  const hash = phoneHash(normalized);
+
+  // Soft-deleted accounts are ignored so the phone can re-register.
+  let byHash = await db
+    .from("users")
+    .select("*")
+    .eq("phone_number_hash", hash)
+    .neq("account_status", "deleted")
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (byHash.error) return { data: null, error: byHash.error };
+
+  if (!byHash.data) {
+    byHash = await db
+      .from("users")
+      .select("*")
+      .eq("phone_number", normalized)
+      .neq("account_status", "deleted")
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (byHash.error) return { data: null, error: byHash.error };
+  }
+
+  const data = byHash.data;
   if (!data) return { data: null, error: null };
 
   const patch = migrateRowPiiFields(data, "user");
@@ -80,6 +103,8 @@ export async function findBuildingUserByPhoneVariants(
     .from("users")
     .select("id, apartment_id, phone_number, phone_number_enc, phone_number_hash")
     .eq("building_id", buildingId)
+    .neq("account_status", "deleted")
+    .is("deleted_at", null)
     .in("phone_number_hash", hashes);
 
   if (byHash && byHash.length > 0) {
@@ -89,7 +114,9 @@ export async function findBuildingUserByPhoneVariants(
   const { data: all } = await db
     .from("users")
     .select("id, apartment_id, phone_number, phone_number_enc")
-    .eq("building_id", buildingId);
+    .eq("building_id", buildingId)
+    .neq("account_status", "deleted")
+    .is("deleted_at", null);
 
   const match = (all ?? []).find((u) => {
     const phone = decryptUserRow(u).phone_number;
@@ -116,5 +143,21 @@ export async function revokePendingInvitesForPhone(
     .update({ status: "revoked" })
     .eq("building_id", buildingId)
     .eq("phone_number", normalizePhone(phone))
+    .eq("status", "pending");
+}
+
+/** Revoke every pending invite for this phone (any building). */
+export async function revokeAllPendingInvitesForPhone(db: Db, phone: string) {
+  const normalized = normalizePhone(phone);
+  const hash = phoneHash(normalized);
+  await db
+    .from("invitations")
+    .update({ status: "revoked" })
+    .eq("phone_number_hash", hash)
+    .eq("status", "pending");
+  await db
+    .from("invitations")
+    .update({ status: "revoked" })
+    .eq("phone_number", normalized)
     .eq("status", "pending");
 }

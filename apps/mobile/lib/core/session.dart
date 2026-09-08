@@ -15,8 +15,12 @@ class SessionController extends ChangeNotifier {
   JoinRequest? joinRequest;
   double? monthlyFeePreview;
 
-  /// Non-null when the building lost access: 'trial_expired' | 'blocked'.
+  /// Non-null when access is frozen:
+  /// 'trial_expired' | 'blocked' | 'account_suspended'.
   String? blockedReason;
+
+  /// Optional message for account_suspended (from admin status_reason).
+  String? statusReason;
   bool loading = false;
   String? error;
 
@@ -59,7 +63,8 @@ class SessionController extends ChangeNotifier {
         ? JoinRequest.fromJson(data['joinRequest'])
         : null;
     monthlyFeePreview = (data['monthlyFeePreview'] as num?)?.toDouble();
-    blockedReason = data['blockedReason'];
+    blockedReason = data['blockedReason'] as String?;
+    statusReason = data['statusReason'] as String? ?? user?.statusReason;
     await realtime.setBuilding(blockedReason == null ? building?.id : null);
     notifyListeners();
   }
@@ -175,6 +180,13 @@ class SessionController extends ChangeNotifier {
     apartment = null;
     joinRequest = null;
     blockedReason = null;
+    statusReason = null;
     notifyListeners();
+  }
+
+  /// Soft-deletes the account on the server, then clears local auth.
+  Future<void> deleteAccount() async {
+    await api.delete('/api/account');
+    await signOut();
   }
 }

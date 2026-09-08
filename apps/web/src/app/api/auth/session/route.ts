@@ -51,24 +51,41 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .from("users")
     .select("*")
     .eq("firebase_uid", decoded.uid)
+    .neq("account_status", "deleted")
+    .is("deleted_at", null)
     .maybeSingle();
   if (existing.error) throw new ApiError(500, `User lookup failed: ${existing.error.message}`);
   let user = existing.data ? decryptUserRow(existing.data) : null;
 
+  if (user?.account_status === "deleted" || user?.deleted_at) {
+    user = null;
+  }
+
   if (!user) {
+    // Never revive a soft-deleted profile. findUserByPhone already skips
+    // account_status=deleted, so a re-signup always creates a new row
+    // (no building) unless there is a *new* pending invitation.
     const byPhone = await findUserByPhone(db, phone);
     if (byPhone.error) {
       throw new ApiError(500, `User lookup failed: ${byPhone.error.message}`);
     }
     if (byPhone.data) {
-      const { data: relinked, error } = await db
-        .from("users")
-        .update({ firebase_uid: decoded.uid })
-        .eq("id", byPhone.data.id)
-        .select("*")
-        .single();
-      if (error) throw new ApiError(500, error.message);
-      user = decryptUserRow(relinked);
+      if (
+        byPhone.data.account_status === "deleted" ||
+        byPhone.data.deleted_at
+      ) {
+        // Defensive: treat as no user so we fall through to create.
+      } else {
+        const { data: relinked, error } = await db
+          .from("users")
+          .update({ firebase_uid: decoded.uid })
+          .eq("id", byPhone.data.id)
+          .neq("account_status", "deleted")
+          .select("*")
+          .single();
+        if (error) throw new ApiError(500, error.message);
+        user = decryptUserRow(relinked);
+      }
     }
   }
 
@@ -93,6 +110,8 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       }
     }
 
+    // Fresh profile after delete: never copy building from a deleted twin.
+    // building_id is only set from a current pending invite (or null).
     const { data: created, error } = await db
       .from("users")
       .insert({
@@ -101,6 +120,8 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         role: superAdmin ? "super_admin" : (invite?.role ?? "tenant"),
         building_id: invite?.building_id ?? null,
         apartment_id: invite?.apartment_id ?? null,
+        account_status: "active",
+        is_active: true,
       })
       .select("*")
       .single();

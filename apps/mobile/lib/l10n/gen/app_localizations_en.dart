@@ -165,6 +165,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPrivacyPolicyLink => 'Open privacy policy';
 
   @override
+  String get settingsAccountSection => 'Account';
+
+  @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountConfirmTitle => 'Delete your account?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'This cannot be undone. Your account will be permanently deleted and you will not be able to restore it. Your profile data will be removed from the app.';
+
+  @override
+  String get deleteAccountConfirmAction => 'Delete my account';
+
+  @override
+  String get deleteAccountFailed =>
+      'Could not delete the account. Please try again.';
+
+  @override
+  String get deletingAccount => 'Deleting…';
+
+  @override
   String get menu => 'Menu';
 
   @override
@@ -2282,6 +2305,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accessBlockedBody =>
       'Access for this building has been suspended. Contact us to restore it — all data is kept.';
+
+  @override
+  String get accountSuspendedTitle => 'Account suspended';
+
+  @override
+  String get accountSuspendedBody =>
+      'Your account has been suspended. Contact support if you believe this is a mistake.';
 
   @override
   String get pricingLine => '₪4.90 per apartment / month';
