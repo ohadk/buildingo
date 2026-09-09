@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import FirebaseAuth
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -11,11 +12,45 @@ import FirebaseAuth
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Silent APNs is how Firebase verifies the app before sending SMS.
-    // Without a delivered token + notification handoff, iOS falls back to
-    // reCAPTCHA (Safari), which often sticks on about:blank.
-    application.registerForRemoteNotifications()
+    // Guideline 4.5.4: never register for remote notifications until the user
+    // has been asked for notification permission. If they already granted it
+    // (returning install), re-register quietly so Firebase Phone Auth can use
+    // silent APNs; otherwise wait for Flutter to call requestPermission.
+    syncRemoteNotificationRegistration(application)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  /// Registers for APNs only when notification authorization is already granted.
+  private func syncRemoteNotificationRegistration(_ application: UIApplication = .shared) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      DispatchQueue.main.async {
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+          application.registerForRemoteNotifications()
+        case .notDetermined, .denied:
+          break
+        @unknown default:
+          break
+        }
+      }
+    }
+  }
+
+  /// Prompts the system permission dialog, then registers for APNs if allowed.
+  private func requestPushPermission(result: @escaping FlutterResult) {
+    UNUserNotificationCenter.current().requestAuthorization(
+      options: [.alert, .badge, .sound]
+    ) { granted, error in
+      DispatchQueue.main.async {
+        if granted {
+          UIApplication.shared.registerForRemoteNotifications()
+        }
+        result([
+          "granted": granted,
+          "error": error?.localizedDescription as Any,
+        ])
+      }
+    }
   }
 
   override func application(
@@ -110,6 +145,24 @@ import FirebaseAuth
       switch call.method {
       case "status":
         result(AppDelegate.apnsStatus)
+      case "requestPermission":
+        self?.requestPushPermission(result: result)
+      case "syncRegistration":
+        self?.syncRemoteNotificationRegistration()
+        result(true)
+      case "authorizationStatus":
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+          let label: String
+          switch settings.authorizationStatus {
+          case .notDetermined: label = "notDetermined"
+          case .denied: label = "denied"
+          case .authorized: label = "authorized"
+          case .provisional: label = "provisional"
+          case .ephemeral: label = "ephemeral"
+          @unknown default: label = "unknown"
+          }
+          result(label)
+        }
       case "verifyPhone":
         guard let phone = call.arguments as? String, !phone.isEmpty else {
           result(FlutterError(code: "bad-args", message: "phone required", details: nil))

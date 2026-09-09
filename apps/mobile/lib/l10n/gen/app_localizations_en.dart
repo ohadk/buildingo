@@ -124,7 +124,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsNotificationsNote =>
-      'Banner push notifications are not enabled yet. While the app is open, updates appear live. These switches save your preferences for when push alerts are turned on.';
+      'Choose which building updates you want as push alerts. iOS will ask for permission the first time you enable notifications.';
+
+  @override
+  String get pushPermissionTitle => 'Stay updated on your building';
+
+  @override
+  String get pushPermissionBody =>
+      'Buildingo can send notifications about tickets, announcements, and payments. You can change this anytime in Settings.';
+
+  @override
+  String get pushPermissionAllow => 'Continue';
+
+  @override
+  String get pushPermissionNotNow => 'Not now';
 
   @override
   String get settingsNotifyTickets => 'Tickets & maintenance';

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/api_client.dart';
 import '../core/auth_errors.dart';
+import '../core/push_permission.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
 import '../widgets/app_version_label.dart';
@@ -95,6 +96,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _sendFirebaseSmsCode() async {
+    // Ask for notification permission before Firebase SMS uses silent APNs
+    // (Guideline 4.5.4). Denial falls back to reCAPTCHA.
+    await PushPermission.requestFromSettings();
+
     // Debug-only diagnostic path. Never compile into App Store via FORCE_REAL alone.
     const forceReal = bool.fromEnvironment('FORCE_REAL_PHONE_AUTH');
     if (kDebugMode && forceReal) {

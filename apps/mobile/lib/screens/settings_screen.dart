@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/push_permission.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../core/user_preferences.dart';
@@ -41,6 +42,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _openPrivacyPolicy() async {
     final uri = Uri.parse(SettingsScreen.privacyPolicyUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _onNotifyChanged({
+    required bool enable,
+    required Future<void> Function() apply,
+  }) async {
+    if (enable) {
+      await PushPermission.requestFromSettings();
+    }
+    await apply();
+    if (mounted) setState(() {});
   }
 
   Future<void> _confirmDeleteAccount() async {
@@ -130,10 +142,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       value: prefs.notifyTickets,
                       activeTrackColor: DiraColors.sageDark,
-                      onChanged: (v) async {
-                        await prefs.setNotifyTickets(v);
-                        setState(() {});
-                      },
+                      onChanged: (v) => _onNotifyChanged(
+                        enable: v,
+                        apply: () => prefs.setNotifyTickets(v),
+                      ),
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
@@ -145,10 +157,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       value: prefs.notifyAnnouncements,
                       activeTrackColor: DiraColors.sageDark,
-                      onChanged: (v) async {
-                        await prefs.setNotifyAnnouncements(v);
-                        setState(() {});
-                      },
+                      onChanged: (v) => _onNotifyChanged(
+                        enable: v,
+                        apply: () => prefs.setNotifyAnnouncements(v),
+                      ),
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
@@ -160,10 +172,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       value: prefs.notifyPayments,
                       activeTrackColor: DiraColors.sageDark,
-                      onChanged: (v) async {
-                        await prefs.setNotifyPayments(v);
-                        setState(() {});
-                      },
+                      onChanged: (v) => _onNotifyChanged(
+                        enable: v,
+                        apply: () => prefs.setNotifyPayments(v),
+                      ),
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
@@ -175,10 +187,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       value: prefs.notifyMessages,
                       activeTrackColor: DiraColors.sageDark,
-                      onChanged: (v) async {
-                        await prefs.setNotifyMessages(v);
-                        setState(() {});
-                      },
+                      onChanged: (v) => _onNotifyChanged(
+                        enable: v,
+                        apply: () => prefs.setNotifyMessages(v),
+                      ),
                     ),
                   ],
                 ),

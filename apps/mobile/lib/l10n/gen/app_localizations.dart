@@ -305,8 +305,32 @@ abstract class AppLocalizations {
   /// No description provided for @settingsNotificationsNote.
   ///
   /// In en, this message translates to:
-  /// **'Banner push notifications are not enabled yet. While the app is open, updates appear live. These switches save your preferences for when push alerts are turned on.'**
+  /// **'Choose which building updates you want as push alerts. iOS will ask for permission the first time you enable notifications.'**
   String get settingsNotificationsNote;
+
+  /// No description provided for @pushPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay updated on your building'**
+  String get pushPermissionTitle;
+
+  /// No description provided for @pushPermissionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Buildingo can send notifications about tickets, announcements, and payments. You can change this anytime in Settings.'**
+  String get pushPermissionBody;
+
+  /// No description provided for @pushPermissionAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get pushPermissionAllow;
+
+  /// No description provided for @pushPermissionNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get pushPermissionNotNow;
 
   /// No description provided for @settingsNotifyTickets.
   ///

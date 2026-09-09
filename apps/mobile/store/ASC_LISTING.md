@@ -167,6 +167,48 @@ Capture more tabs (Payments / Residents / Docs) in Simulator before submit if yo
 
 Cause: the submitted IPA was talking to `http://localhost:3000`, so App Review’s devices could not reach the backend and hung on launch. Fixed by defaulting release builds to the App Hosting URL and not blocking startup on `/api/config`.
 
+### App Review rejection — Sep 8, 2026 (v1.0 build 12)
+
+**4.5.4 Push consent:** App registered for remote notifications at launch without asking. Fixed: system permission is requested after sign-in (with an in-app explanation) and when enabling notification toggles in Settings; APNs registration only happens after authorization.
+
+**2.1 How do users register?** Reply in Resolution Center (paste below) and keep in Review Notes.
+
+#### Resolution Center reply (Guideline 2.1)
+
+```
+How users register for a new account:
+
+1. Open Buildingo and enter a mobile phone number (Israel +972).
+2. Request a one-time verification code via WhatsApp (default) or SMS.
+3. Enter the 6-digit code. This creates the account (Firebase Phone Auth +
+   our user profile). No email/password signup.
+4. After sign-in, if the phone is not linked to a building yet, the user
+   chooses one of:
+   a) Create a building as Vaad (building manager / committee), or
+   b) Join an existing building with the Vaad’s share/join link (or code).
+      Joining via the building link creates a join request that the Vaad
+      must approve before the resident gets access.
+5. Completing that step finishes onboarding; the user then sees their
+   building home (dues, tickets, announcements, documents).
+
+PRIMARY DEMO LOGIN (already joined — no SMS/WhatsApp is sent):
+Phone: +972548899656
+Code: 111111
+Building: מייזנר 17, פתח תקווה
+
+Optional — join our test building as a new resident:
+Join link: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/join/fe303ba85b
+Join code: fe303ba85b
+After signing in with a new phone, open the link / enter the code, submit
+a join request. The Vaad must approve it. Reply in App Store Connect if
+you submit a request and need us to approve it during review.
+
+Push notifications (Guideline 4.5.4): the app shows an in-app explanation
+and the iOS permission prompt after sign-in (and from Settings). We do
+not register for remote notifications until the user has been asked for
+consent.
+```
+
 ---
 
 ## App Review — phone sign-in (required)
@@ -177,11 +219,11 @@ Firebase sometimes blocks real SMS to certain Israeli numbers (`Error code: 39`)
 
 Firebase Console → **Authentication** → **Sign-in method** → **Phone** → **Phone numbers for testing**:
 
-| Phone number | Verification code |
-|---|---|
-| `+972501234567` | `123456` |
-
-(Use any unused +972 test number + a 6-digit code you choose.)
+| Phone number | Verification code | Role |
+|---|---|---|
+| `+972548899656` | `111111` | **Primary App Review login** (tenant, apt 3) |
+| `+972547760683` | `111111` | Vaad (approve join requests) |
+| `+972501234567` | `123456` | Spare tenant (deletion testing) |
 
 ### 2. Paste into App Store Connect → App Review Information → Notes
 
@@ -192,31 +234,44 @@ Business model: The iOS app is free. Building SaaS is sold to buildings outside 
 app (contact / offline). In-app “payments” track real-world building dues
 (Guideline 3.1.3(e)), not digital unlocks — no IAP.
 
-DEMO BUILDING (pre-seeded — no invite needed):
-מייזנר 17, פתח תקווה · 2 floors · 4 apartments
+═══════════════════════════════════════
+DEMO LOGIN (Firebase test number — no SMS or WhatsApp is delivered):
+Phone: +972 54-889-9656
+Code: 111111
 
-Phone sign-in (Firebase test numbers — no SMS / WhatsApp delivery):
+1. Open the app → enter +972 54-889-9656
+2. Tap "Send code via WhatsApp" — no message is sent
+3. Enter 111111
+4. You land in demo building מייזנר 17 (already joined)
+═══════════════════════════════════════
 
-Vaad (apartment 2):
-1. Open the app → enter phone +972 54-776-0683
-2. Tap "Send code via WhatsApp" (default) — no message is sent
-3. Enter verification code: 111111
-4. You land in the demo building with announcements, payments, tickets, meetings
+HOW A NEW ACCOUNT IS REGISTERED:
 
-Tenant (apartment 3) — optional second account:
-Phone +972 54-889-9656 · code 111111
+A) Create a building as Vaad (building manager)
+1. Open the app → enter your phone number
+2. Tap "Send code via WhatsApp" (or SMS) and enter the code you receive
+3. After sign-in, choose “I’m the Vaad / create a building”
+4. Enter building details to become the building manager
 
-Other demo tenants:
-  +972501234567 / 123456 (apt 1)
-  +972548899653 / 111111 (apt 4)
+B) Join our test building as a resident (requires Vaad approval)
+1. Sign in with a phone number (OTP via WhatsApp/SMS)
+2. Open this share/join link (or enter the code in the app):
+   Link: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/join/fe303ba85b
+   Code: fe303ba85b
+3. Submit a join request for מייזנר 17
+4. The Vaad must approve the request before access is granted
+   (Reply in App Store Connect if you need us to approve during review)
 
-Account deletion (Guideline 5.1.1(v)) — please use a tenant demo account, not the Vaad:
-1. Sign in with +972 50-123-4567 / 123456 (apt 1)
-2. Open Home → profile (avatar) → Settings
-3. Scroll to Account → Delete account
-4. Confirm the irreversible deletion dialog
-5. You are signed out; the account cannot be restored
-(We will re-seed this demo user after review if needed.)
+Optional Vaad demo account (same building, to approve joins / see committee UI):
+Phone +972 54-776-0683 · Code 111111 (Firebase test — no SMS sent)
+
+Account deletion (Guideline 5.1.1(v)) — please do NOT delete the primary demo
+account (+972548899656). Use spare tenant +972501234567 / 123456 instead:
+Home → profile → Settings → Delete account → confirm
+
+Push notifications (Guideline 4.5.4): permission is requested after sign-in
+with an in-app explanation, then the system dialog. Remote notification
+registration only occurs after the user is asked for consent.
 
 UGC: Announcements/tickets are limited to the user’s building; Vaad can moderate.
 Abuse/support: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/support

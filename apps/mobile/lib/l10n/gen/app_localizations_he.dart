@@ -122,7 +122,20 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get settingsNotificationsNote =>
-      'התראות באנר (Push) עדיין לא פעילות. כשהאפליקציה פתוחה, עדכונים מופיעים בזמן אמת. המתגים כאן שומרים את ההעדפות שלכם לכשיופעלו התראות מערכת.';
+      'בחרו אילו עדכוני בניין תרצו לקבל כהתראות Push. iOS יבקש אישור בפעם הראשונה שתפעילו התראות.';
+
+  @override
+  String get pushPermissionTitle => 'להישאר מעודכנים בבניין';
+
+  @override
+  String get pushPermissionBody =>
+      'Buildingo יכולה לשלוח התראות על תקלות, הודעות ותשלומים. אפשר לשנות זאת בכל עת בהגדרות.';
+
+  @override
+  String get pushPermissionAllow => 'המשך';
+
+  @override
+  String get pushPermissionNotNow => 'לא עכשיו';
 
   @override
   String get settingsNotifyTickets => 'קריאות ותחזוקה';
