@@ -78,7 +78,8 @@ class PushPermission {
     }
   }
 
-  /// Used from Settings when the user turns a notification category on.
+  /// Used from Settings / SMS login when enabling notifications.
+  /// Always goes through the system permission dialog if not yet decided.
   static Future<bool> requestFromSettings() async {
     final status = await authorizationStatus();
     if (status == 'authorized' ||
@@ -87,6 +88,7 @@ class PushPermission {
       await syncRegistration();
       return true;
     }
+    if (status == 'denied') return false;
     try {
       final raw = await _channel.invokeMethod<Map>('requestPermission');
       return raw?['granted'] == true;

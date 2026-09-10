@@ -167,46 +167,57 @@ Capture more tabs (Payments / Residents / Docs) in Simulator before submit if yo
 
 Cause: the submitted IPA was talking to `http://localhost:3000`, so App Review’s devices could not reach the backend and hung on launch. Fixed by defaulting release builds to the App Hosting URL and not blocking startup on `/api/config`.
 
-### App Review rejection — Sep 8, 2026 (v1.0 build 12)
+### App Review rejection — Sep 8, 2026 (v1.0 build 12) / Sep 9, 2026 (v1.0 build 14)
 
-**4.5.4 Push consent:** App registered for remote notifications at launch without asking. Fixed: system permission is requested after sign-in (with an in-app explanation) and when enabling notification toggles in Settings; APNs registration only happens after authorization.
+**4.5.4 Push consent:** Reviewers still flagged push without consent. Hardened in
+build **15+**:
+- Removed `UIBackgroundModes: remote-notification` (we do not deliver
+  background/user push yet; WhatsApp OTP is the primary sign-in path)
+- No `registerForRemoteNotifications` at launch
+- After every successful sign-in, an in-app explanation appears, then the
+  iOS system permission dialog; APNs is registered only if the user allows
 
-**2.1 How do users register?** Reply in Resolution Center (paste below) and keep in Review Notes.
+**2.1 How do users register?** Must reply in Resolution Center (paste below)
+even before/while uploading the new binary.
 
-#### Resolution Center reply (Guideline 2.1)
+#### Resolution Center reply (paste into App Store Connect → Resolution Center)
 
 ```
-How users register for a new account:
+Hello App Review team,
+
+Thank you for the feedback on submission de450ffe-65ea-4f34-ac75-9a14c0c19a98.
+
+Guideline 2.1 — How users register for a new account:
 
 1. Open Buildingo and enter a mobile phone number (Israel +972).
 2. Request a one-time verification code via WhatsApp (default) or SMS.
-3. Enter the 6-digit code. This creates the account (Firebase Phone Auth +
-   our user profile). No email/password signup.
-4. After sign-in, if the phone is not linked to a building yet, the user
-   chooses one of:
-   a) Create a building as Vaad (building manager / committee), or
-   b) Join an existing building with the Vaad’s share/join link (or code).
-      Joining via the building link creates a join request that the Vaad
-      must approve before the resident gets access.
-5. Completing that step finishes onboarding; the user then sees their
-   building home (dues, tickets, announcements, documents).
+3. Enter the 6-digit code. This creates the account (phone OTP — no
+   email/password).
+4. If the phone is not linked to a building yet, the user chooses:
+   a) Create a building as Vaad (building manager / committee), OR
+   b) Join an existing building via the Vaad’s share/join link or code.
+      A join request must be approved by the Vaad before access.
+5. After that, the user sees the building home (dues, tickets, announcements).
 
-PRIMARY DEMO LOGIN (already joined — no SMS/WhatsApp is sent):
+PRIMARY DEMO LOGIN (Firebase test number — no SMS/WhatsApp is sent):
 Phone: +972548899656
 Code: 111111
-Building: מייזנר 17, פתח תקווה
+Steps: enter phone → Send code via WhatsApp → enter 111111 → land in
+demo building “מייזנר 17” (already joined).
 
-Optional — join our test building as a new resident:
-Join link: https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/join/fe303ba85b
-Join code: fe303ba85b
-After signing in with a new phone, open the link / enter the code, submit
-a join request. The Vaad must approve it. Reply in App Store Connect if
-you submit a request and need us to approve it during review.
+Optional join link for our test building (requires Vaad approval):
+https://buildingo-api--buildingo-6ff54.us-central1.hosted.app/join/fe303ba85b
+Code: fe303ba85b
 
-Push notifications (Guideline 4.5.4): the app shows an in-app explanation
-and the iOS permission prompt after sign-in (and from Settings). We do
-not register for remote notifications until the user has been asked for
-consent.
+Guideline 4.5.4 — Push notifications:
+We have uploaded a new build that does not register for remote notifications
+at launch and does not declare the remote-notification background mode.
+After sign-in, the app shows an in-app explanation and then the iOS
+notification permission dialog. Remote notification registration occurs
+only if the user grants permission. The app does not send push notifications
+until that consent is obtained.
+
+Please let us know if you need anything else.
 ```
 
 ---
@@ -285,8 +296,10 @@ Update the number/code in the notes to match what you configured in Firebase.
 
 ```bash
 cd apps/mobile
-flutter build ipa --release \
+flutter build ipa --release --build-number=15 \
   --dart-define=API_BASE_URL=https://buildingo-api--buildingo-6ff54.us-central1.hosted.app
 ```
 
-Upload `build/ios/ipa/*.ipa` with Transporter / Xcode Organizer. Do **not** Archive right after a localhost debug run.
+Upload `build/ios/ipa/*.ipa` with Transporter / Xcode Organizer. Confirm the
+uploaded build is **1.0 (15)** or higher (not an older archive). Do **not**
+Archive right after a localhost debug run.

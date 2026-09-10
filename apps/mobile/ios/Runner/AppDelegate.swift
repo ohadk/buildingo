@@ -12,11 +12,9 @@ import UserNotifications
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Guideline 4.5.4: never register for remote notifications until the user
-    // has been asked for notification permission. If they already granted it
-    // (returning install), re-register quietly so Firebase Phone Auth can use
-    // silent APNs; otherwise wait for Flutter to call requestPermission.
-    syncRemoteNotificationRegistration(application)
+    // Guideline 4.5.4: never register for remote notifications at launch.
+    // Flutter calls requestPermission after an in-app explanation; only then
+    // do we show the system dialog and (if granted) register for APNs.
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

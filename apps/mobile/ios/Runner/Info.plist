@@ -105,11 +105,9 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- Required for Firebase Phone Auth silent push (skips broken reCAPTCHA sheet). -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
+	<!-- Do NOT declare remote-notification background mode until we deliver
+	     user-facing push (Guideline 4.5.4). Firebase Phone Auth can fall back
+	     to reCAPTCHA; WhatsApp OTP is the primary sign-in path. -->
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

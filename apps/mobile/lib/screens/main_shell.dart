@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/deep_links.dart';
-import '../core/push_permission.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../l10n/l10n.dart';
@@ -29,15 +28,7 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _applyDeepLink();
-      _maybeRequestPushPermission();
-    });
-  }
-
-  Future<void> _maybeRequestPushPermission() async {
-    if (!mounted) return;
-    await PushPermission.ensureRequested(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyDeepLink());
   }
 
   @override

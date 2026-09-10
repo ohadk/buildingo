@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'core/deep_links.dart';
+import 'core/push_permission.dart';
 import 'core/realtime.dart';
 import 'core/session.dart';
 import 'core/theme.dart';
@@ -158,12 +159,25 @@ class _SessionGate extends StatefulWidget {
 }
 
 class _SessionGateState extends State<_SessionGate> {
+  bool _pushPromptScheduled = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final session = context.read<SessionController>();
       if (session.user == null && !session.loading) session.bootstrap();
+    });
+  }
+
+  void _schedulePushPermissionPrompt() {
+    if (_pushPromptScheduled) return;
+    _pushPromptScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      // Ask on every signed-in path (home, welcome/join, onboarding) so App
+      // Review always sees the consent flow (Guideline 4.5.4).
+      await PushPermission.ensureRequested(context);
     });
   }
 
@@ -202,6 +216,9 @@ class _SessionGateState extends State<_SessionGate> {
     if (session.blockedReason != null) {
       return BlockedScreen(reason: session.blockedReason!);
     }
+
+    _schedulePushPermissionPrompt();
+
     if (session.user!.needsOnboarding) {
       // Not attached to any building yet → self-service entry point
       // (create a building as Vaad / find one as tenant / enter a code).
